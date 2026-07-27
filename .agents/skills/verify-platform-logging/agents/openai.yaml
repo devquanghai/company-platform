@@ -1,0 +1,4 @@
+interface:
+  display_name: "Verify Platform Logging"
+  short_description: "Run the platform logging quality gate"
+  default_prompt: "Use $verify-platform-logging to run the complete module quality gate."

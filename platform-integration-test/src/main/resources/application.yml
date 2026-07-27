@@ -1,0 +1,53 @@
+spring:
+  application:
+    name: platform-integration-test
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+platform:
+  core:
+    openapi:
+      enabled: true
+      title: Platform Integration Test
+      description: Platform Integration Test API
+      version: 1.0.0
+      servers:
+        - url: ${INTEGRATION_ECHO_BASE_URL:http://localhost:8080}
+          description: Echo Service
+    web:
+      request-logging-enabled: true
+      include-payload: true
+  service-exchange:
+    enabled: true
+    source-application: platform-integration-test
+    clients:
+      echo:
+        protocol: HTTP
+        http:
+          base-url: ${INTEGRATION_ECHO_BASE_URL:http://localhost:8080}
+        resilience:
+          enabled: false
+  logging:
+    enabled: true
+    environment: local
+    masking:
+      rules:
+        - name: integration-email
+          match-type: FIELD_NAME
+          fields:
+            - email
+          pii-type: EMAIL
+          masking-type: PARTIAL
+          visible-prefix: 2
+          preserve-domain: true
+    crypto:
+      enabled: false
+      annotation-enabled: false
+      fail-if-disabled-annotation-used: true

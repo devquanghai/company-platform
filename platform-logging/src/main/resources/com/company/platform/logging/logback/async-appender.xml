@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<included>
+    <appender name="PLATFORM_ASYNC" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>${PLATFORM_ASYNC_QUEUE_SIZE:-8192}</queueSize>
+        <discardingThreshold>${PLATFORM_ASYNC_DISCARDING_THRESHOLD:-0}</discardingThreshold>
+        <neverBlock>${PLATFORM_ASYNC_NEVER_BLOCK:-false}</neverBlock>
+        <maxFlushTime>${PLATFORM_ASYNC_FLUSH_MILLIS:-5000}</maxFlushTime>
+        <appender-ref ref="${PLATFORM_ASYNC_DELEGATE:-PLATFORM_CONSOLE_TEXT}"/>
+    </appender>
+</included>

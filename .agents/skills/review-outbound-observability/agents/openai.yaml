@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Outbound Observability"
+  short_description: "Review safe outbound telemetry and audit behavior"
+  default_prompt: "Use $review-outbound-observability to review logs, metrics, tracing, and audit safety."

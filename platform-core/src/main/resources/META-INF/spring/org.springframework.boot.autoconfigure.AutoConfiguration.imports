@@ -1,0 +1,6 @@
+com.company.platform.core.auto_configuration.PlatformCoreAutoConfiguration
+com.company.platform.core.auto_configuration.PlatformJacksonAutoConfiguration
+com.company.platform.core.auto_configuration.PlatformOpenApiAutoConfiguration
+com.company.platform.core.auto_configuration.PlatformTaskExecutionAutoConfiguration
+com.company.platform.core.auto_configuration.PlatformWebMvcAutoConfiguration
+com.company.platform.core.auto_configuration.PlatformAuditAutoConfiguration

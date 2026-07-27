@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<included>
+    <appender name="PLATFORM_AUDIT" class="ch.qos.logback.core.ConsoleAppender">
+        <filter class="com.company.platform.logging.logback.filter.SensitiveDataDenyFilter"/>
+        <encoder class="org.springframework.boot.logging.logback.StructuredLogEncoder">
+            <format>${PLATFORM_STRUCTURED_FORMAT:-ecs}</format>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+</included>

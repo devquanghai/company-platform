@@ -1,0 +1,4 @@
+interface:
+  display_name: "Verify Service Exchange"
+  short_description: "Run the service exchange quality gate"
+  default_prompt: "Use $verify-service-exchange to validate platform-service-exchange completely."

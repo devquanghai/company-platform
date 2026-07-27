@@ -1,0 +1,40 @@
+platform:
+  logging:
+    enabled: true
+    environment: ${SPRING_PROFILES_ACTIVE:local}
+    console:
+      enabled: true
+      format: TEXT
+    structured:
+      enabled: false
+      format: ECS
+    method-logging:
+      enabled: true
+      include-arguments-by-default: false
+      include-result-by-default: false
+    masking:
+      enabled: true
+      fail-on-invalid-rule: true
+      max-depth: 10
+      max-string-length: 4096
+      rules:
+        - name: customer-email
+          match-type: FIELD_NAME
+          fields: [email, emailAddress]
+          pii-type: EMAIL
+          masking-type: PARTIAL
+          visible-prefix: 2
+          preserve-domain: true
+    crypto:
+      enabled: true
+      defaults:
+        provider: JCA
+        algorithm: AES_GCM_256
+        key-alias: application-data
+      providers:
+        jasypt:
+          enabled: false
+    audit:
+      enabled: true
+      fail-mode: FAIL_OPEN
+

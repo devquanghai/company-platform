@@ -1,0 +1,10 @@
+name = "logging_explorer"
+description = "Read-only explorer for logging, tracing, masking, security, parent POM and auto-configuration conventions."
+sandbox_mode = "read-only"
+
+developer_instructions = """
+Inspect parent POMs, platform-core, logging configuration, masking utilities,
+trace/request context, event publishing, tests and dependency management.
+Return concise findings with paths/symbols. Do not edit files.
+"""
+

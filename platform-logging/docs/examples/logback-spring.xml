@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="com/company/platform/logging/logback/defaults.xml"/>
+
+    <springProperty scope="context" name="PLATFORM_STRUCTURED_FORMAT"
+                    source="platform.logging.structured.format" defaultValue="ecs"/>
+
+    <springProfile name="local | dev | test">
+        <include resource="com/company/platform/logging/logback/console-text-appender.xml"/>
+        <root level="${ROOT_LOG_LEVEL:-INFO}">
+            <appender-ref ref="PLATFORM_CONSOLE_TEXT"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="staging | production">
+        <include resource="com/company/platform/logging/logback/console-json-appender.xml"/>
+        <include resource="com/company/platform/logging/logback/audit-appender.xml"/>
+        <include resource="com/company/platform/logging/logback/platform-loggers.xml"/>
+        <root level="${ROOT_LOG_LEVEL:-INFO}">
+            <appender-ref ref="PLATFORM_CONSOLE_JSON"/>
+        </root>
+    </springProfile>
+</configuration>

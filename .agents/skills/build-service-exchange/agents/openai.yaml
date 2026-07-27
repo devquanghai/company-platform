@@ -1,0 +1,4 @@
+interface:
+  display_name: "Build Service Exchange"
+  short_description: "Build named REST and gRPC exchange clients safely"
+  default_prompt: "Use $build-service-exchange to build or extend platform-service-exchange."

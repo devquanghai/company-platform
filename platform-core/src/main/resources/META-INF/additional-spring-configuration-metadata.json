@@ -1,0 +1,354 @@
+{
+  "groups": [
+    {
+      "name": "platform.core.audit",
+      "type": "com.company.platform.core.configuration.properties.PlatformAuditProperties",
+      "sourceType": "com.company.platform.core.configuration.properties.PlatformAuditProperties"
+    },
+    {
+      "name": "platform.core.exception-handling",
+      "type": "com.company.platform.core.configuration.properties.PlatformCoreExceptionProperties",
+      "sourceType": "com.company.platform.core.configuration.properties.PlatformCoreExceptionProperties"
+    },
+    {
+      "name": "platform.core.i18n",
+      "type": "com.company.platform.core.configuration.properties.PlatformCoreI18nProperties",
+      "sourceType": "com.company.platform.core.configuration.properties.PlatformCoreI18nProperties"
+    },
+    {
+      "name": "platform.core.jackson",
+      "type": "com.company.platform.core.configuration.properties.PlatformJacksonProperties",
+      "sourceType": "com.company.platform.core.configuration.properties.PlatformJacksonProperties"
+    },
+    {
+      "name": "platform.core.openapi",
+      "type": "com.company.platform.core.configuration.properties.PlatformOpenApiProperties",
+      "sourceType": "com.company.platform.core.configuration.properties.PlatformOpenApiProperties"
+    },
+    {
+      "name": "platform.core.task-execution",
+      "type": "com.company.platform.core.configuration.properties.PlatformTaskExecutionProperties",
+      "sourceType": "com.company.platform.core.configuration.properties.PlatformTaskExecutionProperties"
+    },
+    {
+      "name": "platform.core.web",
+      "type": "com.company.platform.core.configuration.properties.PlatformWebProperties",
+      "sourceType": "com.company.platform.core.configuration.properties.PlatformWebProperties"
+    }
+  ],
+  "properties": [
+    {
+      "name": "platform.core.audit.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Bật cơ chế JPA auditing và phát sự kiện audit cho các phương thức được đánh dấu.",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.core.audit.default-auditor",
+      "type": "java.lang.String",
+      "description": "Tên người thực hiện mặc định khi không xác định được người dùng đã xác thực.",
+      "defaultValue": "system"
+    },
+    {
+      "name": "platform.core.audit.publish-failure-events",
+      "type": "java.lang.Boolean",
+      "description": "Phát sự kiện audit khi thao tác được đánh dấu kết thúc với lỗi.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.core.audit.service-name",
+      "type": "java.lang.String",
+      "description": "Tên service được ghi vào mọi audit event.",
+      "defaultValue": "application"
+    },
+    {
+      "name": "platform.core.audit.environment",
+      "type": "java.lang.String",
+      "description": "Tên môi trường triển khai được ghi vào mọi audit event.",
+      "defaultValue": "default"
+    },
+    {
+      "name": "platform.core.audit.timezone",
+      "type": "java.lang.String",
+      "description": "Múi giờ IANA dùng để tạo thời điểm auditing JPA.",
+      "defaultValue": "UTC"
+    },
+    {
+      "name": "platform.core.exception-handling.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Bật bộ xử lý exception REST chuẩn của platform.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.core.exception-handling.include-rejected-value",
+      "type": "java.lang.Boolean",
+      "description": "Cho phép trả lại giá trị bị từ chối trong chi tiết lỗi. Mặc định tắt để tránh lộ dữ liệu nhạy cảm.",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.core.i18n.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Bật MessageSource và dịch vụ đa ngôn ngữ của platform.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.core.i18n.basenames",
+      "type": "java.util.List<java.lang.String>",
+      "description": "Danh sách basename của resource bundle, được tìm theo đúng thứ tự khai báo.",
+      "defaultValue": [
+        "core_message",
+        "messages"
+      ]
+    },
+    {
+      "name": "platform.core.i18n.default-locale",
+      "type": "java.lang.String",
+      "description": "Locale mặc định theo chuẩn BCP 47 khi request không cung cấp locale.",
+      "defaultValue": "en"
+    },
+    {
+      "name": "platform.core.i18n.fallback-to-system-locale",
+      "type": "java.lang.Boolean",
+      "description": "Cho phép fallback về locale của hệ điều hành đang chạy ứng dụng.",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.core.i18n.use-code-as-default-message",
+      "type": "java.lang.Boolean",
+      "description": "Trả về chính message code khi không tìm thấy nội dung trong resource bundle.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.core.i18n.cache-duration",
+      "type": "java.time.Duration",
+      "description": "Thời gian cache nội dung resource bundle.",
+      "defaultValue": "1h"
+    },
+    {
+      "name": "platform.core.i18n.encoding",
+      "type": "java.lang.String",
+      "description": "Bảng mã ký tự dùng để đọc resource bundle.",
+      "defaultValue": "UTF-8"
+    },
+    {
+      "name": "platform.core.jackson.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Bật cấu hình Jackson an toàn và nhất quán của platform.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.core.jackson.trim-strings",
+      "type": "java.lang.Boolean",
+      "description": "Tự động loại bỏ khoảng trắng ở đầu và cuối giá trị chuỗi JSON.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.core.jackson.fail-on-unknown-properties",
+      "type": "java.lang.Boolean",
+      "description": "Từ chối thuộc tính JSON không được khai báo trong class đích.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.core.jackson.fail-on-trailing-tokens",
+      "type": "java.lang.Boolean",
+      "description": "Từ chối token dư thừa sau giá trị JSON gốc.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.core.jackson.fail-on-float-to-integer",
+      "type": "java.lang.Boolean",
+      "description": "Từ chối số thực khi kiểu dữ liệu Java đích là số nguyên.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.core.jackson.fail-on-null-for-primitives",
+      "type": "java.lang.Boolean",
+      "description": "Từ chối null khi kiểu dữ liệu Java đích là kiểu primitive.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.core.jackson.strict-scalar-coercion",
+      "type": "java.lang.Boolean",
+      "description": "Từ chối ép kiểu scalar ngầm định, ví dụ chuỗi sang số hoặc số sang chuỗi.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.core.jackson.accept-case-insensitive-enums",
+      "type": "java.lang.Boolean",
+      "description": "Cho phép ánh xạ enum không phân biệt chữ hoa và chữ thường.",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.core.jackson.order-map-entries-by-keys",
+      "type": "java.lang.Boolean",
+      "description": "Sắp xếp key của Map khi serialize để kết quả JSON ổn định.",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.core.openapi.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Bật bean định nghĩa OpenAPI chuẩn của platform.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.core.openapi.title",
+      "type": "java.lang.String",
+      "description": "Tiêu đề API hiển thị trên Swagger UI hoặc tài liệu OpenAPI.",
+      "defaultValue": "Platform API"
+    },
+    {
+      "name": "platform.core.openapi.version",
+      "type": "java.lang.String",
+      "description": "Phiên bản API được công bố trong tài liệu OpenAPI.",
+      "defaultValue": "v1"
+    },
+    {
+      "name": "platform.core.openapi.description",
+      "type": "java.lang.String",
+      "description": "Mô tả API hiển thị cho người sử dụng tài liệu.",
+      "defaultValue": "Platform service API"
+    },
+    {
+      "name": "platform.core.openapi.authentication-type",
+      "type": "com.company.platform.core.configuration.properties.OpenApiAuthenticationType",
+      "description": "Kiểu xác thực được khai báo mặc định cho toàn bộ operation.",
+      "defaultValue": "NONE"
+    },
+    {
+      "name": "platform.core.openapi.security-scheme-name",
+      "type": "java.lang.String",
+      "description": "Tên security scheme trong phần components của OpenAPI.",
+      "defaultValue": "bearerAuth"
+    },
+    {
+      "name": "platform.core.openapi.bearer-format",
+      "type": "java.lang.String",
+      "description": "Định dạng bearer token hiển thị cho OpenAPI client.",
+      "defaultValue": "JWT"
+    },
+    {
+      "name": "platform.core.openapi.api-key-name",
+      "type": "java.lang.String",
+      "description": "Tên header, query parameter hoặc cookie chứa API key.",
+      "defaultValue": "X-API-KEY"
+    },
+    {
+      "name": "platform.core.openapi.api-key-location",
+      "type": "io.swagger.v3.oas.models.security.SecurityScheme$In",
+      "description": "Vị trí nhận API key trong request.",
+      "defaultValue": "HEADER"
+    },
+    {
+      "name": "platform.core.task-execution.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Bật executor dùng virtual thread cho tác vụ bất đồng bộ.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.core.task-execution.thread-name-prefix",
+      "type": "java.lang.String",
+      "description": "Tiền tố dùng để đặt tên virtual thread, hỗ trợ theo dõi log và thread dump.",
+      "defaultValue": "platform-vt-"
+    },
+    {
+      "name": "platform.core.task-execution.context-propagation-enabled",
+      "type": "java.lang.Boolean",
+      "description": "Truyền MDC, request attributes và SecurityContext sang thread thực thi tác vụ.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.core.web.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Bật các quy ước Spring MVC chuẩn của platform.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.core.web.trim-request-parameters",
+      "type": "java.lang.Boolean",
+      "description": "Loại bỏ khoảng trắng đầu và cuối của request parameter trước khi binding.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.core.web.trace-filter-enabled",
+      "type": "java.lang.Boolean",
+      "description": "Bật truyền request ID và correlation ID qua MDC và response header.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.core.web.request-logging-enabled",
+      "type": "java.lang.Boolean",
+      "description": "Bật log tóm tắt request và response theo cấu trúc.",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.core.web.include-payload",
+      "type": "java.lang.Boolean",
+      "description": "Cho phép ghi payload dạng văn bản vào log trong giới hạn cấu hình.",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.core.web.max-payload-length",
+      "type": "java.lang.Integer",
+      "description": "Số ký tự payload tối đa được ghi cho mỗi request hoặc response.",
+      "defaultValue": 4096
+    },
+    {
+      "name": "platform.core.web.server-timing-enabled",
+      "type": "java.lang.Boolean",
+      "description": "Bật interceptor bổ sung header Server-Timing vào response.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.core.web.request-caching-enabled",
+      "type": "java.lang.Boolean",
+      "description": "Bật cache request body để filter và component phía sau có thể đọc lại.",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.core.web.max-cached-request-body-size",
+      "type": "java.lang.Integer",
+      "description": "Kích thước request body tối đa được caching filter giữ trong bộ nhớ, tính bằng byte.",
+      "defaultValue": 1048576
+    }
+  ],
+  "hints": [
+    {
+      "name": "platform.core.openapi.authentication-type",
+      "values": [
+        {
+          "value": "NONE",
+          "description": "Không khai báo cơ chế xác thực mặc định trong tài liệu OpenAPI."
+        },
+        {
+          "value": "JWT",
+          "description": "Khai báo HTTP Bearer sử dụng JWT."
+        },
+        {
+          "value": "BASIC_AUTH",
+          "description": "Khai báo HTTP Basic Authentication."
+        },
+        {
+          "value": "API_KEY",
+          "description": "Khai báo API key với tên và vị trí có thể cấu hình."
+        }
+      ]
+    },
+    {
+      "name": "platform.core.openapi.api-key-location",
+      "values": [
+        {
+          "value": "HEADER",
+          "description": "Đọc API key từ HTTP header."
+        },
+        {
+          "value": "QUERY",
+          "description": "Đọc API key từ query parameter."
+        },
+        {
+          "value": "COOKIE",
+          "description": "Đọc API key từ cookie."
+        }
+      ]
+    }
+  ]
+}

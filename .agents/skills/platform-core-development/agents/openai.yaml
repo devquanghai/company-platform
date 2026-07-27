@@ -1,0 +1,4 @@
+interface:
+  display_name: "Platform Core Development"
+  short_description: "Build and verify enterprise platform-core"
+  default_prompt: "Use $platform-core-development to implement and verify platform-core changes with auto-configuration and full coverage."

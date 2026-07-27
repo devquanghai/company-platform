@@ -1,0 +1,6 @@
+com.company.platform.exchange.autoconfigure.PlatformServiceExchangeAutoConfiguration
+com.company.platform.exchange.autoconfigure.audit.ExchangeAuditAutoConfiguration
+com.company.platform.exchange.autoconfigure.resilience.ExchangeResilienceAutoConfiguration
+com.company.platform.exchange.autoconfigure.observability.ExchangeObservabilityAutoConfiguration
+com.company.platform.exchange.autoconfigure.http.HttpExchangeAutoConfiguration
+com.company.platform.exchange.autoconfigure.grpc.GrpcExchangeAutoConfiguration

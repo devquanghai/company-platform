@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review PII Masking"
+  short_description: "Review masking and log leakage controls"
+  default_prompt: "Use $review-pii-masking to audit masking paths for sensitive-data leakage."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Exchange Resilience"
+  short_description: "Review outbound resilience and fallback behavior"
+  default_prompt: "Use $review-exchange-resilience to review named-client resilience behavior."

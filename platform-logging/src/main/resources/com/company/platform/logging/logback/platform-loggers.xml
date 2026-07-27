@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<included>
+    <logger name="PLATFORM" level="${PLATFORM_LOG_LEVEL:-INFO}"/>
+    <logger name="AUDIT" level="INFO" additivity="false">
+        <appender-ref ref="PLATFORM_AUDIT"/>
+    </logger>
+</included>

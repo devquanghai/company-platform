@@ -1,0 +1,4 @@
+interface:
+  display_name: "Build Platform Logging"
+  short_description: "Build enterprise logging and crypto module"
+  default_prompt: "Use $build-platform-logging to build or extend the platform-logging module safely."

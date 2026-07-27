@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Platform Crypto"
+  short_description: "Review crypto, keys, envelopes and rotation"
+  default_prompt: "Use $review-platform-crypto to review cryptographic design and implementation."

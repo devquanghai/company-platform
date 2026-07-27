@@ -1,0 +1,8 @@
+com.company.platform.logging.autoconfigure.PlatformLoggingAutoConfiguration
+com.company.platform.logging.autoconfigure.MaskingAutoConfiguration
+com.company.platform.logging.autoconfigure.LoggingAuditAutoConfiguration
+com.company.platform.logging.autoconfigure.LoggingMetricsAutoConfiguration
+com.company.platform.logging.autoconfigure.CryptoAutoConfiguration
+com.company.platform.logging.autoconfigure.StructuredLoggingAutoConfiguration
+com.company.platform.logging.autoconfigure.LoggingAspectAutoConfiguration
+com.company.platform.logging.autoconfigure.LogbackAutoConfiguration
