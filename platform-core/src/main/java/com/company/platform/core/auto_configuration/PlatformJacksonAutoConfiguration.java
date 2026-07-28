@@ -1,12 +1,12 @@
 package com.company.platform.core.auto_configuration;
 
+import com.company.platform.core.config.jackson.*;
 import com.company.platform.core.configuration.properties.PlatformJacksonProperties;
-import com.company.platform.core.config.jackson.TrimmedStringDeserializer;
 import com.company.platform.core.json.JsonMapperHelper;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration;
@@ -21,6 +21,12 @@ import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.module.SimpleModule;
 import tools.jackson.databind.type.LogicalType;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.util.UUID;
+
 @AutoConfiguration(after = JacksonAutoConfiguration.class)
 @ConditionalOnClass(JsonMapper.class)
 @ConditionalOnProperty(prefix = "platform.core.jackson", name = "enabled", matchIfMissing = true)
@@ -28,10 +34,8 @@ import tools.jackson.databind.type.LogicalType;
 public class PlatformJacksonAutoConfiguration {
 
     @Bean
-    @ConditionalOnBean(JsonMapper.class)
-    @ConditionalOnMissingBean
-    JsonMapperHelper jsonMapperHelper(JsonMapper jsonMapper) {
-        return new JsonMapperHelper(jsonMapper);
+    ApplicationRunner jsonMapperInitializer(JsonMapper mapper) {
+        return args -> JsonMapperHelper.setJsonMapper(mapper);
     }
 
     @Bean
@@ -69,8 +73,53 @@ public class PlatformJacksonAutoConfiguration {
             configureStrictScalarCoercion(builder);
         }
         if (properties.isTrimStrings()) {
-            SimpleModule module = new SimpleModule("platform-core-string-normalization");
-            module.addDeserializer(String.class, new TrimmedStringDeserializer());
+
+            SimpleModule module =
+                new SimpleModule("platform-core-validation");
+
+            module.addDeserializer(
+                String.class,
+                new StrictStringDeserializer(
+                    properties.isAllowUnicode(),
+                    properties.isAllowSpecialCharacters()
+                )
+            );
+
+            module.addDeserializer(
+                UUID.class,
+                new StrictUuidDeserializer()
+            );
+
+            module.addDeserializer(
+                LocalDate.class,
+                new StrictLocalDateDeserializer()
+            );
+
+            module.addDeserializer(
+                LocalDateTime.class,
+                new StrictLocalDateTimeDeserializer()
+            );
+
+            module.addDeserializer(
+                OffsetDateTime.class,
+                new StrictOffsetDateTimeDeserializer()
+            );
+
+            module.addDeserializer(
+                Instant.class,
+                new StrictInstantDeserializer()
+            );
+
+            module.addDeserializer(
+                Boolean.class,
+                new StrictBooleanDeserializer()
+            );
+
+            module.addDeserializer(
+                boolean.class,
+                new StrictBooleanDeserializer()
+            );
+
             builder.addModule(module);
         }
     }

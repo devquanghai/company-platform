@@ -12,6 +12,7 @@ import com.company.platform.core.rest.factory.ResponseMetadataFactory;
 import com.company.platform.core.rest.response.ApiError;
 import com.company.platform.core.rest.response.ApiResponse;
 import com.company.platform.core.rest.response.ErrorDetail;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +40,8 @@ import org.springframework.web.method.annotation.HandlerMethodValidationExceptio
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import tools.jackson.databind.exc.InvalidDefinitionException;
+import tools.jackson.databind.exc.InvalidFormatException;
 
 import java.util.List;
 import java.util.Objects;
@@ -93,7 +96,7 @@ public final class PlatformExceptionHandler {
         List<ErrorDetail> details = exception.getConstraintViolations().stream()
             .map(violation -> new ErrorDetail(
                 violation.getPropertyPath().toString(),
-                ValidationCode.FIELD_INVALID.getKey(),
+                ValidationCode.FIELD_INVALID.name(),
                 violation.getMessage(),
                 properties.isIncludeRejectedValue() ? violation.getInvalidValue() : null,
                 null
@@ -121,23 +124,128 @@ public final class PlatformExceptionHandler {
         return validationResponse(details, request);
     }
 
-    @ExceptionHandler({
-        HttpMessageNotReadableException.class,
-        HttpMessageConversionException.class,
-        MissingServletRequestParameterException.class,
-        ServletRequestBindingException.class,
-        MethodArgumentTypeMismatchException.class
-    })
-    public ResponseEntity<ApiResponse<Void>> handleInvalidRequest(
-        Exception exception,
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleHttpMessageNotReadable(
+        HttpMessageNotReadableException exception,
         HttpServletRequest request
     ) {
-        log.debug("Invalid request: {}", exception.getMessage());
-        ApiError error = ApiError.of(
-            CommonCode.INVALID_REQUEST.getKey(),
-            i18n.get(CommonCode.INVALID_REQUEST),
-            ErrorCategory.VALIDATION
+
+        log.warn("Request body parse failed", exception);
+
+        ApiError error = new ApiError(
+            ValidationCode.FAILED.name(),
+            i18n.get(ValidationCode.FAILED),
+            ErrorCategory.VALIDATION,
+            extractJsonErrorDetails(exception)
         );
+
+        return response(HttpStatus.BAD_REQUEST, error, request);
+    }
+
+    @ExceptionHandler(HttpMessageConversionException.class)
+    public ResponseEntity<ApiResponse<Void>> handleHttpMessageConversion(
+        HttpMessageConversionException exception,
+        HttpServletRequest request
+    ) {
+
+        log.warn("Request conversion failed", exception);
+
+        ApiError error = new ApiError(
+            ValidationCode.FAILED.name(),
+            i18n.get(ValidationCode.FAILED),
+            ErrorCategory.VALIDATION,
+            extractJsonErrorDetails(exception)
+        );
+
+        return response(HttpStatus.BAD_REQUEST, error, request);
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMissingParameter(
+        MissingServletRequestParameterException exception,
+        HttpServletRequest request
+    ) {
+
+        log.warn("Missing request parameter", exception);
+
+        ApiError error = new ApiError(
+            ValidationCode.FAILED.name(),
+            i18n.get(ValidationCode.FAILED),
+            ErrorCategory.VALIDATION,
+            List.of(
+                new ErrorDetail(
+                    exception.getParameterName(),
+                    ValidationCode.FIELD_REQUIRED.name(),
+                    exception.getMessage(),
+                    null,
+                    null
+                )
+            )
+        );
+
+        return response(HttpStatus.BAD_REQUEST, error, request);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiResponse<Void>> handleTypeMismatch(
+        MethodArgumentTypeMismatchException exception,
+        HttpServletRequest request
+    ) {
+
+        log.warn("Request parameter type mismatch", exception);
+
+        String expectedType =
+            exception.getRequiredType() == null
+                ? "unknown"
+                : exception.getRequiredType().getSimpleName();
+
+        ApiError error = new ApiError(
+            ValidationCode.FAILED.name(),
+            i18n.get(ValidationCode.FAILED),
+            ErrorCategory.VALIDATION,
+            List.of(
+                new ErrorDetail(
+                    exception.getName(),
+                    ValidationCode.FIELD_INVALID.name(),
+                    String.format(
+                        "Invalid value '%s', expected type '%s'",
+                        exception.getValue(),
+                        expectedType
+                    ),
+                    properties.isIncludeRejectedValue()
+                        ? exception.getValue()
+                        : null,
+                    null
+                )
+            )
+        );
+
+        return response(HttpStatus.BAD_REQUEST, error, request);
+    }
+
+    @ExceptionHandler(ServletRequestBindingException.class)
+    public ResponseEntity<ApiResponse<Void>> handleServletRequestBinding(
+        ServletRequestBindingException exception,
+        HttpServletRequest request
+    ) {
+
+        log.warn("Servlet request binding failed", exception);
+
+        ApiError error = new ApiError(
+            ValidationCode.FAILED.name(),
+            i18n.get(ValidationCode.FAILED),
+            ErrorCategory.VALIDATION,
+            List.of(
+                new ErrorDetail(
+                    "request",
+                    ValidationCode.FIELD_INVALID.name(),
+                    exception.getMessage(),
+                    null,
+                    null
+                )
+            )
+        );
+
         return response(HttpStatus.BAD_REQUEST, error, request);
     }
 
@@ -238,7 +346,7 @@ public final class PlatformExceptionHandler {
     ) {
         log.error("Unhandled platform request failure", exception);
         ApiError error = ApiError.of(
-            CommonCode.INTERNAL_SERVER_ERROR.getKey(),
+            CommonCode.INTERNAL_SERVER_ERROR.name(),
             i18n.get(CommonCode.INTERNAL_SERVER_ERROR),
             ErrorCategory.INTERNAL
         );
@@ -262,7 +370,7 @@ public final class PlatformExceptionHandler {
         List<ErrorDetail> details = new ArrayList<>();
         errorDetails.forEach(details::add);
         ApiError error = new ApiError(
-            ValidationCode.FAILED.getKey(),
+            ValidationCode.FAILED.name(),
             i18n.get(ValidationCode.FAILED),
             ErrorCategory.VALIDATION,
             details
@@ -272,14 +380,14 @@ public final class PlatformExceptionHandler {
 
     private static String firstCode(String[] codes) {
         return codes == null || codes.length == 0
-            ? ValidationCode.FIELD_INVALID.getKey()
+            ? ValidationCode.FIELD_INVALID.name()
             : codes[0];
     }
 
     private ErrorDetail toDetail(FieldError fieldError) {
         String code = org.springframework.util.StringUtils.hasText(fieldError.getCode())
             ? fieldError.getCode()
-            : ValidationCode.FIELD_INVALID.getKey();
+            : ValidationCode.FIELD_INVALID.name();
         String fallback = org.springframework.util.StringUtils.hasText(fieldError.getDefaultMessage())
             ? fieldError.getDefaultMessage()
             : "Invalid value";
@@ -290,9 +398,177 @@ public final class PlatformExceptionHandler {
         return new ErrorDetail(fieldError.getField(), code, message, rejectedValue, null);
     }
 
-    private ApiError error(I18nKey code, ErrorCategory category, Object... arguments) {
-        return ApiError.of(code.getKey(), i18n.get(code, arguments), category);
+    private List<ErrorDetail> extractJsonErrorDetails(Throwable throwable) {
+
+        Throwable current = throwable;
+
+        while (current != null) {
+
+            if (current instanceof JsonMappingException mappingException) {
+
+                return List.of(
+                    new ErrorDetail(
+                        buildFieldPath(mappingException),
+                        ValidationCode.FIELD_INVALID.name(),
+                        normalizeJsonMessage(mappingException),
+                        null,
+                        null
+                    )
+                );
+            }
+
+            if (current instanceof InvalidDefinitionException definitionException) {
+
+                return List.of(
+                    new ErrorDetail(
+                        "requestBody",
+                        ValidationCode.FIELD_INVALID.name(),
+                        simplifyInvalidDefinition(definitionException),
+                        null,
+                        null
+                    )
+                );
+            }
+
+            if (current instanceof HttpMessageNotReadableException httpMessageNotReadableException) {
+                Throwable cause = httpMessageNotReadableException.getCause();
+
+                if (cause instanceof InvalidFormatException invalidFormatException) {
+                    return List.of(
+                        new ErrorDetail(
+                            buildFieldPath(invalidFormatException),
+                            ValidationCode.FIELD_INVALID.name(),
+                            normalizeJsonMessage(invalidFormatException),
+                            null,
+                            null
+                        )
+                    );
+                }
+
+                if (cause instanceof JsonMappingException mappingException) {
+                    return List.of(
+                        new ErrorDetail(
+                            buildFieldPath(mappingException),
+                            ValidationCode.FIELD_INVALID.name(),
+                            normalizeJsonMessage(mappingException),
+                            null,
+                            null
+                        )
+                    );
+                }
+
+            }
+
+
+
+            current = current.getCause();
+        }
+
+        return List.of(
+            new ErrorDetail(
+                "requestBody",
+                ValidationCode.FIELD_INVALID.name(),
+                "Invalid request body.",
+                null,
+                null
+            )
+        );
     }
+
+    private String buildFieldPath(JsonMappingException exception) {
+
+        StringBuilder path = new StringBuilder();
+
+        for (JsonMappingException.Reference reference : exception.getPath()) {
+
+            if (reference.getFieldName() != null) {
+
+                if (!path.isEmpty()) {
+                    path.append(".");
+                }
+
+                path.append(reference.getFieldName());
+            }
+
+            if (reference.getIndex() >= 0) {
+                path.append("[")
+                    .append(reference.getIndex())
+                    .append("]");
+            }
+        }
+
+        return path.isEmpty()
+            ? "requestBody"
+            : path.toString();
+    }
+
+    private String normalizeJsonMessage(JsonMappingException exception) {
+
+        String message = exception.getOriginalMessage();
+
+        if (message == null || message.isBlank()) {
+            return "Invalid value.";
+        }
+
+        if (message.startsWith("Expected a JSON string")) {
+            return "Field must be a string.";
+        }
+
+        if (message.startsWith("Expected a JSON integer")) {
+            return "Field must be a number.";
+        }
+
+        if (message.startsWith("Expected a JSON number")) {
+            return "Field must be a number.";
+        }
+
+        if (message.startsWith("Expected a JSON boolean")) {
+            return "Field must be a boolean.";
+        }
+
+        if (message.contains("LocalDate")) {
+            return "Field must use yyyy-MM-dd format.";
+        }
+
+        if (message.contains("OffsetDateTime")) {
+            return "Field must use ISO-8601 datetime format.";
+        }
+
+        if (message.startsWith("Cannot deserialize value of type")) {
+            return "Invalid value type.";
+        }
+
+        if (message.startsWith("Cannot deserialize instance")) {
+            return "Invalid value type.";
+        }
+
+        if (message.startsWith("Cannot construct instance")) {
+            return "Request object definition is invalid.";
+        }
+
+        return "Invalid value.";
+    }
+
+    private String simplifyInvalidDefinition(
+        InvalidDefinitionException exception
+    ) {
+
+        Class<?> type = exception.getClass();
+
+        String typeName = type == null
+            ? "request"
+            : type.getSimpleName();
+
+        return String.format(
+            "Cannot deserialize request object '%s'. Missing default constructor or JsonCreator.",
+            typeName
+        );
+    }
+
+    private ApiError error(I18nKey code, ErrorCategory category, Object... arguments) {
+        return ApiError.of(category.name(), i18n.get(code, arguments), category);
+    }
+
 
     private ResponseEntity<ApiResponse<Void>> response(
         HttpStatusCode status,

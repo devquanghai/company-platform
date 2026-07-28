@@ -23,8 +23,8 @@
 
     <properties>
         <!-- Language, toolchain, and text conventions. -->
-        <java.version>25</java.version>
-        <maven.compiler.release>25</maven.compiler.release>
+        <java.version>21</java.version>
+        <maven.compiler.release>21</maven.compiler.release>
         <spring-boot.version>4.0.7</spring-boot.version>
         <spring-grpc.version>1.0.3</spring-grpc.version>
         <resilience4j.version>2.4.0</resilience4j.version>
@@ -50,6 +50,7 @@
         <!-- Pinned build plugin versions. -->
         <lombok.version>1.18.46</lombok.version>
         <mapstruct.version>1.6.3</mapstruct.version>
+        <jackson.version>3.2.1</jackson.version>
         <lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
         <maven-site-plugin.version>3.22.0</maven-site-plugin.version>
         <maven-clean-plugin.version>3.5.0</maven-clean-plugin.version>
@@ -145,6 +146,14 @@
                 <groupId>org.mapstruct</groupId>
                 <artifactId>mapstruct</artifactId>
                 <version>${mapstruct.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>tools.jackson</groupId>
+                <artifactId>jackson-bom</artifactId>
+                <version>${jackson.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>

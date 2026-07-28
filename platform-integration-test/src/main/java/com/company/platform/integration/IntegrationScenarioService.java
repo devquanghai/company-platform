@@ -1,5 +1,6 @@
 package com.company.platform.integration;
 
+import com.company.platform.core.json.JsonMapperHelper;
 import com.company.platform.core.time.TimeProvider;
 import com.company.platform.exchange.api.http.ExchangeResponse;
 import com.company.platform.exchange.api.http.HttpExchangeOperations;
@@ -58,5 +59,16 @@ public class IntegrationScenarioService {
         } finally {
             span.end();
         }
+    }
+
+    public IntegrationScenarioResult executePost(IntegrationRequest request) {
+        log.info("Executing POST request: {}", JsonMapperHelper.toJson(request));
+        ExchangeResponse<String> response =
+            exchange.post("echo-post", "/echo", request, String.class);
+        return IntegrationScenarioResult.builder()
+            .upstreamBody(response.body())
+            .upstreamStatus(response.statusCode())
+            .timestamp(time.now())
+            .build();
     }
 }

@@ -65,12 +65,11 @@ public class MaskingAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    DataMaskingService dataMaskingService(
-        JsonMapperHelper json, MaskingStrategyRegistry strategies,
+    DataMaskingService dataMaskingService(MaskingStrategyRegistry strategies,
         PlatformLoggingProperties properties,
         ObjectProvider<MaskingRuleProvider> providers
     ) {
-        return new DefaultDataMaskingService(json, strategies,
+        return new DefaultDataMaskingService(strategies,
             properties.getMasking(), providers.orderedStream().toList());
     }
 }

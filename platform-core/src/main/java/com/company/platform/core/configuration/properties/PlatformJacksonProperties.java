@@ -30,4 +30,8 @@ public class PlatformJacksonProperties {
     boolean acceptCaseInsensitiveEnums;
     /** Sắp xếp key của Map khi serialize để kết quả JSON ổn định. */
     boolean orderMapEntriesByKeys;
+    /** Cho phép ánh xạ JSON với key là chuỗi Unicode. */
+    boolean isAllowUnicode = false;
+    /** Cho phép ánh xạ JSON với key là ký tự đặc biệt. */
+    boolean isAllowSpecialCharacters = false;
 }

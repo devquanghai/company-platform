@@ -1,6 +1,8 @@
 package com.company.platform.core.json;
 
 import com.company.platform.core.exception.PlatformInfrastructureException;
+import lombok.Setter;
+import lombok.experimental.UtilityClass;
 import tools.jackson.core.JacksonException;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.JsonNode;
@@ -17,17 +19,23 @@ import java.util.Objects;
  * <p>The helper never creates a private mapper, never logs payloads, and normalizes
  * mapping failures to stable platform infrastructure error codes.</p>
  */
-public final class JsonMapperHelper {
-
+@UtilityClass
+public class JsonMapperHelper {
     private static final String ERROR_CODE_PREFIX = "CORE.JSON.";
-    private final JsonMapper jsonMapper;
 
-    public JsonMapperHelper(JsonMapper jsonMapper) {
-        this.jsonMapper = Objects.requireNonNull(jsonMapper, "jsonMapper must not be null");
+    @Setter
+    private static volatile JsonMapper jsonMapper;
+
+    private static JsonMapper mapper() {
+        if (jsonMapper == null) {
+            throw new PlatformInfrastructureException(
+                "CORE.JSON.NOT_INITIALIZED",
+                "JsonMapperHelper not initialized",
+                new IllegalStateException("JsonMapperHelper not initialized")
+            );
+        }
+        return jsonMapper;
     }
-
-    /** Returns the Boot-managed mapper used by every operation. */
-    public JsonMapper getJsonMapper() { return jsonMapper; }
 
     public String toJson(Object value) {
         try { return jsonMapper.writeValueAsString(value); }

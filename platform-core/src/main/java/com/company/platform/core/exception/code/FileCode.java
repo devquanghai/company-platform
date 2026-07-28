@@ -33,4 +33,6 @@ public enum FileCode implements I18nKey {
     CORRUPTED("error.file.corrupted");
 
     String key;
+
+
 }

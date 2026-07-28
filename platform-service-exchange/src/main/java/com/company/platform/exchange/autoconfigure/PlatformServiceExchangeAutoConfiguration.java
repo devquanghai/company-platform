@@ -50,8 +50,7 @@ public class PlatformServiceExchangeAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public OutboundDataMasker outboundDataMasker(
-        JsonMapperHelper json, ServiceExchangeProperties properties
+    public OutboundDataMasker outboundDataMasker(ServiceExchangeProperties properties
     ) {
         HashSet<String> headers = new HashSet<>();
         HashSet<String> fields = new HashSet<>();
@@ -60,7 +59,7 @@ public class PlatformServiceExchangeAutoConfiguration {
             fields.addAll(client.getLogging().getSensitiveFields());
             fields.addAll(client.getLogging().getSensitiveQueryParameters());
         });
-        return new DefaultOutboundDataMasker(json, headers, fields);
+        return new DefaultOutboundDataMasker(headers, fields);
     }
 
     @Bean

@@ -56,18 +56,15 @@ public final class DefaultDataMaskingService implements DataMaskingService {
         "proxyauthorization", "cookie", "setcookie", "accesstoken",
         "refreshtoken", "apikey", "clientsecret", "privatekey");
 
-    private final JsonMapperHelper json;
     private final MaskingStrategyRegistry strategies;
     private final PlatformLoggingProperties.MaskingProperties properties;
     private final Set<String> mandatory;
     private final List<CompiledRule> rules;
 
-    public DefaultDataMaskingService(
-        JsonMapperHelper json, MaskingStrategyRegistry strategies,
+    public DefaultDataMaskingService(MaskingStrategyRegistry strategies,
         PlatformLoggingProperties.MaskingProperties properties,
         List<MaskingRuleProvider> providers
     ) {
-        this.json = json;
         this.strategies = strategies;
         this.properties = properties;
         this.mandatory = java.util.stream.Stream.concat(
@@ -108,8 +105,8 @@ public final class DefaultDataMaskingService implements DataMaskingService {
             return null;
         }
         try {
-            Object tree = json.fromJson(source, Object.class);
-            return json.toJson(sanitize(tree));
+            Object tree = JsonMapperHelper.fromJson(source, Object.class);
+            return JsonMapperHelper.toJson(sanitize(tree));
         } catch (RuntimeException exception) {
             return "<invalid-json>";
         }

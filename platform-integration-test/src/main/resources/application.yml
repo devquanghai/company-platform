@@ -19,8 +19,9 @@ platform:
       description: Platform Integration Test API
       version: 1.0.0
       servers:
-        - url: ${INTEGRATION_ECHO_BASE_URL:http://localhost:8080}
+        - url: ${INTEGRATION_ECHO_BASE_URL:https://localhost:8080}
           description: Echo Service
+      bearer-format: JWT
     web:
       request-logging-enabled: true
       include-payload: true
@@ -33,7 +34,18 @@ platform:
         http:
           base-url: ${INTEGRATION_ECHO_BASE_URL:http://localhost:8080}
         resilience:
-          enabled: false
+          enabled: true
+        audit:
+          enabled: true
+        logging:
+          enabled: true
+          curl-enabled: true
+          sensitive-fields:
+            - email
+            - password
+            - token
+          sensitive-headers:
+            - Authorization
   logging:
     enabled: true
     environment: local
@@ -47,7 +59,21 @@ platform:
           masking-type: PARTIAL
           visible-prefix: 2
           preserve-domain: true
+        - name: integration-password
+          match-type: FIELD_NAME
+          fields:
+            - password
+          pii-type: PASSWORD
+          masking-type: FULL
+
+        - name: integration-date-of-birth
+          match-type: FIELD_NAME
+          fields:
+            - dateOfBirth
+          pii-type: DATE_OF_BIRTH
+          masking-type: PARTIAL
+          visible-prefix: 4
     crypto:
-      enabled: false
+      enabled: true
       annotation-enabled: false
       fail-if-disabled-annotation-used: true
