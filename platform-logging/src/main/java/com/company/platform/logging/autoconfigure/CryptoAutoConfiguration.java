@@ -32,7 +32,6 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -45,8 +44,6 @@ import java.util.Map;
     LoggingAuditAutoConfiguration.class,
     LoggingMetricsAutoConfiguration.class
 })
-@ConditionalOnExpression(
-    "${platform.logging.enabled:true} and ${platform.logging.crypto.enabled:true}")
 public class CryptoAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(KeyProvider.class)
@@ -59,9 +56,8 @@ public class CryptoAutoConfiguration {
         KeyProvider provider, PlatformLoggingProperties properties
     ) {
         var cache = properties.getCrypto().getKeyCache();
-        KeyProvider delegate = cache.isEnabled()
-            ? new CachingKeyProvider(provider, cache.getTtl(), cache.getMaximumSize())
-            : provider;
+        KeyProvider delegate = new CachingKeyProvider(
+            provider, cache.getTtl(), cache.getMaximumSize());
         return new DelegatingKeyResolver(delegate);
     }
 
@@ -73,16 +69,10 @@ public class CryptoAutoConfiguration {
     }
 
     @Bean("platformAesGcmCryptoStrategy")
-    @ConditionalOnProperty(
-        prefix = "platform.logging.crypto.providers.jca", name = "enabled",
-        havingValue = "true", matchIfMissing = true)
     @ConditionalOnMissingBean(name = "platformAesGcmCryptoStrategy")
     CryptoStrategy aesGcmCryptoStrategy() { return new AesGcmCryptoStrategy(); }
 
     @Bean("platformRsaOaepCryptoStrategy")
-    @ConditionalOnProperty(
-        prefix = "platform.logging.crypto.providers.jca", name = "enabled",
-        havingValue = "true", matchIfMissing = true)
     @ConditionalOnMissingBean(name = "platformRsaOaepCryptoStrategy")
     CryptoStrategy rsaOaepCryptoStrategy() { return new RsaOaepCryptoStrategy(); }
 
@@ -134,9 +124,6 @@ public class CryptoAutoConfiguration {
     }
 
     @Bean("jcaCryptoProviderFactory")
-    @ConditionalOnProperty(
-        prefix = "platform.logging.crypto.providers.jca", name = "enabled",
-        havingValue = "true", matchIfMissing = true)
     @ConditionalOnMissingBean(name = "jcaCryptoProviderFactory")
     CryptoProviderFactory jcaCryptoProviderFactory(
         @Qualifier("platformAesGcmCryptoStrategy") CryptoStrategy aes,

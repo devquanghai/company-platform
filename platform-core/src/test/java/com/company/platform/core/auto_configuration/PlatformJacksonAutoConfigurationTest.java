@@ -13,6 +13,10 @@ import tools.jackson.databind.SerializationFeature;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.Instant;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -29,7 +33,11 @@ class PlatformJacksonAutoConfigurationTest {
             JsonMapper mapper = mapper(context.getBean(JsonMapperBuilderCustomizer.class));
             Payload payload = mapper.readValue(
                 "{\"name\":\"  Ada  \",\"active\":true,\"count\":12,"
-                    + "\"date\":\"2026-07-22\",\"mode\":\"FAST\"}",
+                    + "\"date\":\"2026-07-22\",\"dateTime\":\"2026-07-22T10:11:12\","
+                    + "\"offsetDateTime\":\"2026-07-22T10:11:12+07:00\","
+                    + "\"instant\":\"2026-07-22T03:11:12Z\","
+                    + "\"id\":\"123e4567-e89b-12d3-a456-426614174000\","
+                    + "\"mode\":\"FAST\"}",
                 Payload.class
             );
 
@@ -37,6 +45,13 @@ class PlatformJacksonAutoConfigurationTest {
             assertThat(payload.isActive()).isTrue();
             assertThat(payload.getCount()).isEqualTo(12);
             assertThat(payload.getDate()).isEqualTo(LocalDate.of(2026, 7, 22));
+            assertThat(payload.getDateTime())
+                .isEqualTo(LocalDateTime.of(2026, 7, 22, 10, 11, 12));
+            assertThat(payload.getOffsetDateTime())
+                .isEqualTo(OffsetDateTime.parse("2026-07-22T10:11:12+07:00"));
+            assertThat(payload.getInstant()).isEqualTo(Instant.parse("2026-07-22T03:11:12Z"));
+            assertThat(payload.getId())
+                .isEqualTo(UUID.fromString("123e4567-e89b-12d3-a456-426614174000"));
             assertThat(payload.getMode()).isEqualTo(Mode.FAST);
             assertThat(mapper.isEnabled(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)).isTrue();
             assertThat(mapper.isEnabled(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)).isTrue();
@@ -45,6 +60,11 @@ class PlatformJacksonAutoConfigurationTest {
             assertThat(mapper.isEnabled(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)).isFalse();
             assertThatThrownBy(() -> mapper.readValue("{\"unknown\":1}", Payload.class))
                 .isInstanceOf(Exception.class);
+            assertThat(mapper.readValue("{\"name\":\"Ada Lovelace\"}", Payload.class).getName())
+                .isEqualTo("Ada Lovelace");
+            assertThat(mapper.readValue("{\"name\":\"Hải!\"}", Payload.class).getName())
+                .isEqualTo("Hải!");
+            assertThat(mapper.readValue("{\"active\":false}", Payload.class).isActive()).isFalse();
         });
     }
 
@@ -58,7 +78,9 @@ class PlatformJacksonAutoConfigurationTest {
                 "platform.core.jackson.fail-on-null-for-primitives=false",
                 "platform.core.jackson.strict-scalar-coercion=false",
                 "platform.core.jackson.accept-case-insensitive-enums=true",
-                "platform.core.jackson.order-map-entries-by-keys=true")
+                "platform.core.jackson.order-map-entries-by-keys=true",
+                "platform.core.jackson.allow-unicode=false",
+                "platform.core.jackson.allow-special-characters=false")
             .run(context -> {
                 PlatformJacksonProperties properties = context.getBean(PlatformJacksonProperties.class);
                 JsonMapper mapper = mapper(context.getBean(JsonMapperBuilderCustomizer.class));
@@ -74,6 +96,8 @@ class PlatformJacksonAutoConfigurationTest {
                 properties.setStrictScalarCoercion(true);
                 properties.setAcceptCaseInsensitiveEnums(false);
                 properties.setOrderMapEntriesByKeys(false);
+                assertInvalid(mapper, "{\"name\":\"Hải\"}");
+                assertInvalid(mapper, "{\"name\":\"Ada!\"}");
                 assertThat(properties.isEnabled()).isFalse();
                 assertThat(properties.isFailOnNullForPrimitives()).isTrue();
                 assertThat(properties.isStrictScalarCoercion()).isTrue();
@@ -81,6 +105,15 @@ class PlatformJacksonAutoConfigurationTest {
 
         runner.withPropertyValues("platform.core.jackson.enabled=false")
             .run(context -> assertThat(context).doesNotHaveBean(JsonMapperBuilderCustomizer.class));
+
+        runner.withPropertyValues(
+                "platform.core.jackson.allow-unicode=true",
+                "platform.core.jackson.allow-special-characters=true")
+            .run(context -> {
+                JsonMapper mapper = mapper(context.getBean(JsonMapperBuilderCustomizer.class));
+                assertThat(mapper.readValue("{\"name\":\"  Hải!  \"}", Payload.class).getName())
+                    .isEqualTo("Hải!");
+            });
     }
 
     @Test
@@ -94,7 +127,12 @@ class PlatformJacksonAutoConfigurationTest {
             assertInvalid(mapper, "{\"count\":null}");
             assertInvalid(mapper, "{\"name\":12}");
             assertInvalid(mapper, "{\"date\":20260722}");
+            assertThat(mapper.readValue("{\"date\":\"\"}", Payload.class).getDate()).isNull();
             assertInvalid(mapper, "{\"date\":\"22/07/2026\"}");
+            assertInvalid(mapper, "{\"dateTime\":\"22/07/2026 10:00\"}");
+            assertInvalid(mapper, "{\"offsetDateTime\":\"2026-07-22T10:00:00\"}");
+            assertInvalid(mapper, "{\"instant\":\"2026-07-22 03:00:00\"}");
+            assertInvalid(mapper, "{\"id\":\"not-a-uuid\"}");
             assertInvalid(mapper, "{\"mode\":0}");
         });
     }
@@ -132,6 +170,10 @@ class PlatformJacksonAutoConfigurationTest {
         private boolean active;
         private int count;
         private LocalDate date;
+        private LocalDateTime dateTime;
+        private OffsetDateTime offsetDateTime;
+        private Instant instant;
+        private UUID id;
         private Mode mode;
         public String getName() { return name; }
         public void setName(String name) { this.name = name; }
@@ -141,6 +183,16 @@ class PlatformJacksonAutoConfigurationTest {
         public void setCount(int count) { this.count = count; }
         public LocalDate getDate() { return date; }
         public void setDate(LocalDate date) { this.date = date; }
+        public LocalDateTime getDateTime() { return dateTime; }
+        public void setDateTime(LocalDateTime dateTime) { this.dateTime = dateTime; }
+        public OffsetDateTime getOffsetDateTime() { return offsetDateTime; }
+        public void setOffsetDateTime(OffsetDateTime offsetDateTime) {
+            this.offsetDateTime = offsetDateTime;
+        }
+        public Instant getInstant() { return instant; }
+        public void setInstant(Instant instant) { this.instant = instant; }
+        public UUID getId() { return id; }
+        public void setId(UUID id) { this.id = id; }
         public Mode getMode() { return mode; }
         public void setMode(Mode mode) { this.mode = mode; }
     }

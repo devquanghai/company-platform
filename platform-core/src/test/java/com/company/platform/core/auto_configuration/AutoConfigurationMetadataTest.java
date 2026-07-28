@@ -64,7 +64,7 @@ class AutoConfigurationMetadataTest {
             "META-INF/additional-spring-configuration-metadata.json"
         );
         assertThat(additional.get("groups").size()).isEqualTo(7);
-        assertThat(additional.get("properties").size()).isEqualTo(45);
+        assertThat(additional.get("properties").size()).isEqualTo(48);
 
         for (JsonNode property : additional.get("properties")) {
             assertThat(property.get("name").asText()).startsWith("platform.core.");
@@ -81,7 +81,7 @@ class AutoConfigurationMetadataTest {
                 assertThat(property.has("defaultValue")).isTrue();
             }
         }
-        assertThat(platformPropertyCount).isEqualTo(45);
+        assertThat(platformPropertyCount).isEqualTo(48);
     }
 
     private JsonNode readJsonResource(String resource) throws IOException {

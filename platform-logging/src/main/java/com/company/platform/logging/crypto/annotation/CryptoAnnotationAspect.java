@@ -5,7 +5,6 @@ import com.company.platform.logging.annotation.crypto.DecryptValue;
 import com.company.platform.logging.annotation.crypto.EncryptResult;
 import com.company.platform.logging.annotation.crypto.EncryptValue;
 import com.company.platform.logging.api.crypto.CryptoService;
-import com.company.platform.logging.autoconfigure.properties.PlatformLoggingProperties;
 import com.company.platform.logging.domain.exception.PlatformCryptoException;
 import com.company.platform.logging.domain.model.CryptoRequest;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -24,16 +23,21 @@ import java.lang.reflect.Method;
 @Order(Ordered.HIGHEST_PRECEDENCE + 100)
 public final class CryptoAnnotationAspect {
     private final CryptoService crypto;
-    private final PlatformLoggingProperties.CryptoProperties properties;
 
-    public CryptoAnnotationAspect(
-        CryptoService crypto, PlatformLoggingProperties.CryptoProperties properties
-    ) {
+    public CryptoAnnotationAspect(CryptoService crypto) {
         this.crypto = crypto;
-        this.properties = properties;
     }
 
-    @Around("execution(public * *(..)) && !within(com.company.platform.logging..*)")
+    @Around("""
+        !within(com.company.platform.logging..*) && (
+            @annotation(com.company.platform.logging.annotation.crypto.EncryptResult)
+            || @annotation(com.company.platform.logging.annotation.crypto.DecryptResult)
+            || execution(public * *(..,
+                @com.company.platform.logging.annotation.crypto.EncryptValue (*), ..))
+            || execution(public * *(..,
+                @com.company.platform.logging.annotation.crypto.DecryptValue (*), ..))
+        )
+        """)
     public Object process(ProceedingJoinPoint joinPoint) throws Throwable {
         Method method = method(joinPoint);
         Annotation[][] annotations = method.getParameterAnnotations();
@@ -43,14 +47,6 @@ public final class CryptoAnnotationAspect {
             || hasArgumentAnnotation(annotations);
         if (!annotated) {
             return joinPoint.proceed();
-        }
-        if (!properties.isEnabled() || !properties.isAnnotationEnabled() || crypto == null) {
-            if (!properties.isFailIfDisabledAnnotationUsed()) {
-                return joinPoint.proceed();
-            }
-            throw new PlatformCryptoException(
-                "PLATFORM.CRYPTO.ANNOTATION_DISABLED",
-                "Crypto annotation cannot execute because crypto is disabled");
         }
         Object[] arguments = joinPoint.getArgs().clone();
         for (int index = 0; index < annotations.length; index++) {

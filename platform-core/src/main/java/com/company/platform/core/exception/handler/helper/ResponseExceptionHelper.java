@@ -35,20 +35,7 @@ public final class ResponseExceptionHelper {
             details
         );
 
-        String url = request.getRequestURI();
-        String method = request.getMethod();
-
-        return ResponseEntity
-            .status(HttpStatus.BAD_REQUEST)
-            .body(
-                ApiResponse.failure(
-                    error,
-                    metadataFactory.create(
-                        url,
-                        method
-                    )
-                )
-            );
+        return response(HttpStatus.BAD_REQUEST, error, request);
     }
 
     public ResponseEntity<ApiResponse<Void>> response(

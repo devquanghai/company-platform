@@ -1,19 +1,23 @@
 package com.company.platform.logging.autoconfigure;
 
 import ch.qos.logback.classic.LoggerContext;
+import com.company.platform.logging.api.masking.DataMaskingService;
 import com.company.platform.logging.logback.converter.BootstrapLogSanitizer;
+import com.company.platform.logging.logback.converter.LogbackMaskingLifecycle;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 
 @AutoConfiguration(after = MaskingAutoConfiguration.class)
 @ConditionalOnClass(LoggerContext.class)
-@ConditionalOnProperty(
-    prefix = "platform.logging", name = "enabled",
-    havingValue = "true", matchIfMissing = true)
 public class LogbackAutoConfiguration {
+    @Bean
+    @ConditionalOnMissingBean
+    LogbackMaskingLifecycle logbackMaskingLifecycle(DataMaskingService masking) {
+        return new LogbackMaskingLifecycle(masking);
+    }
+
     @Bean
     @ConditionalOnMissingBean
     LogbackDefenseInDepth logbackDefenseInDepth() {

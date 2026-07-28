@@ -1,8 +1,6 @@
 package com.company.platform.core.json;
 
 import com.company.platform.core.exception.PlatformInfrastructureException;
-import lombok.Setter;
-import lombok.experimental.UtilityClass;
 import tools.jackson.core.JacksonException;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.JsonNode;
@@ -19,21 +17,17 @@ import java.util.Objects;
  * <p>The helper never creates a private mapper, never logs payloads, and normalizes
  * mapping failures to stable platform infrastructure error codes.</p>
  */
-@UtilityClass
-public class JsonMapperHelper {
+public final class JsonMapperHelper {
     private static final String ERROR_CODE_PREFIX = "CORE.JSON.";
 
-    @Setter
-    private static volatile JsonMapper jsonMapper;
+    private final JsonMapper jsonMapper;
 
-    private static JsonMapper mapper() {
-        if (jsonMapper == null) {
-            throw new PlatformInfrastructureException(
-                "CORE.JSON.NOT_INITIALIZED",
-                "JsonMapperHelper not initialized",
-                new IllegalStateException("JsonMapperHelper not initialized")
-            );
-        }
+    public JsonMapperHelper(JsonMapper jsonMapper) {
+        this.jsonMapper = Objects.requireNonNull(
+            jsonMapper, "jsonMapper must not be null");
+    }
+
+    public JsonMapper getJsonMapper() {
         return jsonMapper;
     }
 
@@ -156,12 +150,12 @@ public class JsonMapperHelper {
         }
     }
 
-    private static void require(Object value, Object targetType) {
+    private void require(Object value, Object targetType) {
         Objects.requireNonNull(value, "source must not be null");
         Objects.requireNonNull(targetType, "target must not be null");
     }
 
-    private static PlatformInfrastructureException failure(
+    private PlatformInfrastructureException failure(
         String operation,
         String message,
         Throwable cause

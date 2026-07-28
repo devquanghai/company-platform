@@ -5,7 +5,6 @@ import tools.jackson.databind.DeserializationContext;
 import tools.jackson.databind.deser.std.StdDeserializer;
 import tools.jackson.databind.exc.InvalidFormatException;
 
-import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -30,7 +29,7 @@ public final class StrictLocalDateDeserializer
 
         String value = parser.getValueAsString();
 
-        if (value == null || value.isBlank()) {
+        if (value.isBlank()) {
             return null;
         }
 

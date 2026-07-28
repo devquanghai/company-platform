@@ -3,6 +3,7 @@ package com.company.platform.core.exception.handler;
 import com.company.platform.core.context.RequestContextProvider;
 import com.company.platform.core.configuration.properties.PlatformCoreExceptionProperties;
 import com.company.platform.core.exception.PlatformBusinessException;
+import com.company.platform.core.exception.PlatformInfrastructureException;
 import com.company.platform.core.exception.code.CommonCode;
 import com.company.platform.core.i18n.DefaultI18nService;
 import com.company.platform.core.i18n.I18nService;
@@ -24,6 +25,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageConversionException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.mock.http.MockHttpInputMessage;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
@@ -37,6 +41,9 @@ import org.springframework.web.context.request.async.AsyncRequestTimeoutExceptio
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.bind.ServletRequestBindingException;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -92,9 +99,15 @@ class PlatformExceptionHandlerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody().getError().getDetails()).singleElement().satisfies(detail -> {
             assertThat(detail.getField()).isEqualTo("name");
-            assertThat(detail.getCode()).isEqualTo("NotBlank");
+            assertThat(detail.getCode()).isEqualTo("error.validation.field-required");
             assertThat(detail.getRejectedValue()).isNull();
         });
+
+        LocaleContextHolder.setLocale(Locale.forLanguageTag("vi"));
+        ResponseEntity<ApiResponse<Void>> localized =
+            handler.handleBindException(bindException, request);
+        assertThat(localized.getBody().getError().getDetails().getFirst().getMessage())
+            .isEqualTo("Trường name là bắt buộc.");
     }
 
     @Test
@@ -114,6 +127,14 @@ class PlatformExceptionHandlerTest {
             new ConstraintViolationException(Set.of(violation)), request);
         assertThat(exposedConstraint.getBody().getError().getDetails().getFirst().getRejectedValue())
             .isEqualTo("bad");
+        assertThat(handler.handleConstraintViolation(
+            new ConstraintViolationException(Set.of(
+                constraintViolation("command.nullValue", null, null))), request)
+            .getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(handler.handleConstraintViolation(
+            new ConstraintViolationException(Set.of(
+                constraintViolation("command.blankValue", " ", null))), request)
+            .getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
 
         Method method = Form.class.getDeclaredMethod("validate", String.class);
         MethodParameter parameter = new MethodParameter(method, 0);
@@ -124,7 +145,9 @@ class PlatformExceptionHandlerTest {
                 new DefaultMessageSourceResolvable(
                     new String[]{"NotBlank"}, null, "Required"),
                 new DefaultMessageSourceResolvable(new String[0], null, "Invalid"),
-                new DefaultMessageSourceResolvable(null, null, null)
+                new DefaultMessageSourceResolvable(null, null, null),
+                new DefaultMessageSourceResolvable(new String[]{""}, null, " "),
+                new DefaultMessageSourceResolvable(new String[]{null}, null, "Invalid")
             ),
             null,
             null,
@@ -135,9 +158,9 @@ class PlatformExceptionHandlerTest {
             MethodValidationResult.create(new Form(), method, List.of(result)));
         ResponseEntity<ApiResponse<Void>> methodResponse =
             handler.handleMethodValidation(exception, request);
-        assertThat(methodResponse.getBody().getError().getDetails()).hasSize(3);
+        assertThat(methodResponse.getBody().getError().getDetails()).hasSize(5);
         assertThat(methodResponse.getBody().getError().getDetails().getFirst().getCode())
-            .isEqualTo("NotBlank");
+            .isEqualTo("error.validation.field-required");
         assertThat(methodResponse.getBody().getError().getDetails().getFirst().getRejectedValue())
             .isEqualTo("bad");
         assertThat(methodResponse.getBody().getError().getDetails().get(1).getCode())
@@ -189,6 +212,13 @@ class PlatformExceptionHandlerTest {
             assertThat(detail.getCode()).isEqualTo("error.validation.field-invalid");
             assertThat(detail.getMessage()).isEqualTo("Field name is invalid.");
         });
+
+        BindException blankMessage = new BindException(new Form(), "form");
+        blankMessage.addError(new FieldError(
+            "form", "name", "rejected", false, new String[]{""}, null, " "));
+        assertThat(handler.handleBindException(blankMessage, request)
+            .getBody().getError().getDetails().getFirst().getCode())
+            .isEqualTo("error.validation.field-invalid");
     }
 
     @Test
@@ -203,6 +233,71 @@ class PlatformExceptionHandlerTest {
         assertThat(unexpected.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
         assertThat(unexpected.getBody().getError().getMessage())
             .isEqualTo("An unexpected internal server error occurred.");
+    }
+
+    @Test
+    void mapsBodyBindingAndParameterFailuresWithDetailedSafeErrors() throws Exception {
+        ResponseEntity<ApiResponse<Void>> unreadable = handler.handleHttpMessageNotReadable(
+            new HttpMessageNotReadableException(
+                "sensitive JSON parser detail",
+                new MockHttpInputMessage(new byte[0])
+            ),
+            null
+        );
+        assertThat(unreadable.getBody().getError().getDetails()).singleElement()
+            .extracting(detail -> detail.getField())
+            .isEqualTo("requestBody");
+
+        ResponseEntity<ApiResponse<Void>> conversion = handler.handleHttpMessageConversion(
+            new HttpMessageConversionException("converter implementation detail"),
+            request
+        );
+        assertThat(conversion.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+
+        ResponseEntity<ApiResponse<Void>> missing = handler.handleMissingParameter(
+            new MissingServletRequestParameterException("page", "integer"),
+            request
+        );
+        assertThat(missing.getBody().getError().getDetails()).singleElement()
+            .satisfies(detail -> {
+                assertThat(detail.getField()).isEqualTo("page");
+                assertThat(detail.getCode()).isEqualTo("error.validation.field-required");
+            });
+
+        Method method = Form.class.getDeclaredMethod("validate", String.class);
+        MethodParameter parameter = new MethodParameter(method, 0);
+        properties.setIncludeRejectedValue(true);
+        ResponseEntity<ApiResponse<Void>> mismatch = handler.handleTypeMismatch(
+            new MethodArgumentTypeMismatchException(
+                "abc", Integer.class, "page", parameter, null),
+            request
+        );
+        assertThat(mismatch.getBody().getError().getDetails()).singleElement()
+            .satisfies(detail -> {
+                assertThat(detail.getField()).isEqualTo("page");
+                assertThat(detail.getRejectedValue()).isEqualTo("abc");
+            });
+
+        ResponseEntity<ApiResponse<Void>> unknownType = handler.handleTypeMismatch(
+            new MethodArgumentTypeMismatchException(
+                "abc", null, "page", parameter, null),
+            request
+        );
+        assertThat(unknownType.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        properties.setIncludeRejectedValue(false);
+        assertThat(handler.handleTypeMismatch(
+            new MethodArgumentTypeMismatchException(
+                "hidden", String.class, "filter", parameter, null),
+            request
+        ).getBody().getError().getDetails().getFirst().getRejectedValue()).isNull();
+
+        ResponseEntity<ApiResponse<Void>> binding = handler.handleServletRequestBinding(
+            new ServletRequestBindingException("missing required header"),
+            request
+        );
+        assertThat(binding.getBody().getError().getDetails()).singleElement()
+            .extracting(detail -> detail.getField())
+            .isEqualTo("request");
     }
 
     @Test
@@ -232,13 +327,42 @@ class PlatformExceptionHandlerTest {
             new ErrorResponseException(HttpStatus.TOO_MANY_REQUESTS), request);
         assertThat(clientError.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
         assertThat(clientError.getBody().getError().getCategory()).isEqualTo(
-            com.company.platform.core.exception.error.ErrorCategory.VALIDATION);
+            com.company.platform.core.exception.error.ErrorCategory.RATE_LIMIT);
 
         ResponseEntity<ApiResponse<Void>> serverError = handler.handleErrorResponse(
             new ErrorResponseException(HttpStatus.BAD_GATEWAY), request);
         assertThat(serverError.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
         assertThat(serverError.getBody().getError().getCategory()).isEqualTo(
             com.company.platform.core.exception.error.ErrorCategory.INTERNAL);
+
+        assertErrorCategory(HttpStatus.UNAUTHORIZED,
+            com.company.platform.core.exception.error.ErrorCategory.AUTHENTICATION);
+        assertErrorCategory(HttpStatus.FORBIDDEN,
+            com.company.platform.core.exception.error.ErrorCategory.AUTHORIZATION);
+        assertErrorCategory(HttpStatus.NOT_FOUND,
+            com.company.platform.core.exception.error.ErrorCategory.NOT_FOUND);
+        assertErrorCategory(HttpStatus.CONFLICT,
+            com.company.platform.core.exception.error.ErrorCategory.CONFLICT);
+        assertErrorCategory(HttpStatus.BAD_REQUEST,
+            com.company.platform.core.exception.error.ErrorCategory.VALIDATION);
+
+        ResponseEntity<ApiResponse<Void>> infrastructure = handler.handlePlatformException(
+            new PlatformInfrastructureException(
+                "INFRASTRUCTURE.FAILURE", "Infrastructure failure", new RuntimeException("root")),
+            request
+        );
+        assertThat(infrastructure.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    private void assertErrorCategory(
+        HttpStatus status,
+        com.company.platform.core.exception.error.ErrorCategory category
+    ) {
+        ResponseEntity<ApiResponse<Void>> response = handler.handleErrorResponse(
+            new ErrorResponseException(status),
+            request
+        );
+        assertThat(response.getBody().getError().getCategory()).isEqualTo(category);
     }
 
     @Test

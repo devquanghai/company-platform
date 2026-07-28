@@ -74,37 +74,15 @@ class CryptoAutoConfigurationBranchTest {
     }
 
     @Test
-    void supportsCustomProviderWithoutCacheAndDelegatesBothOperations() {
+    void cacheDelegatesDecryptionOperations() {
         runner.withUserConfiguration(CustomKeyConfiguration.class)
-            .withPropertyValues("platform.logging.crypto.key-cache.enabled=false")
             .run(context -> {
                 assertThat(context).hasNotFailed().hasSingleBean(KeyResolver.class);
                 CountingKeyProvider provider = context.getBean(CountingKeyProvider.class);
                 KeyResolver resolver = context.getBean(KeyResolver.class);
-                resolver.resolveEncryptionKey(reference());
-                resolver.resolveEncryptionKey(reference());
                 resolver.resolveDecryptionKey(reference());
-                assertThat(provider.encryptionLoads).hasValue(2);
                 assertThat(provider.decryptionLoads).hasValue(1);
             });
-    }
-
-    @Test
-    void globalOrCryptoDisablePreventsEveryCryptoBean() {
-        runner.withPropertyValues("platform.logging.enabled=false").run(context -> {
-            assertThat(context).hasNotFailed()
-                .doesNotHaveBean(CryptoService.class)
-                .doesNotHaveBean(KeyResolver.class)
-                .doesNotHaveBean(CipherEnvelopeCodec.class);
-        });
-        runner.withPropertyValues(
-            "platform.logging.crypto.enabled=false",
-            "platform.logging.crypto.annotation-enabled=false"
-        ).run(context -> {
-            assertThat(context).hasNotFailed()
-                .doesNotHaveBean(CryptoService.class)
-                .doesNotHaveBean(KeyResolver.class);
-        });
     }
 
     private static KeyReference reference() {

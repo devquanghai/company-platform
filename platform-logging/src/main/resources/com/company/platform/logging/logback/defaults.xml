@@ -4,11 +4,11 @@
               value="%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %5p [%thread] [%X{traceId:-}] [%X{requestId:-}] %logger{36} - %maskedMsg %maskedKv %maskedMdc%n%safeEx"/>
     <property name="PLATFORM_STRUCTURED_FORMAT" value="${PLATFORM_STRUCTURED_FORMAT:-ecs}"/>
     <conversionRule conversionWord="maskedMsg"
-                    converterClass="com.company.platform.logging.logback.converter.MaskingMessageConverter"/>
+                    class="com.company.platform.logging.logback.converter.MaskingMessageConverter"/>
     <conversionRule conversionWord="maskedKv"
-                    converterClass="com.company.platform.logging.logback.converter.MaskingKeyValueConverter"/>
+                    class="com.company.platform.logging.logback.converter.MaskingKeyValueConverter"/>
     <conversionRule conversionWord="maskedMdc"
-                    converterClass="com.company.platform.logging.logback.converter.MaskingMdcConverter"/>
+                    class="com.company.platform.logging.logback.converter.MaskingMdcConverter"/>
     <conversionRule conversionWord="safeEx"
-                    converterClass="com.company.platform.logging.logback.converter.SanitizedThrowableProxyConverter"/>
+                    class="com.company.platform.logging.logback.converter.SanitizedThrowableProxyConverter"/>
 </included>

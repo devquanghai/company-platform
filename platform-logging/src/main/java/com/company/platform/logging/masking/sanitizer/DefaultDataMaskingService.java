@@ -15,6 +15,7 @@ import com.company.platform.logging.domain.model.MaskingRule;
 import com.company.platform.logging.domain.model.MaskingType;
 import com.company.platform.logging.domain.model.PiiType;
 import com.company.platform.logging.domain.model.SanitizedThrowable;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
 import java.io.InputStream;
@@ -39,6 +40,7 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+@Slf4j
 public final class DefaultDataMaskingService implements DataMaskingService {
 
     private static final String BINARY = "<binary-or-stream-not-logged>";
@@ -60,21 +62,23 @@ public final class DefaultDataMaskingService implements DataMaskingService {
     private final PlatformLoggingProperties.MaskingProperties properties;
     private final Set<String> mandatory;
     private final List<CompiledRule> rules;
+    private final JsonMapperHelper jsonMapperHelper;
 
     public DefaultDataMaskingService(MaskingStrategyRegistry strategies,
         PlatformLoggingProperties.MaskingProperties properties,
-        List<MaskingRuleProvider> providers
+        List<MaskingRuleProvider> providers,
+        JsonMapperHelper jsonMapperHelper
     ) {
         this.strategies = strategies;
         this.properties = properties;
+        this.jsonMapperHelper = jsonMapperHelper;
         this.mandatory = java.util.stream.Stream.concat(
                 BASELINE_MANDATORY.stream(),
                 properties.getMandatoryFields().stream()
                     .map(DefaultDataMaskingService::canonical))
             .collect(java.util.stream.Collectors.toUnmodifiableSet());
         ArrayList<MaskingRule> configured = new ArrayList<>();
-        properties.getRules().stream().filter(
-            PlatformLoggingProperties.MaskingRuleProperties::isEnabled)
+        properties.getRules().stream()
             .map(DefaultDataMaskingService::toRule).forEach(configured::add);
         providers.forEach(provider -> configured.addAll(provider.rules()));
         this.rules = configured.stream().map(CompiledRule::new).toList();
@@ -105,9 +109,10 @@ public final class DefaultDataMaskingService implements DataMaskingService {
             return null;
         }
         try {
-            Object tree = JsonMapperHelper.fromJson(source, Object.class);
-            return JsonMapperHelper.toJson(sanitize(tree));
+            Object tree = jsonMapperHelper.fromJson(source, Object.class);
+            return jsonMapperHelper.toJson(sanitize(tree));
         } catch (RuntimeException exception) {
+            log.warn("Failed to parse JSON for sanitization: {}", exception.getMessage());
             return "<invalid-json>";
         }
     }
@@ -120,14 +125,40 @@ public final class DefaultDataMaskingService implements DataMaskingService {
         String bounded = truncate(message);
         String masked = MANDATORY_MESSAGE.matcher(bounded)
             .replaceAll("$1=***");
-        if (properties.isEnabled()) {
-            for (CompiledRule rule : rules) {
-                if (rule.rule.getMatchType() == MaskingMatchType.REGEX) {
-                    masked = rule.replace(masked);
-                }
+        for (CompiledRule rule : rules) {
+            if (rule.rule.getMatchType() == MaskingMatchType.FIELD_NAME) {
+                masked = replaceConfiguredFields(masked, rule);
+            } else if (rule.rule.getMatchType() == MaskingMatchType.REGEX) {
+                masked = rule.replace(masked);
             }
         }
         return sanitizeControls(masked);
+    }
+
+    private String replaceConfiguredFields(String message, CompiledRule compiled) {
+        String result = message;
+        for (Pattern pattern : compiled.messagePatterns) {
+            Matcher matcher = pattern.matcher(result);
+            StringBuilder output = new StringBuilder();
+            while (matcher.find()) {
+                String doubleQuoted = matcher.group(2);
+                String singleQuoted = matcher.group(3);
+                String raw = doubleQuoted != null
+                    ? doubleQuoted
+                    : singleQuoted != null ? singleQuoted : matcher.group(4);
+                MaskingResult maskingResult = apply(raw, compiled.rule);
+                String safe = maskingResult.getOutcome() == MaskingOutcome.REMOVED
+                    ? "<removed>"
+                    : maskingResult.getValue();
+                String quote = doubleQuoted != null ? "\""
+                    : singleQuoted != null ? "'" : "";
+                matcher.appendReplacement(output, Matcher.quoteReplacement(
+                    matcher.group(1) + quote + safe + quote));
+            }
+            matcher.appendTail(output);
+            result = output.toString();
+        }
+        return result;
     }
 
     @Override
@@ -296,9 +327,6 @@ public final class DefaultDataMaskingService implements DataMaskingService {
         }
         if (sensitive != null) {
             return annotationRule(field, sensitive);
-        }
-        if (!properties.isEnabled()) {
-            return null;
         }
         for (CompiledRule compiled : rules) {
             if (compiled.matchesPath(path)) {
@@ -481,17 +509,25 @@ public final class DefaultDataMaskingService implements DataMaskingService {
         private final MaskingRule rule;
         private final Set<String> fields;
         private final List<Pattern> patterns;
+        private final List<Pattern> messagePatterns;
 
         private CompiledRule(MaskingRule rule) {
             this.rule = rule;
             this.fields = rule.getExpressions().stream()
                 .map(DefaultDataMaskingService::canonical)
                 .collect(java.util.stream.Collectors.toUnmodifiableSet());
-            this.patterns = rule.getExpressions().stream()
-                .map(expression -> rule.getMatchType() == MaskingMatchType.JSON_PATH
-                    ? Pattern.compile(jsonPathRegex(expression))
-                    : Pattern.compile(expression))
-                .toList();
+            this.patterns = rule.getMatchType() == MaskingMatchType.JSON_PATH
+                ? rule.getExpressions().stream()
+                    .map(expression -> Pattern.compile(jsonPathRegex(expression)))
+                    .toList()
+                : rule.getMatchType() == MaskingMatchType.REGEX
+                    ? rule.getExpressions().stream().map(Pattern::compile).toList()
+                    : List.of();
+            this.messagePatterns = rule.getMatchType() == MaskingMatchType.FIELD_NAME
+                ? rule.getExpressions().stream()
+                    .map(CompiledRule::messageFieldPattern)
+                    .toList()
+                : List.of();
         }
 
         private boolean matchesField(String field) {
@@ -513,6 +549,14 @@ public final class DefaultDataMaskingService implements DataMaskingService {
                     Matcher.quoteReplacement(rule.getSubstitution()));
             }
             return result;
+        }
+
+        private static Pattern messageFieldPattern(String field) {
+            return Pattern.compile(
+                "(?i)([\"']?" + Pattern.quote(field)
+                    + "[\"']?\\s*[=:]\\s*)(?:\"([^\"]*)\"|'([^']*)'|"
+                    + "([^\\s,;}\\]]+))"
+            );
         }
 
         private static String jsonPathRegex(String expression) {

@@ -30,8 +30,13 @@ public class PlatformJacksonProperties {
     boolean acceptCaseInsensitiveEnums;
     /** Sắp xếp key của Map khi serialize để kết quả JSON ổn định. */
     boolean orderMapEntriesByKeys;
-    /** Cho phép ánh xạ JSON với key là chuỗi Unicode. */
-    boolean isAllowUnicode = false;
-    /** Cho phép ánh xạ JSON với key là ký tự đặc biệt. */
-    boolean isAllowSpecialCharacters = false;
+    /**
+     * Cho phép Unicode trong giá trị chuỗi. Việc kiểm tra nghiệp vụ thuộc về
+     * Bean Validation thay vì bộ giải tuần tự JSON.
+     */
+    boolean allowUnicode = true;
+    /**
+     * Cho phép ký tự đặc biệt trong giá trị chuỗi, ví dụ email, URL và mật khẩu.
+     */
+    boolean allowSpecialCharacters = true;
 }

@@ -1,13 +1,16 @@
 package com.company.platform.core.auto_configuration;
 
 import com.company.platform.core.config.web.PlatformWebMvcConfiguration;
+import com.company.platform.core.config.web.PlatformApiResponseBodyAdvice;
 import com.company.platform.core.configuration.properties.PlatformWebProperties;
+import com.company.platform.core.rest.factory.ResponseMetadataFactory;
 import com.company.platform.core.web.filter.RequestResponseLoggingFilter;
 import com.company.platform.core.web.filter.RequestCachingFilter;
 import com.company.platform.core.web.filter.TraceContextFilter;
 import com.company.platform.core.web.interceptor.RequestTimingInterceptor;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
@@ -59,6 +62,20 @@ public class PlatformWebMvcAutoConfiguration {
     )
     RequestTimingInterceptor platformRequestTimingInterceptor() {
         return new RequestTimingInterceptor(System::nanoTime);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnBean(ResponseMetadataFactory.class)
+    @ConditionalOnProperty(
+        prefix = "platform.core.web",
+        name = "response-metadata-enabled",
+        matchIfMissing = true
+    )
+    PlatformApiResponseBodyAdvice platformApiResponseBodyAdvice(
+        ResponseMetadataFactory metadataFactory
+    ) {
+        return new PlatformApiResponseBodyAdvice(metadataFactory);
     }
 
     @Bean

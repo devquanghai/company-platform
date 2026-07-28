@@ -44,7 +44,18 @@ public final class LoggingAnnotationAspect {
         this.properties = properties;
     }
 
-    @Around("execution(public * *(..)) && !within(com.company.platform.logging..*)")
+    @Around("""
+        !within(com.company.platform.logging..*) && (
+            @annotation(com.company.platform.logging.annotation.logging.Loggable)
+            || @within(com.company.platform.logging.annotation.logging.Loggable)
+            || @annotation(com.company.platform.logging.annotation.logging.AuditLog)
+            || @within(com.company.platform.logging.annotation.logging.AuditLog)
+            || @annotation(com.company.platform.logging.annotation.logging.SecurityLog)
+            || @within(com.company.platform.logging.annotation.logging.SecurityLog)
+            || @annotation(com.company.platform.logging.annotation.logging.PerformanceLog)
+            || @within(com.company.platform.logging.annotation.logging.PerformanceLog)
+        )
+        """)
     public Object log(ProceedingJoinPoint joinPoint) throws Throwable {
         Method signature = ((MethodSignature) joinPoint.getSignature()).getMethod();
         Method method = resolver.specific(signature, joinPoint.getTarget().getClass());

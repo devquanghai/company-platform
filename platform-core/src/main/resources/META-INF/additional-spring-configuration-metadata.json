@@ -185,6 +185,18 @@
       "defaultValue": false
     },
     {
+      "name": "platform.core.jackson.allow-unicode",
+      "type": "java.lang.Boolean",
+      "description": "Cho phép Unicode trong giá trị chuỗi JSON. Nên dùng Bean Validation để kiểm tra định dạng nghiệp vụ.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.core.jackson.allow-special-characters",
+      "type": "java.lang.Boolean",
+      "description": "Cho phép ký tự đặc biệt trong giá trị chuỗi JSON, ví dụ email, URL và mật khẩu.",
+      "defaultValue": true
+    },
+    {
       "name": "platform.core.openapi.enabled",
       "type": "java.lang.Boolean",
       "description": "Bật bean định nghĩa OpenAPI chuẩn của platform.",
@@ -296,6 +308,12 @@
       "name": "platform.core.web.server-timing-enabled",
       "type": "java.lang.Boolean",
       "description": "Bật interceptor bổ sung header Server-Timing vào response.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.core.web.response-metadata-enabled",
+      "type": "java.lang.Boolean",
+      "description": "Tự động bổ sung URL, HTTP method, request ID, correlation ID, trace ID, span ID và timestamp cho ApiResponse trả về từ controller.",
       "defaultValue": true
     },
     {

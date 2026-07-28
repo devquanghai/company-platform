@@ -32,6 +32,8 @@ public class PlatformWebProperties {
     int maxPayloadLength = 4096;
     /** Bật interceptor bổ sung header Server-Timing vào response. */
     boolean serverTimingEnabled = true;
+    /** Tự động bổ sung request, correlation và trace metadata cho ApiResponse trả về từ controller. */
+    boolean responseMetadataEnabled = true;
     /** Bật cache request body để filter và component phía sau có thể đọc lại. */
     boolean requestCachingEnabled;
     /** Kích thước request body tối đa được caching filter giữ trong bộ nhớ, tính bằng byte. */

@@ -3,8 +3,8 @@ package com.company.platform.core.exception.handler.helper;
 import com.company.platform.core.exception.code.ValidationCode;
 import com.company.platform.core.i18n.I18nService;
 import com.company.platform.core.rest.response.ErrorDetail;
-import tools.jackson.databind.JsonMappingException;
 import lombok.RequiredArgsConstructor;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.exc.InvalidDefinitionException;
 import tools.jackson.databind.exc.InvalidFormatException;
 
@@ -28,7 +28,7 @@ public final class JsonExceptionHelper {
                 return List.of(
                     new ErrorDetail(
                         "requestBody",
-                        ValidationCode.FIELD_INVALID.name(),
+                        ValidationCode.FIELD_INVALID.getKey(),
                         simplifyInvalidDefinition(definitionException),
                         null,
                         null
@@ -36,7 +36,7 @@ public final class JsonExceptionHelper {
                 );
             }
 
-            if (current instanceof JsonMappingException mappingException) {
+            if (current instanceof JacksonException mappingException) {
 
                 String field = buildFieldPath(
                     mappingException
@@ -45,7 +45,7 @@ public final class JsonExceptionHelper {
                 return List.of(
                     new ErrorDetail(
                         field,
-                        ValidationCode.FIELD_INVALID.name(),
+                        ValidationCode.FIELD_INVALID.getKey(),
                         resolveValidationMessage(
                             mappingException,
                             field
@@ -62,9 +62,9 @@ public final class JsonExceptionHelper {
         return List.of(
             new ErrorDetail(
                 "requestBody",
-                ValidationCode.FIELD_INVALID.name(),
+                ValidationCode.FIELD_INVALID.getKey(),
                 i18n.getOrDefault(
-                    ValidationCode.FIELD_INVALID.name(),
+                    ValidationCode.FIELD_INVALID.getKey(),
                     "Invalid request body."
                 ),
                 null,
@@ -74,7 +74,7 @@ public final class JsonExceptionHelper {
     }
 
     private String resolveValidationMessage(
-        JsonMappingException exception,
+        JacksonException exception,
         String field
     ) {
 
@@ -101,33 +101,31 @@ public final class JsonExceptionHelper {
         InvalidDefinitionException exception
     ) {
 
-        Class<?> type = exception.getType();
+        Class<?> type = exception.getType().getRawClass();
 
         return i18n.getOrDefault(
             "validation.invalid.request.definition",
             "Request object definition is invalid.",
-            type == null
-                ? "request"
-                : type.getSimpleName()
+            type.getSimpleName()
         );
     }
 
     private String buildFieldPath(
-        JsonMappingException exception
+        JacksonException exception
     ) {
 
         StringBuilder path = new StringBuilder();
 
-        for (JsonMappingException.Reference reference : exception.getPath()) {
+        for (JacksonException.Reference reference : exception.getPath()) {
 
-            if (reference.getFieldName() != null) {
+            if (reference.getPropertyName() != null) {
 
                 if (!path.isEmpty()) {
                     path.append(".");
                 }
 
                 path.append(
-                    reference.getFieldName()
+                    reference.getPropertyName()
                 );
             }
 

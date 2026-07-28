@@ -32,11 +32,13 @@ public final class DefaultOutboundDataMasker implements OutboundDataMasker {
     private static final Pattern JSON_NON_STRING_SECRET = Pattern.compile(
         "(?i)(\"(?:password|secret|token|accessToken|refreshToken|apiKey|clientSecret"
             + "|privateKey|cardNumber|cvv|pin|accountNumber)\"\\s*:\\s*)([^,}\\]]+)");
+    private final JsonMapperHelper jsonMapperHelper;
     private final Set<String> headers;
     private final Set<String> fields;
 
-    public DefaultOutboundDataMasker(Set<String> additionalHeaders, Set<String> additionalFields
+    public DefaultOutboundDataMasker(JsonMapperHelper jsonMapperHelper, Set<String> additionalHeaders, Set<String> additionalFields
     ) {
+        this.jsonMapperHelper = jsonMapperHelper;
         this.headers = union(SECRET_HEADERS, additionalHeaders);
         this.fields = union(SECRET_FIELDS, additionalFields);
     }
@@ -116,7 +118,7 @@ public final class DefaultOutboundDataMasker implements OutboundDataMasker {
 
     private String safeJson(Object body) {
         try {
-            return JsonMapperHelper.toJson(body);
+            return jsonMapperHelper.toJson(body);
         } catch (RuntimeException exception) {
             return "<unserializable-body>";
         }

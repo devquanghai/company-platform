@@ -17,23 +17,23 @@ import com.company.platform.logging.masking.strategy.SubstitutionMaskingStrategy
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 
 import java.util.Map;
 
 @AutoConfiguration(after = PlatformLoggingAutoConfiguration.class)
-@ConditionalOnProperty(
-    prefix = "platform.logging", name = "enabled",
-    havingValue = "true", matchIfMissing = true)
 public class MaskingAutoConfiguration {
     @Bean("platformFullMaskingStrategy")
     @ConditionalOnMissingBean(name = "platformFullMaskingStrategy")
-    MaskingStrategy fullMaskingStrategy() { return new FullMaskingStrategy(); }
+    MaskingStrategy fullMaskingStrategy() {
+        return new FullMaskingStrategy();
+    }
 
     @Bean("platformPartialMaskingStrategy")
     @ConditionalOnMissingBean(name = "platformPartialMaskingStrategy")
-    MaskingStrategy partialMaskingStrategy() { return new PartialMaskingStrategy(); }
+    MaskingStrategy partialMaskingStrategy() {
+        return new PartialMaskingStrategy();
+    }
 
     @Bean("platformSubstitutionMaskingStrategy")
     @ConditionalOnMissingBean(name = "platformSubstitutionMaskingStrategy")
@@ -43,7 +43,9 @@ public class MaskingAutoConfiguration {
 
     @Bean("platformRemoveMaskingStrategy")
     @ConditionalOnMissingBean(name = "platformRemoveMaskingStrategy")
-    MaskingStrategy removeMaskingStrategy() { return new RemoveMaskingStrategy(); }
+    MaskingStrategy removeMaskingStrategy() {
+        return new RemoveMaskingStrategy();
+    }
 
     @Bean("platformHashMaskingStrategy")
     @ConditionalOnMissingBean(name = "platformHashMaskingStrategy")
@@ -66,10 +68,11 @@ public class MaskingAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     DataMaskingService dataMaskingService(MaskingStrategyRegistry strategies,
-        PlatformLoggingProperties properties,
-        ObjectProvider<MaskingRuleProvider> providers
+                                          PlatformLoggingProperties properties,
+                                          ObjectProvider<MaskingRuleProvider> providers,
+                                          JsonMapperHelper jsonMapperHelper
     ) {
         return new DefaultDataMaskingService(strategies,
-            properties.getMasking(), providers.orderedStream().toList());
+            properties.getMasking(), providers.orderedStream().toList(), jsonMapperHelper);
     }
 }

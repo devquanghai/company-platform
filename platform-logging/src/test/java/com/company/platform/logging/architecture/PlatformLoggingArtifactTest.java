@@ -33,7 +33,7 @@ class PlatformLoggingArtifactTest {
         String metadata = resource(
             "META-INF/additional-spring-configuration-metadata.json");
         assertThat(metadata)
-            .contains("\"platform.logging.enabled\"")
+            .contains("\"platform.logging.masking.rules\"")
             .contains("\"platform.logging.masking.mandatory-fields\"")
             .contains("\"platform.logging.crypto.max-envelope-length\"")
             .contains("\"defaultValue\"")
@@ -46,7 +46,7 @@ class PlatformLoggingArtifactTest {
         List<String> fragments = List.of(
             "defaults.xml", "console-text-appender.xml", "console-json-appender.xml",
             "rolling-file-appender.xml", "async-appender.xml", "audit-appender.xml",
-            "platform-loggers.xml");
+            "platform-loggers.xml", "platform-console.xml");
         fragments.forEach(name -> assertThat(getClass().getClassLoader().getResource(
             "com/company/platform/logging/logback/" + name)).isNotNull());
     }

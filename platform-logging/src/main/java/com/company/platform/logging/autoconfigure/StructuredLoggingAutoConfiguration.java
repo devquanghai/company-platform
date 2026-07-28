@@ -15,7 +15,6 @@ import com.company.platform.logging.structured.customizer.PlatformLogEventCustom
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 
 @AutoConfiguration(after = {
@@ -23,9 +22,6 @@ import org.springframework.context.annotation.Bean;
     LoggingAuditAutoConfiguration.class,
     LoggingMetricsAutoConfiguration.class
 })
-@ConditionalOnProperty(
-    prefix = "platform.logging", name = "enabled",
-    havingValue = "true", matchIfMissing = true)
 public class StructuredLoggingAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(PlatformLogger.class)

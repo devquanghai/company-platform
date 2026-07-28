@@ -8,7 +8,8 @@ and does not install an application entry point or root Logback configuration.
 
 The artifact keeps masking, crypto, Logback adapters and Boot
 auto-configuration in separate packages. SLF4J remains the logging API and
-OpenTelemetry remains the tracing API; the module does not replace either.
+Micrometer Observation/Tracing remains the observability API; the module does
+not replace it.
 Logging never decrypts data.
 See [design](../docs/platform-logging-design.md).
 
@@ -34,8 +35,11 @@ Versions are inherited from `platform-parent`.
 ## 4. Auto-configuration
 
 Auto-configurations are registered through `AutoConfiguration.imports`.
-`platform.logging.enabled=false` disables the additional platform features but
-never disables application SLF4J. Consumer beans for every public contract win.
+Các thành phần nền tảng được kích hoạt theo classpath và bean cần thiết. Không
+có cờ `platform.logging.enabled`: thêm starter vào ứng dụng đồng nghĩa baseline
+masking luôn hoạt động. Chỉ những khả năng thật sự tùy chọn mới có property bật,
+ví dụ Jasypt hoặc phát Spring audit event. Consumer beans for every public
+contract win.
 
 ## 5. Lombok `@Slf4j`
 
@@ -75,8 +79,17 @@ annotations when the event needs automatic field-level masking.
 
 ## 8. Logback fragments
 
-Include resources under `com/company/platform/logging/logback/`. The library
-does not package `logback-spring.xml`; see `docs/examples/logback-spring.xml`.
+The application owns `logback-spring.xml`, because Logback starts before Spring
+auto-configuration. For text output, include the complete fragment:
+
+```xml
+<configuration>
+  <include resource="com/company/platform/logging/logback/platform-console.xml"/>
+</configuration>
+```
+
+The library intentionally does not package a top-level `logback-spring.xml`;
+see `docs/examples/logback-spring.xml` for profile-based text/JSON output.
 
 ## 9. Environment profiles
 
@@ -125,10 +138,10 @@ Self-invocation, private methods and final methods are not intercepted.
 
 ## 17. Trace and context
 
-Trace/span context comes from Spring Boot OpenTelemetry and Micrometer Context
-Propagation. The library does not maintain a second tracing or MDC lifecycle.
-Use Lombok `@Slf4j` and SLF4J fluent key-values; Spring Boot adds the active
-OpenTelemetry trace and span identifiers.
+Trace/span context comes from the platform `TraceContextProvider`, backed by
+Spring Boot Micrometer Observation/Tracing when available. The library does not
+depend directly on OpenTelemetry and does not maintain a second tracing or MDC
+lifecycle.
 
 ## 18. Servlet
 
@@ -139,7 +152,7 @@ module fails startup because it would bypass masking.
 ## 19. WebFlux
 
 WebFlux propagation is owned by Reactor Context together with Spring Boot
-OpenTelemetry instrumentation. No custom WebFilter is installed.
+Micrometer Observation instrumentation. No custom WebFilter is installed.
 
 ## 20. Async and virtual threads
 

@@ -20,8 +20,6 @@ import com.company.platform.logging.observability.metrics.LoggingMetrics;
 import com.company.platform.core.context.RequestContextProvider;
 import com.company.platform.core.time.TimeProvider;
 import com.company.platform.core.trace.TraceContextProvider;
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanContext;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
@@ -171,11 +169,8 @@ public final class DefaultCryptoService implements CryptoService {
         }
         if (audit != null) {
             try {
-                SpanContext span = Span.current().getSpanContext();
                 var trace = traces == null ? null : traces.getCurrentContext();
-                String traceId = span.isValid()
-                    ? span.getTraceId()
-                    : trace == null ? null : trace.getTraceId();
+                String traceId = trace == null ? null : trace.getTraceId();
                 audit.publish(new CryptoOperationEvent(
                     time == null ? OffsetDateTime.now() : time.now(),
                     operation.name(), failure == null ? "SUCCESS" : "FAILED",

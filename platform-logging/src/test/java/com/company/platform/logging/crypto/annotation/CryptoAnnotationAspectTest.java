@@ -4,8 +4,8 @@ import com.company.platform.logging.annotation.crypto.DecryptResult;
 import com.company.platform.logging.annotation.crypto.DecryptValue;
 import com.company.platform.logging.annotation.crypto.EncryptResult;
 import com.company.platform.logging.annotation.crypto.EncryptValue;
+import com.company.platform.logging.annotation.masking.Sensitive;
 import com.company.platform.logging.api.crypto.CryptoService;
-import com.company.platform.logging.autoconfigure.properties.PlatformLoggingProperties;
 import com.company.platform.logging.domain.exception.PlatformCryptoException;
 import com.company.platform.logging.domain.model.CryptoAlgorithm;
 import com.company.platform.logging.domain.model.CryptoProviderType;
@@ -27,14 +27,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class CryptoAnnotationAspectTest {
 
     private TrackingCryptoService crypto;
-    private PlatformLoggingProperties.CryptoProperties properties;
     private CryptoAnnotationAspect aspect;
 
     @BeforeEach
     void setUp() {
         crypto = new TrackingCryptoService();
-        properties = new PlatformLoggingProperties.CryptoProperties();
-        aspect = new CryptoAnnotationAspect(crypto, properties);
+        aspect = new CryptoAnnotationAspect(crypto);
     }
 
     @Test
@@ -77,37 +75,11 @@ class CryptoAnnotationAspectTest {
     }
 
     @Test
-    void proceedsNormallyForUnannotatedMethodsOrAllowedDisabledAnnotations() throws Throwable {
+    void proceedsNormallyForUnannotatedMethods() throws Throwable {
         JoinPointStub plain = stub("plain", "plain-result", "value");
         assertThat(aspect.process(plain.proxy)).isEqualTo("plain-result");
         assertThat(plain.proceedWithoutArguments).isTrue();
         assertThat(crypto.requests).isEmpty();
-
-        properties.setEnabled(false);
-        properties.setFailIfDisabledAnnotationUsed(false);
-        JoinPointStub annotated = stub("encryptResult", "raw");
-        assertThat(aspect.process(annotated.proxy)).isEqualTo("raw");
-        assertThat(annotated.proceedWithoutArguments).isTrue();
-    }
-
-    @Test
-    void failsClosedWhenCryptoOrAnnotationsAreDisabledOrServiceIsMissing() throws Exception {
-        JoinPointStub joinPoint = stub("encryptResult", "value");
-        properties.setEnabled(false);
-        assertThatThrownBy(() -> aspect.process(joinPoint.proxy))
-            .isInstanceOf(PlatformCryptoException.class)
-            .hasMessageContaining("Crypto annotation");
-
-        properties.setEnabled(true);
-        properties.setAnnotationEnabled(false);
-        assertThatThrownBy(() -> aspect.process(joinPoint.proxy))
-            .isInstanceOf(PlatformCryptoException.class);
-
-        properties.setAnnotationEnabled(true);
-        CryptoAnnotationAspect missingService = new CryptoAnnotationAspect(null, properties);
-        assertThatThrownBy(() -> missingService.process(joinPoint.proxy))
-            .isInstanceOf(PlatformCryptoException.class);
-        assertThat(joinPoint.proceedCount).isZero();
     }
 
     @Test
@@ -234,7 +206,7 @@ class CryptoAnnotationAspectTest {
         @DecryptResult(keyAlias = "result-key", strategyBean = "resultStrategy")
         public byte[] decryptResult() { return new byte[0]; }
 
-        public String plain(String value) { return value; }
+        public String plain(@Sensitive String value) { return value; }
 
         public String unsupported(@EncryptValue(keyAlias = "key") Integer value) {
             return value.toString();

@@ -1,9 +1,14 @@
 package com.company.platform.core.auto_configuration;
 
 import com.company.platform.core.config.web.PlatformWebMvcConfiguration;
+import com.company.platform.core.config.web.PlatformApiResponseBodyAdvice;
 import com.company.platform.core.config.web.PlatformStringFormatter;
 import com.company.platform.core.configuration.properties.PlatformWebProperties;
 import com.company.platform.core.auto_configuration.PlatformWebMvcAutoConfiguration;
+import com.company.platform.core.rest.factory.ResponseMetadataFactory;
+import com.company.platform.core.context.RequestContextProvider;
+import com.company.platform.core.time.SystemTimeProvider;
+import com.company.platform.core.trace.CurrentTraceContext;
 import com.company.platform.core.web.filter.RequestResponseLoggingFilter;
 import com.company.platform.core.web.filter.RequestCachingFilter;
 import com.company.platform.core.web.filter.TraceContextFilter;
@@ -15,6 +20,9 @@ import org.springframework.format.support.DefaultFormattingConversionService;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 
 import java.util.Locale;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -88,5 +96,32 @@ class PlatformWebMvcAutoConfigurationTest {
                 context.getBean(PlatformWebMvcConfiguration.class)
                     .addInterceptors(new InterceptorRegistry());
             });
+    }
+
+    @Test
+    void registersResponseMetadataAdviceOnlyWhenItsFactoryIsAvailableAndEnabled() {
+        runner.withBean(ResponseMetadataFactory.class, PlatformWebMvcAutoConfigurationTest::metadataFactory)
+            .run(context ->
+                assertThat(context).hasSingleBean(PlatformApiResponseBodyAdvice.class));
+
+        runner.withBean(ResponseMetadataFactory.class, PlatformWebMvcAutoConfigurationTest::metadataFactory)
+            .withPropertyValues("platform.core.web.response-metadata-enabled=false")
+            .run(context ->
+                assertThat(context).doesNotHaveBean(PlatformApiResponseBodyAdvice.class));
+    }
+
+    private static ResponseMetadataFactory metadataFactory() {
+        RequestContextProvider request = new RequestContextProvider() {
+            @Override public String getRequestId() { return "request"; }
+            @Override public String getCorrelationId() { return "correlation"; }
+        };
+        return new ResponseMetadataFactory(
+            request,
+            CurrentTraceContext::empty,
+            new SystemTimeProvider(
+                Clock.fixed(Instant.parse("2026-07-28T12:00:00Z"), ZoneOffset.UTC),
+                ZoneOffset.UTC
+            )
+        );
     }
 }

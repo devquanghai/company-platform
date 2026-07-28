@@ -6,8 +6,6 @@ import tools.jackson.databind.DeserializationContext;
 import tools.jackson.databind.deser.std.StdDeserializer;
 import tools.jackson.databind.exc.InvalidFormatException;
 
-import java.io.IOException;
-
 public final class StrictBooleanDeserializer
     extends StdDeserializer<Boolean> {
 
@@ -27,7 +25,7 @@ public final class StrictBooleanDeserializer
             throw InvalidFormatException.from(
                 parser,
                 "validation.boolean",
-                parser.getText(),
+                parser.currentToken().name(),
                 Boolean.class
             );
         }

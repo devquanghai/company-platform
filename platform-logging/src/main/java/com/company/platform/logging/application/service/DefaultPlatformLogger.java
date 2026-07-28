@@ -20,8 +20,6 @@ import com.company.platform.logging.masking.strategy.HashMaskingStrategy;
 import com.company.platform.logging.structured.customizer.MutablePlatformLogEvent;
 import com.company.platform.logging.structured.customizer.PlatformLogEventCustomizer;
 import com.company.platform.logging.observability.metrics.LoggingMetrics;
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanContext;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.spi.LoggingEventBuilder;
 
@@ -252,12 +250,8 @@ public final class DefaultPlatformLogger implements PlatformLogger {
     }
 
     private CurrentTraceContext currentTrace() {
-        SpanContext span = Span.current().getSpanContext();
-        if (span.isValid()) {
-            return new CurrentTraceContext(span.getTraceId(), span.getSpanId());
-        }
-        CurrentTraceContext fallback = traces == null ? null : traces.getCurrentContext();
-        return fallback == null ? CurrentTraceContext.empty() : fallback;
+        CurrentTraceContext current = traces == null ? null : traces.getCurrentContext();
+        return current == null ? CurrentTraceContext.empty() : current;
     }
 
     private static String safeEventName(String value) {

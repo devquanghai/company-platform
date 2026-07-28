@@ -2,6 +2,11 @@ spring:
   application:
     name: platform-integration-test
 
+logging:
+  level:
+    root: INFO
+    com.company.platform: DEBUG
+
 management:
   tracing:
     sampling:
@@ -18,13 +23,15 @@ platform:
       title: Platform Integration Test
       description: Platform Integration Test API
       version: 1.0.0
+      authentication:
+        type: bearer
       servers:
         - url: ${INTEGRATION_ECHO_BASE_URL:https://localhost:8080}
           description: Echo Service
       bearer-format: JWT
     web:
       request-logging-enabled: true
-      include-payload: true
+      include-payload: false
   service-exchange:
     enabled: true
     source-application: platform-integration-test
@@ -47,7 +54,6 @@ platform:
           sensitive-headers:
             - Authorization
   logging:
-    enabled: true
     environment: local
     masking:
       rules:
@@ -59,12 +65,6 @@ platform:
           masking-type: PARTIAL
           visible-prefix: 2
           preserve-domain: true
-        - name: integration-password
-          match-type: FIELD_NAME
-          fields:
-            - password
-          pii-type: PASSWORD
-          masking-type: FULL
 
         - name: integration-date-of-birth
           match-type: FIELD_NAME
@@ -73,7 +73,19 @@ platform:
           pii-type: DATE_OF_BIRTH
           masking-type: PARTIAL
           visible-prefix: 4
+
+        - name: integration-phone
+          match-type: FIELD_NAME
+          fields:
+            - phone
+            - phoneNumber
+            - mobile
+            - mobileNumber
+          pii-type: PHONE
+          masking-type: PARTIAL
+          visible-prefix: 3
+          visible-suffix: 3
+
     crypto:
-      enabled: true
-      annotation-enabled: false
-      fail-if-disabled-annotation-used: true
+      defaults:
+        key-alias: integration-data

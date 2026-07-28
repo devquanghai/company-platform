@@ -10,8 +10,6 @@ import org.springframework.core.env.Environment;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.StringUtils;
 
-import java.nio.file.InvalidPathException;
-import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
@@ -41,21 +39,13 @@ public final class PlatformLoggingPropertiesValidator
     }
 
     public void validate() {
-        if (!properties.isEnabled()) {
-            return;
-        }
         validateMasking();
         validateCrypto();
-        validateOutput();
         rejectRawCorePayloadLogger();
     }
 
     private void validateMasking() {
         boolean secure = isSecureEnvironment();
-        if (secure && !properties.getMasking().isEnabled()
-            && !properties.getSecurity().isEmergencyAllowUnmaskedProduction()) {
-            fail("masking must remain enabled in secure environments");
-        }
         if (secure
             && properties.getContext().getUserIdMode()
                 == PlatformLoggingProperties.UserIdMode.HASH
@@ -64,9 +54,6 @@ public final class PlatformLoggingPropertiesValidator
         }
         Set<String> names = new HashSet<>();
         for (var rule : properties.getMasking().getRules()) {
-            if (!rule.isEnabled()) {
-                continue;
-            }
             if (!StringUtils.hasText(rule.getName())
                 || !RULE_NAME.matcher(rule.getName()).matches()) {
                 fail("masking rule name is invalid");
@@ -127,17 +114,8 @@ public final class PlatformLoggingPropertiesValidator
 
     private void validateCrypto() {
         var crypto = properties.getCrypto();
-        if (!crypto.isEnabled() && crypto.isAnnotationEnabled()
-            && crypto.isFailIfDisabledAnnotationUsed()) {
-            fail("crypto annotation-enabled requires crypto enabled");
-        }
         if (!StringUtils.hasText(crypto.getDefaults().getKeyAlias())) {
             fail("default crypto key alias must not be blank");
-        }
-        if (crypto.getDefaults().getProvider()
-            == com.company.platform.logging.domain.model.CryptoProviderType.JCA
-            && !crypto.getProviders().getJca().isEnabled()) {
-            fail("default JCA provider cannot be disabled");
         }
         if (crypto.getKeyCache().getTtl() == null
             || crypto.getKeyCache().getTtl().isNegative()
@@ -157,38 +135,14 @@ public final class PlatformLoggingPropertiesValidator
         }
     }
 
-    private void validateOutput() {
-        if (properties.getAsync().getFlushTimeout() == null
-            || properties.getAsync().getFlushTimeout().isNegative()
-            || properties.getAsync().getFlushTimeout().isZero()) {
-            fail("async flush timeout must be positive");
-        }
-        if (properties.getFile().isEnabled()) {
-            try {
-                if (!StringUtils.hasText(properties.getFile().getPath())
-                    || !StringUtils.hasText(properties.getFile().getName())) {
-                    fail("file logging path and name must not be blank");
-                }
-                Path.of(properties.getFile().getPath());
-            } catch (InvalidPathException exception) {
-                fail("file logging path is invalid");
-            }
-        }
-        if (properties.getStructured().getFormat()
-            == com.company.platform.logging.domain.model.StructuredLogFormat.CUSTOM
-            && !StringUtils.hasText(properties.getStructured().getCustomFormatter())) {
-            fail("custom structured format requires a formatter class");
-        }
-    }
-
     private void rejectRawCorePayloadLogger() {
         boolean requestLogging = environment.getProperty(
             "platform.core.web.request-logging-enabled", Boolean.class, false);
         boolean includePayload = environment.getProperty(
             "platform.core.web.include-payload", Boolean.class, false);
-//        if (requestLogging && includePayload) {
-//            fail("core raw request payload logging conflicts with secure masking");
-//        }
+        if (requestLogging && includePayload) {
+            fail("core raw request payload logging conflicts with secure masking");
+        }
     }
 
     private boolean isSecureEnvironment() {

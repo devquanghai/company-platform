@@ -6,11 +6,11 @@ import java.util.regex.Pattern;
 
 public final class BootstrapLogSanitizer {
     public static final String SAFE_FAILURE = "<sanitization-failed>";
-    private static final Set<String> SECRET_KEYS = Set.of(
+    private static final Set<String> BOOTSTRAP_CREDENTIAL_KEYS = Set.of(
         "password", "passcode", "pin", "cvv", "authorization",
         "proxyauthorization", "cookie", "setcookie", "accesstoken",
         "refreshtoken", "apikey", "clientsecret", "privatekey");
-    private static final Pattern SECRET = Pattern.compile(
+    private static final Pattern BOOTSTRAP_CREDENTIAL_ASSIGNMENT = Pattern.compile(
         "(?i)(password|passcode|pin|cvv|authorization|proxy[-_]?authorization|"
             + "cookie|set[-_]?cookie|access[-_]?token|refresh[-_]?token|"
             + "api[-_]?key|client[-_]?secret|private[-_]?key)\\s*\"?\\s*[=:]\\s*"
@@ -26,8 +26,10 @@ public final class BootstrapLogSanitizer {
             return "";
         }
         try {
-            String bounded = value.substring(0, Math.min(MAX, value.length()));
-            return CONTROLS.matcher(SECRET.matcher(bounded)
+            String configured = LogbackMaskingLifecycle.sanitizeMessage(value);
+            String bounded = configured.substring(
+                0, Math.min(MAX, configured.length()));
+            return CONTROLS.matcher(BOOTSTRAP_CREDENTIAL_ASSIGNMENT.matcher(bounded)
                 .replaceAll("$1=***")).replaceAll(" ");
         } catch (RuntimeException exception) {
             return SAFE_FAILURE;
@@ -35,10 +37,11 @@ public final class BootstrapLogSanitizer {
     }
 
     public static String sanitize(String key, Object value) {
-        if (SECRET_KEYS.contains(canonical(key))) {
+        if (BOOTSTRAP_CREDENTIAL_KEYS.contains(canonical(key))) {
             return "***";
         }
-        return sanitize(value == null ? "" : safeValue(value));
+        String safe = value == null ? "" : safeValue(value);
+        return sanitize(LogbackMaskingLifecycle.sanitizeValue(key, safe));
     }
 
     private static String safeValue(Object value) {

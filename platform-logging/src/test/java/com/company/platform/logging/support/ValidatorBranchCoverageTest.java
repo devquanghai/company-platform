@@ -17,10 +17,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class ValidatorBranchCoverageTest {
 
     @Test
-    void acceptsDisabledRulesCustomBeansValidExpressionsAndEmergencyProductionMode() {
+    void acceptsCustomBeansValidExpressionsAndNullEnvironment() {
         PlatformLoggingProperties properties = new PlatformLoggingProperties();
-        properties.getMasking().getRules().add(rule("disabled", false,
-            MaskingMatchType.FIELD_NAME, List.of()));
         properties.getMasking().getRules().add(rule("field", true,
             MaskingMatchType.FIELD_NAME, List.of("email")));
         properties.getMasking().getRules().add(rule("json", true,
@@ -36,8 +34,6 @@ class ValidatorBranchCoverageTest {
             .doesNotThrowAnyException();
 
         properties.setEnvironment(null);
-        properties.getMasking().setEnabled(false);
-        properties.getSecurity().setEmergencyAllowUnmaskedProduction(true);
         assertThatCode(() -> validator(properties, new MockEnvironment(), beans).validate())
             .doesNotThrowAnyException();
     }
@@ -67,7 +63,6 @@ class ValidatorBranchCoverageTest {
 
     @Test
     void rejectsRemainingCryptoCacheAndSecureEnvironmentBranches() {
-        invalid(properties -> properties.getCrypto().getProviders().getJca().setEnabled(false));
         invalid(properties -> properties.getCrypto().getKeyCache().setTtl(null));
         invalid(properties -> properties.getCrypto().getKeyCache()
             .setTtl(Duration.ofSeconds(-1)));
@@ -86,26 +81,10 @@ class ValidatorBranchCoverageTest {
         secureHash.getMasking().setHmacKeyAlias("external-hmac");
         assertThatCode(() -> validator(secureHash, new MockEnvironment(),
             new DefaultListableBeanFactory()).validate()).doesNotThrowAnyException();
-        invalid(properties -> {
-            properties.setEnvironment("local");
-            properties.getMasking().setEnabled(false);
-        }, new MockEnvironment().withProperty("spring.profiles.active", "staging")
-            .withProperty("unused", "value"), true);
     }
 
     @Test
-    void rejectsRemainingOutputAndCorePayloadCombinations() {
-        invalid(properties -> properties.getAsync().setFlushTimeout(null));
-        invalid(properties -> properties.getAsync().setFlushTimeout(Duration.ofMillis(-1)));
-        invalid(properties -> {
-            properties.getFile().setEnabled(true);
-            properties.getFile().setName(" ");
-        });
-        invalid(properties -> {
-            properties.getFile().setEnabled(true);
-            properties.getFile().setPath("\0");
-        });
-
+    void validatesCorePayloadCombinations() {
         PlatformLoggingProperties onlyRequestLogger = new PlatformLoggingProperties();
         assertThatCode(() -> validator(onlyRequestLogger,
             new MockEnvironment().withProperty(
@@ -123,7 +102,6 @@ class ValidatorBranchCoverageTest {
     ) {
         var rule = new PlatformLoggingProperties.MaskingRuleProperties();
         rule.setName(name);
-        rule.setEnabled(enabled);
         rule.setMatchType(type);
         if (type == MaskingMatchType.JSON_PATH) {
             rule.getPaths().addAll(expressions);

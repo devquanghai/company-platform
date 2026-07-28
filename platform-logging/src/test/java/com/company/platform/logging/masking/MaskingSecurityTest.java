@@ -72,6 +72,9 @@ class MaskingSecurityTest {
             new PlatformLoggingProperties.MaskingProperties();
         properties.getRules().add(rule("phone-rule", MaskingMatchType.FIELD_NAME,
             MaskingType.PARTIAL, List.of("mobile"), List.of(), List.of(), 3, 2));
+        properties.getRules().add(rule("email-rule", MaskingMatchType.FIELD_NAME,
+            MaskingType.PARTIAL, List.of("email"), List.of(), List.of(), 2, 0));
+        properties.getRules().get(1).setPreserveDomain(true);
         properties.getRules().add(rule("remove-rule", MaskingMatchType.FIELD_NAME,
             MaskingType.REMOVE, List.of("discard"), List.of(), List.of(), 0, 0));
         properties.getRules().add(rule("path-rule", MaskingMatchType.JSON_PATH,
@@ -100,6 +103,10 @@ class MaskingSecurityTest {
             .containsEntry("discard", "remove-me");
         assertThat(service.maskValue("API_KEY", "abc")).isEqualTo("***");
         assertThat(service.maskValue("normal", "value")).isEqualTo("value");
+        assertThat(service.sanitizeMessage(
+            "email=alice@example.org, mobile:'0901234567'"))
+            .contains("email=al***@example.org", "mobile:'090*****67'")
+            .doesNotContain("alice@example.org", "0901234567");
 
         var dto = new SensitiveDto();
         @SuppressWarnings("unchecked")
@@ -164,8 +171,8 @@ class MaskingSecurityTest {
         strategies.put("remove", new RemoveMaskingStrategy());
         strategies.put("hash", new HashMaskingStrategy(null, null));
         return new DefaultDataMaskingService(
-            new JsonMapperHelper(JsonMapper.builder().build()),
-            new DefaultMaskingStrategyRegistry(strategies), properties, List.of());
+            new DefaultMaskingStrategyRegistry(strategies), properties, List.of(),
+            new JsonMapperHelper(JsonMapper.builder().build()));
     }
 
     private static PlatformLoggingProperties.MaskingRuleProperties rule(

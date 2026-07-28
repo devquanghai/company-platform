@@ -8,12 +8,9 @@ import com.company.platform.logging.application.service.LoggingAnnotationAspect;
 import com.company.platform.logging.autoconfigure.properties.PlatformLoggingProperties;
 import com.company.platform.logging.crypto.annotation.CryptoAnnotationAspect;
 import org.aspectj.lang.ProceedingJoinPoint;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 
 @AutoConfiguration(after = {
@@ -29,9 +26,6 @@ public class LoggingAspectAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    @ConditionalOnExpression(
-        "${platform.logging.enabled:true} and "
-            + "${platform.logging.method-logging.enabled:true}")
     LoggingAnnotationAspect loggingAnnotationAspect(
         LoggingAnnotationResolver resolver, PlatformLogger logger,
         DataMaskingService masking, PlatformLoggingProperties properties
@@ -43,9 +37,8 @@ public class LoggingAspectAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     CryptoAnnotationAspect cryptoAnnotationAspect(
-        ObjectProvider<CryptoService> crypto, PlatformLoggingProperties properties
+        CryptoService crypto
     ) {
-        return new CryptoAnnotationAspect(
-            crypto.getIfAvailable(), properties.getCrypto());
+        return new CryptoAnnotationAspect(crypto);
     }
 }

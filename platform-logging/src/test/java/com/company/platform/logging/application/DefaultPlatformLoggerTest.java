@@ -20,11 +20,6 @@ import com.company.platform.logging.domain.model.LogSeverity;
 import com.company.platform.logging.domain.model.SanitizedThrowable;
 import com.company.platform.logging.observability.metrics.LoggingMetrics;
 import com.company.platform.logging.structured.customizer.PlatformLogEventCustomizer;
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanContext;
-import io.opentelemetry.api.trace.TraceFlags;
-import io.opentelemetry.api.trace.TraceState;
-import io.opentelemetry.context.Scope;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -175,28 +170,21 @@ class DefaultPlatformLoggerTest {
     }
 
     @Test
-    void prefersCurrentOpenTelemetrySpanOverLegacyTraceProvider() {
-        SpanContext spanContext = SpanContext.create(
+    void obtainsTraceAndSpanFromPlatformObservabilityProvider() {
+        CurrentTraceContext trace = new CurrentTraceContext(
             "0123456789abcdef0123456789abcdef",
-            "0123456789abcdef",
-            TraceFlags.getSampled(),
-            TraceState.getDefault());
+            "0123456789abcdef");
         DefaultPlatformLogger logger = logger(
             new SafeMasking(), null, null,
             PlatformLoggingProperties.AuditFailureMode.FAIL_OPEN,
             PlatformLoggingProperties.UserIdMode.OMIT,
-            Optional::empty, List.of(),
-            new CurrentTraceContext("fallback-trace", "fallback-span"));
+            Optional::empty, List.of(), trace);
 
-        try (Scope ignored = Span.wrap(spanContext).makeCurrent()) {
-            logger.info("otel", "ok", Map.of());
-        }
+        logger.info("observation", "ok", Map.of());
 
         assertThat(keyValues(appender.list.getLast()))
-            .containsEntry("trace.id", spanContext.getTraceId())
-            .containsEntry("span.id", spanContext.getSpanId())
-            .doesNotContainValue("fallback-trace")
-            .doesNotContainValue("fallback-span");
+            .containsEntry("trace.id", trace.getTraceId())
+            .containsEntry("span.id", trace.getSpanId());
     }
 
     @Test

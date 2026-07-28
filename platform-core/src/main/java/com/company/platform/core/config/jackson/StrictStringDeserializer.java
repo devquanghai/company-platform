@@ -11,14 +11,17 @@ import tools.jackson.databind.exc.MismatchedInputException;
 public final class StrictStringDeserializer
     extends StdDeserializer<String> {
 
+    private final boolean trimStrings;
     private final boolean allowUnicode;
     private final boolean allowSpecialCharacters;
 
     public StrictStringDeserializer(
+        boolean trimStrings,
         boolean allowUnicode,
         boolean allowSpecialCharacters
     ) {
         super(String.class);
+        this.trimStrings = trimStrings;
         this.allowUnicode = allowUnicode;
         this.allowSpecialCharacters = allowSpecialCharacters;
     }
@@ -39,12 +42,9 @@ public final class StrictStringDeserializer
         }
 
         String value = parser.getString();
-
-        if (value == null) {
-            return null;
+        if (trimStrings) {
+            value = value.trim();
         }
-
-        value = value.trim();
 
         if (!allowUnicode
             && !value.matches("\\A\\p{ASCII}*\\z")) {

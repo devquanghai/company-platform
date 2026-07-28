@@ -3,251 +3,54 @@
     {
       "name": "platform.logging",
       "type": "com.company.platform.logging.autoconfigure.properties.PlatformLoggingProperties",
-      "description": "Cấu hình logging có cấu trúc, masking, context, audit và crypto dùng chung."
+      "description": "Cấu hình policy logging, masking, audit và crypto dùng chung."
     },
     {
       "name": "platform.logging.masking",
       "type": "com.company.platform.logging.autoconfigure.properties.PlatformLoggingProperties$MaskingProperties",
-      "description": "Chính sách che dữ liệu nhạy cảm trước khi tạo log event."
+      "description": "Rule và giới hạn an toàn khi che dữ liệu trước khi ghi log."
     },
     {
       "name": "platform.logging.crypto",
       "type": "com.company.platform.logging.autoconfigure.properties.PlatformLoggingProperties$CryptoProperties",
-      "description": "Cấu hình mã hóa, provider, key cache và annotation crypto."
+      "description": "Provider, key cache và giới hạn ciphertext; capability được tạo theo classpath và bean."
     }
   ],
   "properties": [
     {
-      "name": "platform.logging.enabled",
-      "type": "java.lang.Boolean",
-      "description": "Bật các capability custom của platform-logging; không tắt SLF4J của ứng dụng.",
-      "defaultValue": true
-    },
-    {
       "name": "platform.logging.environment",
       "type": "java.lang.String",
-      "description": "Môi trường triển khai dùng cùng active profile để áp dụng chính sách bảo mật.",
+      "description": "Môi trường triển khai để áp dụng validation bảo mật.",
       "defaultValue": "unknown"
-    },
-    {
-      "name": "platform.logging.console.enabled",
-      "type": "java.lang.Boolean",
-      "description": "Bật appender console trong cấu hình Logback của ứng dụng.",
-      "defaultValue": true
-    },
-    {
-      "name": "platform.logging.console.format",
-      "type": "com.company.platform.logging.domain.model.StructuredLogFormat",
-      "description": "Định dạng console: TEXT, ECS, GELF, LOGSTASH hoặc CUSTOM.",
-      "defaultValue": "TEXT"
-    },
-    {
-      "name": "platform.logging.file.enabled",
-      "type": "java.lang.Boolean",
-      "description": "Bật ghi file; trong container nên ưu tiên JSON ra stdout.",
-      "defaultValue": false
-    },
-    {
-      "name": "platform.logging.file.path",
-      "type": "java.lang.String",
-      "description": "Thư mục file log; không chứa credential.",
-      "defaultValue": "./logs"
-    },
-    {
-      "name": "platform.logging.file.name",
-      "type": "java.lang.String",
-      "description": "Tên file log hiện hành.",
-      "defaultValue": "application.log"
-    },
-    {
-      "name": "platform.logging.file.rolling-policy.max-file-size",
-      "type": "org.springframework.util.unit.DataSize",
-      "description": "Kích thước tối đa của một file trước khi rollover.",
-      "defaultValue": "100MB"
-    },
-    {
-      "name": "platform.logging.file.rolling-policy.max-history",
-      "type": "java.lang.Integer",
-      "description": "Số ngày/file lịch sử tối đa được giữ.",
-      "defaultValue": 30
-    },
-    {
-      "name": "platform.logging.file.rolling-policy.total-size-cap",
-      "type": "org.springframework.util.unit.DataSize",
-      "description": "Tổng dung lượng tối đa của các file lịch sử.",
-      "defaultValue": "10GB"
-    },
-    {
-      "name": "platform.logging.file.rolling-policy.clean-history-on-start",
-      "type": "java.lang.Boolean",
-      "description": "Xóa lịch sử đã hết hạn khi ứng dụng khởi động; mặc định giữ lại để hỗ trợ điều tra.",
-      "defaultValue": false
-    },
-    {
-      "name": "platform.logging.structured.enabled",
-      "type": "java.lang.Boolean",
-      "description": "Bật structured logging; Logback fragment dùng encoder chuẩn của Spring Boot.",
-      "defaultValue": false
-    },
-    {
-      "name": "platform.logging.structured.format",
-      "type": "com.company.platform.logging.domain.model.StructuredLogFormat",
-      "description": "Định dạng JSON chuẩn cho staging/production.",
-      "defaultValue": "ECS"
-    },
-    {
-      "name": "platform.logging.structured.include-mdc",
-      "type": "java.lang.Boolean",
-      "description": "Đưa MDC đã sanitize vào structured log.",
-      "defaultValue": true
-    },
-    {
-      "name": "platform.logging.structured.include-service-metadata",
-      "type": "java.lang.Boolean",
-      "description": "Bổ sung metadata service vào log có cấu trúc.",
-      "defaultValue": true
-    },
-    {
-      "name": "platform.logging.structured.include-host-metadata",
-      "type": "java.lang.Boolean",
-      "description": "Bổ sung metadata host vào log có cấu trúc.",
-      "defaultValue": true
-    },
-    {
-      "name": "platform.logging.structured.include-process-metadata",
-      "type": "java.lang.Boolean",
-      "description": "Bổ sung metadata process vào log có cấu trúc.",
-      "defaultValue": true
-    },
-    {
-      "name": "platform.logging.structured.max-stack-trace-length",
-      "type": "java.lang.Integer",
-      "description": "Giới hạn số ký tự stack trace đã sanitize.",
-      "defaultValue": 16384
-    },
-    {
-      "name": "platform.logging.structured.custom-formatter",
-      "type": "java.lang.String",
-      "description": "FQCN formatter khi chọn CUSTOM; bắt buộc phải do ứng dụng cung cấp."
-    },
-    {
-      "name": "platform.logging.async.enabled",
-      "type": "java.lang.Boolean",
-      "description": "Bật async appender có hàng đợi giới hạn.",
-      "defaultValue": true
-    },
-    {
-      "name": "platform.logging.async.queue-size",
-      "type": "java.lang.Integer",
-      "description": "Số log event tối đa trong hàng đợi async.",
-      "defaultValue": 8192
-    },
-    {
-      "name": "platform.logging.async.discarding-threshold",
-      "type": "java.lang.Integer",
-      "description": "Ngưỡng discard của Logback AsyncAppender; audit quan trọng không dùng discard.",
-      "defaultValue": 0
-    },
-    {
-      "name": "platform.logging.async.never-block",
-      "type": "java.lang.Boolean",
-      "description": "Không chặn business thread khi hàng đợi đầy.",
-      "defaultValue": false
-    },
-    {
-      "name": "platform.logging.async.flush-timeout",
-      "type": "java.time.Duration",
-      "description": "Thời gian tối đa chờ flush khi shutdown.",
-      "defaultValue": "5s"
     },
     {
       "name": "platform.logging.context.user-id-mode",
       "type": "com.company.platform.logging.autoconfigure.properties.PlatformLoggingProperties$UserIdMode",
-      "description": "Cách biểu diễn user ID: OMIT, MASK hoặc HASH; HASH yêu cầu HMAC key external trong môi trường an toàn.",
+      "description": "Cách đưa user ID vào log: OMIT, MASK hoặc HASH. HASH trong production yêu cầu khóa HMAC external.",
       "defaultValue": "OMIT"
-    },
-    {
-      "name": "platform.logging.method-logging.enabled",
-      "type": "java.lang.Boolean",
-      "description": "Bật aspect cho @Loggable.",
-      "defaultValue": true
     },
     {
       "name": "platform.logging.method-logging.include-arguments-by-default",
       "type": "java.lang.Boolean",
-      "description": "Ghi argument mặc định; nên giữ false và chỉ opt-in.",
+      "description": "Ghi argument cho @Loggable khi annotation không opt-in; nên giữ false.",
       "defaultValue": false
     },
     {
       "name": "platform.logging.method-logging.include-result-by-default",
       "type": "java.lang.Boolean",
-      "description": "Ghi result mặc định; nên giữ false và chỉ opt-in.",
+      "description": "Ghi result cho @Loggable khi annotation không opt-in; nên giữ false.",
       "defaultValue": false
     },
     {
       "name": "platform.logging.method-logging.include-duration",
       "type": "java.lang.Boolean",
-      "description": "Ghi thời gian method bằng monotonic clock.",
+      "description": "Cho phép policy chung ghi duration khi annotation yêu cầu.",
       "defaultValue": true
     },
     {
       "name": "platform.logging.method-logging.include-exception",
       "type": "java.lang.Boolean",
-      "description": "Ghi snapshot exception đã sanitize.",
-      "defaultValue": true
-    },
-    {
-      "name": "platform.logging.method-logging.max-argument-length",
-      "type": "java.lang.Integer",
-      "description": "Giới hạn độ dài biểu diễn argument sau sanitize.",
-      "defaultValue": 4096
-    },
-    {
-      "name": "platform.logging.method-logging.max-result-length",
-      "type": "java.lang.Integer",
-      "description": "Giới hạn độ dài biểu diễn result sau sanitize.",
-      "defaultValue": 4096
-    },
-    {
-      "name": "platform.logging.masking.enabled",
-      "type": "java.lang.Boolean",
-      "description": "Bật rule masking cấu hình; mandatory credential masking luôn là lớp bảo vệ cuối.",
-      "defaultValue": true
-    },
-    {
-      "name": "platform.logging.masking.fail-on-invalid-rule",
-      "type": "java.lang.Boolean",
-      "description": "Fail startup khi rule không hợp lệ.",
-      "defaultValue": true
-    },
-    {
-      "name": "platform.logging.masking.default-type",
-      "type": "com.company.platform.logging.domain.model.MaskingType",
-      "description": "Kiểu masking mặc định.",
-      "defaultValue": "SUBSTITUTION"
-    },
-    {
-      "name": "platform.logging.masking.default-substitution",
-      "type": "java.lang.String",
-      "description": "Token thay thế mặc định, không được rỗng cho secret bắt buộc.",
-      "defaultValue": "***"
-    },
-    {
-      "name": "platform.logging.masking.sanitize-exception-message",
-      "type": "java.lang.Boolean",
-      "description": "Che dữ liệu nhạy cảm trong exception message trước khi ghi log.",
-      "defaultValue": true
-    },
-    {
-      "name": "platform.logging.masking.sanitize-mdc",
-      "type": "java.lang.Boolean",
-      "description": "Che dữ liệu nhạy cảm trong MDC.",
-      "defaultValue": true
-    },
-    {
-      "name": "platform.logging.masking.sanitize-key-values",
-      "type": "java.lang.Boolean",
-      "description": "Che dữ liệu nhạy cảm trong SLF4J key-value.",
+      "description": "Cho phép ghi exception snapshot đã sanitize.",
       "defaultValue": true
     },
     {
@@ -259,7 +62,7 @@
     {
       "name": "platform.logging.masking.max-depth",
       "type": "java.lang.Integer",
-      "description": "Độ sâu object graph tối đa.",
+      "description": "Độ sâu object graph tối đa được duyệt.",
       "defaultValue": 10
     },
     {
@@ -277,13 +80,13 @@
     {
       "name": "platform.logging.masking.max-map-size",
       "type": "java.lang.Integer",
-      "description": "Số entry map/object tối đa được sanitize.",
+      "description": "Số field/entry tối đa được sanitize.",
       "defaultValue": 100
     },
     {
       "name": "platform.logging.masking.mandatory-fields",
       "type": "java.util.List<java.lang.String>",
-      "description": "Tên field nhạy cảm bổ sung; baseline password/token/cookie của library luôn được hợp nhất và không thể xóa.",
+      "description": "Các trường dữ liệu nhạy cảm bổ sung luôn bị che; baseline password/token/cookie của thư viện không thể xóa hoặc ghi đè.",
       "defaultValue": [
         "password",
         "passcode",
@@ -303,36 +106,18 @@
     {
       "name": "platform.logging.masking.hmac-key-alias",
       "type": "java.lang.String",
-      "description": "Alias khóa HMAC external cho HASH correlation ở môi trường an toàn."
+      "description": "Alias khóa HMAC external cho rule HASH; không phải raw key."
     },
     {
       "name": "platform.logging.masking.rules",
       "type": "java.util.List<com.company.platform.logging.autoconfigure.properties.PlatformLoggingProperties$MaskingRuleProperties>",
-      "description": "Danh sách rule FIELD_NAME, JSON_PATH, REGEX, HEADER, QUERY_PARAMETER hoặc MDC_KEY.",
+      "description": "Rule lấy trực tiếp từ application.yml và áp dụng cho DataMaskingService lẫn converter Logback sau khi Spring khởi tạo.",
       "defaultValue": []
-    },
-    {
-      "name": "platform.logging.crypto.enabled",
-      "type": "java.lang.Boolean",
-      "description": "Bật explicit CryptoService và provider crypto.",
-      "defaultValue": true
-    },
-    {
-      "name": "platform.logging.crypto.annotation-enabled",
-      "type": "java.lang.Boolean",
-      "description": "Bật xử lý annotation crypto; khi tắt annotation sẽ fail thay vì trả plaintext.",
-      "defaultValue": true
-    },
-    {
-      "name": "platform.logging.crypto.fail-if-disabled-annotation-used",
-      "type": "java.lang.Boolean",
-      "description": "Fail-closed nếu annotation được dùng khi crypto không khả dụng.",
-      "defaultValue": true
     },
     {
       "name": "platform.logging.crypto.allow-legacy-algorithms",
       "type": "java.lang.Boolean",
-      "description": "Cho phép legacy algorithm; bị từ chối trong môi trường an toàn.",
+      "description": "Cho phép legacy algorithm; luôn bị từ chối trong môi trường an toàn.",
       "defaultValue": false
     },
     {
@@ -350,43 +135,25 @@
     {
       "name": "platform.logging.crypto.defaults.key-alias",
       "type": "java.lang.String",
-      "description": "Alias logic của khóa external; không phải raw key.",
+      "description": "Alias logic của khóa external; không chứa key material.",
       "defaultValue": "application-data"
-    },
-    {
-      "name": "platform.logging.crypto.providers.jca.enabled",
-      "type": "java.lang.Boolean",
-      "description": "Bật provider Java Cryptography Architecture.",
-      "defaultValue": true
     },
     {
       "name": "platform.logging.crypto.providers.jasypt.enabled",
       "type": "java.lang.Boolean",
-      "description": "Bật compatibility provider Jasypt khi dependency thực sự có trên classpath.",
+      "description": "Opt-in compatibility provider Jasypt khi dependency có trên classpath.",
       "defaultValue": false
     },
     {
       "name": "platform.logging.crypto.providers.jasypt.algorithm",
       "type": "java.lang.String",
-      "description": "PBE algorithm mạnh cho Jasypt; không dùng weak default.",
+      "description": "PBE algorithm mạnh cho provider Jasypt.",
       "defaultValue": "PBEWithHmacSHA512AndAES_256"
-    },
-    {
-      "name": "platform.logging.crypto.providers.jasypt.key-alias",
-      "type": "java.lang.String",
-      "description": "Alias external dùng để lấy password/key cho Jasypt; không phải raw secret.",
-      "defaultValue": "jasypt-property-key"
-    },
-    {
-      "name": "platform.logging.crypto.key-cache.enabled",
-      "type": "java.lang.Boolean",
-      "description": "Bật cache metadata/key material có TTL; không cache plaintext.",
-      "defaultValue": true
     },
     {
       "name": "platform.logging.crypto.key-cache.ttl",
       "type": "java.time.Duration",
-      "description": "Thời gian sống tối đa của entry key cache.",
+      "description": "TTL của key material trong cache có giới hạn.",
       "defaultValue": "5m"
     },
     {
@@ -402,70 +169,22 @@
       "defaultValue": 1048576
     },
     {
-      "name": "platform.logging.audit.enabled",
-      "type": "java.lang.Boolean",
-      "description": "Bật aggregate logging/crypto audit event.",
-      "defaultValue": true
-    },
-    {
-      "name": "platform.logging.audit.logger-name",
-      "type": "java.lang.String",
-      "description": "Tên logger audit cố định; không nhận từ input không tin cậy.",
-      "defaultValue": "AUDIT"
-    },
-    {
-      "name": "platform.logging.audit.async",
-      "type": "java.lang.Boolean",
-      "description": "Cho phép publisher audit tùy biến xử lý bất đồng bộ; mặc định đồng bộ để giữ thứ tự.",
-      "defaultValue": false
-    },
-    {
       "name": "platform.logging.audit.publish-spring-event",
       "type": "java.lang.Boolean",
-      "description": "Publish event aggregate qua Spring ApplicationEventPublisher.",
+      "description": "Publish audit event qua ApplicationEventPublisher.",
       "defaultValue": true
     },
     {
       "name": "platform.logging.audit.fail-mode",
       "type": "com.company.platform.logging.autoconfigure.properties.PlatformLoggingProperties$AuditFailureMode",
-      "description": "FAIL_OPEN mặc định; FAIL_CLOSED chỉ dùng cho flow compliance explicit.",
+      "description": "FAIL_OPEN mặc định; FAIL_CLOSED chỉ dành cho flow compliance explicit.",
       "defaultValue": "FAIL_OPEN"
-    },
-    {
-      "name": "platform.logging.security.reject-insecure-production-config",
-      "type": "java.lang.Boolean",
-      "description": "Từ chối cấu hình masking/crypto không an toàn trong production.",
-      "defaultValue": true
-    },
-    {
-      "name": "platform.logging.security.allow-plaintext-sensitive-log",
-      "type": "java.lang.Boolean",
-      "description": "Cho phép plaintext nhạy cảm; mặc định false và bị từ chối trong môi trường an toàn.",
-      "defaultValue": false
-    },
-    {
-      "name": "platform.logging.security.allow-inline-keys",
-      "type": "java.lang.Boolean",
-      "description": "Cho phép key inline; module không cung cấp property raw key và mặc định cấm.",
-      "defaultValue": false
     },
     {
       "name": "platform.logging.security.allow-weak-crypto",
       "type": "java.lang.Boolean",
       "description": "Cho phép crypto yếu; mặc định false và bị cấm trong production.",
       "defaultValue": false
-    },
-    {
-      "name": "platform.logging.security.emergency-allow-unmasked-production",
-      "type": "java.lang.Boolean",
-      "description": "Emergency override riêng cho masking production; chỉ dùng theo quy trình kiểm soát.",
-      "defaultValue": false
-    },
-    {
-      "name": "platform.logging.metrics.enabled",
-      "type": "java.lang.Boolean",
-      "description": "Bật metric low-cardinality nếu MeterRegistry tồn tại.",
-      "defaultValue": true
     }
   ]
 }

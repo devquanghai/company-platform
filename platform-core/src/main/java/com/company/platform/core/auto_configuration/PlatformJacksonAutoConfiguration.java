@@ -3,9 +3,9 @@ package com.company.platform.core.auto_configuration;
 import com.company.platform.core.config.jackson.*;
 import com.company.platform.core.configuration.properties.PlatformJacksonProperties;
 import com.company.platform.core.json.JsonMapperHelper;
-import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -34,8 +34,10 @@ import java.util.UUID;
 public class PlatformJacksonAutoConfiguration {
 
     @Bean
-    ApplicationRunner jsonMapperInitializer(JsonMapper mapper) {
-        return args -> JsonMapperHelper.setJsonMapper(mapper);
+    @ConditionalOnMissingBean
+    @ConditionalOnBean(JsonMapper.class)
+    JsonMapperHelper jsonMapperHelper(JsonMapper mapper) {
+        return new JsonMapperHelper(mapper);
     }
 
     @Bean
@@ -72,56 +74,54 @@ public class PlatformJacksonAutoConfiguration {
         if (properties.isStrictScalarCoercion()) {
             configureStrictScalarCoercion(builder);
         }
-        if (properties.isTrimStrings()) {
+        SimpleModule module =
+            new SimpleModule("platform-core-validation");
 
-            SimpleModule module =
-                new SimpleModule("platform-core-validation");
+        module.addDeserializer(
+            String.class,
+            new StrictStringDeserializer(
+                properties.isTrimStrings(),
+                properties.isAllowUnicode(),
+                properties.isAllowSpecialCharacters()
+            )
+        );
 
-            module.addDeserializer(
-                String.class,
-                new StrictStringDeserializer(
-                    properties.isAllowUnicode(),
-                    properties.isAllowSpecialCharacters()
-                )
-            );
+        module.addDeserializer(
+            UUID.class,
+            new StrictUuidDeserializer()
+        );
 
-            module.addDeserializer(
-                UUID.class,
-                new StrictUuidDeserializer()
-            );
+        module.addDeserializer(
+            LocalDate.class,
+            new StrictLocalDateDeserializer()
+        );
 
-            module.addDeserializer(
-                LocalDate.class,
-                new StrictLocalDateDeserializer()
-            );
+        module.addDeserializer(
+            LocalDateTime.class,
+            new StrictLocalDateTimeDeserializer()
+        );
 
-            module.addDeserializer(
-                LocalDateTime.class,
-                new StrictLocalDateTimeDeserializer()
-            );
+        module.addDeserializer(
+            OffsetDateTime.class,
+            new StrictOffsetDateTimeDeserializer()
+        );
 
-            module.addDeserializer(
-                OffsetDateTime.class,
-                new StrictOffsetDateTimeDeserializer()
-            );
+        module.addDeserializer(
+            Instant.class,
+            new StrictInstantDeserializer()
+        );
 
-            module.addDeserializer(
-                Instant.class,
-                new StrictInstantDeserializer()
-            );
+        module.addDeserializer(
+            Boolean.class,
+            new StrictBooleanDeserializer()
+        );
 
-            module.addDeserializer(
-                Boolean.class,
-                new StrictBooleanDeserializer()
-            );
+        module.addDeserializer(
+            boolean.class,
+            new StrictBooleanDeserializer()
+        );
 
-            module.addDeserializer(
-                boolean.class,
-                new StrictBooleanDeserializer()
-            );
-
-            builder.addModule(module);
-        }
+        builder.addModule(module);
     }
 
     private static void configureStrictScalarCoercion(JsonMapper.Builder builder) {

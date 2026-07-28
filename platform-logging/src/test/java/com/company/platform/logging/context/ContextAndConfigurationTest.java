@@ -2,7 +2,6 @@ package com.company.platform.logging.context;
 
 import com.company.platform.logging.autoconfigure.properties.PlatformLoggingProperties;
 import com.company.platform.logging.domain.exception.PlatformLoggingConfigurationException;
-import com.company.platform.logging.domain.model.StructuredLogFormat;
 import com.company.platform.logging.logback.converter.BootstrapLogSanitizer;
 import com.company.platform.logging.logback.converter.MaskingKeyValueConverter;
 import com.company.platform.logging.logback.converter.MaskingMdcConverter;
@@ -16,7 +15,6 @@ import org.slf4j.event.KeyValuePair;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.mock.env.MockEnvironment;
 
-import java.time.Duration;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -69,24 +67,14 @@ class ContextAndConfigurationTest {
     }
 
     @Test
-    void validatorAcceptsDefaultsAndDisabledModule() {
+    void validatorAcceptsDefaults() {
         assertThatCode(() -> validator(new PlatformLoggingProperties(),
             new MockEnvironment(), new DefaultListableBeanFactory()).validate())
             .doesNotThrowAnyException();
-
-        PlatformLoggingProperties disabled = new PlatformLoggingProperties();
-        disabled.setEnabled(false);
-        disabled.getCrypto().setEnabled(false);
-        assertThatCode(() -> validator(disabled, new MockEnvironment(),
-            new DefaultListableBeanFactory()).validate()).doesNotThrowAnyException();
     }
 
     @Test
     void validatorRejectsUnsafeMaskingRulesAndProductionOverrides() {
-        invalid(properties -> {
-            properties.setEnvironment("prod");
-            properties.getMasking().setEnabled(false);
-        });
         invalid(properties -> addRule(properties, null, "field"));
         invalid(properties -> {
             addRule(properties, "duplicate", "field");
@@ -130,23 +118,12 @@ class ContextAndConfigurationTest {
 
     @Test
     void validatorRejectsUnsafeCryptoOutputAndRawPayloadCombinations() {
-        invalid(properties -> properties.getCrypto().setEnabled(false));
         invalid(properties -> properties.getCrypto().getDefaults().setKeyAlias(" "));
         invalid(properties -> {
             properties.setEnvironment("prod");
             properties.getCrypto().setAllowLegacyAlgorithms(true);
         });
         invalid(properties -> properties.getCrypto().getProviders().getJasypt().setEnabled(true));
-        invalid(properties -> properties.getAsync().setFlushTimeout(Duration.ZERO));
-        invalid(properties -> {
-            properties.getFile().setEnabled(true);
-            properties.getFile().setPath(" ");
-        });
-        invalid(properties -> {
-            properties.getStructured().setFormat(StructuredLogFormat.CUSTOM);
-            properties.getStructured().setCustomFormatter("");
-        });
-
         PlatformLoggingProperties properties = new PlatformLoggingProperties();
         MockEnvironment environment = new MockEnvironment()
             .withProperty("platform.core.web.request-logging-enabled", "true")
