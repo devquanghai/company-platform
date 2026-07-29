@@ -44,11 +44,32 @@ class PlatformLoggingArtifactTest {
     @Test
     void packagesReusableLogbackFragments() {
         List<String> fragments = List.of(
-            "defaults.xml", "console-text-appender.xml", "console-json-appender.xml",
-            "rolling-file-appender.xml", "async-appender.xml", "audit-appender.xml",
-            "platform-loggers.xml", "platform-console.xml");
+            "defaults.xml", "console-text-appender.xml",
+            "console-highlight-appender.xml", "console-json-appender.xml",
+            "rolling-file-appender.xml", "async-appender.xml",
+            "audit-appender.xml", "platform-loggers.xml", "platform-console.xml");
         fragments.forEach(name -> assertThat(getClass().getClassLoader().getResource(
             "com/company/platform/logging/logback/" + name)).isNotNull());
+    }
+
+    @Test
+    void textPatternsExposeCompleteTraceAndRequestCorrelation() throws Exception {
+        String defaults = resource(
+            "com/company/platform/logging/logback/defaults.xml");
+        String highlight = resource(
+            "com/company/platform/logging/logback/console-highlight-appender.xml");
+
+        assertThat(defaults)
+            .contains("PLATFORM_TEXT_PATTERN", "PLATFORM_HIGHLIGHT_PATTERN")
+            .contains("traceId=%X{traceId:-}")
+            .contains("spanId=%X{spanId:-}")
+            .contains("correlationId=%X{correlationId:-}")
+            .contains("requestId=%X{requestId:-}")
+            .contains("%highlight(%-5level)")
+            .contains("%maskedMsg", "%maskedKv", "%maskedMdc", "%safeEx");
+        assertThat(highlight)
+            .contains("PLATFORM_CONSOLE_HIGHLIGHT")
+            .contains("${PLATFORM_HIGHLIGHT_PATTERN}");
     }
 
     private static String resource(String name) throws Exception {

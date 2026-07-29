@@ -1,8 +1,10 @@
 package com.company.platform.integration;
 
 import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.AsyncAppender;
 import ch.qos.logback.classic.encoder.PatternLayoutEncoder;
 import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.Appender;
 import ch.qos.logback.core.ConsoleAppender;
 import ch.qos.logback.core.read.ListAppender;
 import com.company.platform.core.time.TimeProvider;
@@ -19,6 +21,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
@@ -49,6 +53,7 @@ class PlatformModulesIntegrationTest {
     @Autowired DataMaskingService maskingService;
     @Autowired ObservationRegistry observationRegistry;
     @Autowired IntegrationScenarioController controller;
+    @Autowired Environment environment;
     @Value("${local.server.port}") int serverPort;
 
     @DynamicPropertySource
@@ -76,7 +81,7 @@ class PlatformModulesIntegrationTest {
             assertThat(exchangeOperations).isNotNull();
             assertThat(maskingService).isNotNull();
             assertThat(observationRegistry).isNotNull();
-            assertMaskingLogbackFragmentIsActive();
+            assertEnvironmentLogbackConfigurationIsActive();
             assertThat(result.getUpstreamStatus()).isEqualTo(200);
             assertThat(result.getUpstreamBody()).isEqualTo("core-exchange-logging-ok");
             assertThat(result.getMaskedEmail())
@@ -94,11 +99,14 @@ class PlatformModulesIntegrationTest {
                 .doesNotContain(RAW_EMAIL);
             assertThat(fields)
                 .containsEntry("event.name", "PLATFORM_INTEGRATION_COMPLETED")
-                .containsEntry("customer.email", "al***@example.com");
-            if (result.getTraceId() != null) {
-                assertThat(fields).containsEntry("trace.id", result.getTraceId());
-                assertThat(result.getSpanId()).isNotBlank();
-            }
+                .containsEntry("customer.email", "al***@example.com")
+                .containsEntry("trace.id", result.getTraceId())
+                .containsEntry("span.id", result.getSpanId());
+            assertThat(result.getTraceId()).isNotBlank();
+            assertThat(result.getSpanId()).isNotBlank();
+            assertThat(event.getMDCPropertyMap())
+                .containsEntry("traceId", result.getTraceId())
+                .containsEntry("spanId", result.getSpanId());
         } finally {
             logger.detachAppender(appender);
             appender.stop();
@@ -222,15 +230,37 @@ class PlatformModulesIntegrationTest {
         appender.stop();
     }
 
-    private static void assertMaskingLogbackFragmentIsActive() {
+    private void assertEnvironmentLogbackConfigurationIsActive() {
         Logger root = (Logger) LoggerFactory.getLogger(ROOT_LOGGER_NAME);
+        if (environment.acceptsProfiles(Profiles.of("prod"))) {
+            Appender<ILoggingEvent> appender = root.getAppender("PLATFORM_ASYNC");
+            assertThat(appender).isInstanceOf(AsyncAppender.class);
+            return;
+        }
+        if (environment.acceptsProfiles(Profiles.of("uat"))) {
+            Appender<ILoggingEvent> appender =
+                root.getAppender("PLATFORM_CONSOLE_JSON");
+            assertThat(appender).isInstanceOf(ConsoleAppender.class);
+            return;
+        }
+
         ConsoleAppender<?> console = (ConsoleAppender<?>)
-            root.getAppender("PLATFORM_CONSOLE_TEXT");
+            root.getAppender("PLATFORM_CONSOLE_HIGHLIGHT");
         assertThat(console).isNotNull();
         assertThat(console.getEncoder()).isInstanceOf(PatternLayoutEncoder.class);
         PatternLayoutEncoder encoder = (PatternLayoutEncoder) console.getEncoder();
         assertThat(encoder.getPattern())
-            .contains("%maskedMsg", "%maskedKv", "%maskedMdc", "%safeEx");
+            .contains(
+                "%highlight",
+                "traceId=%X{traceId:-}",
+                "spanId=%X{spanId:-}",
+                "correlationId=%X{correlationId:-}",
+                "requestId=%X{requestId:-}",
+                "%maskedMsg",
+                "%maskedKv",
+                "%maskedMdc",
+                "%safeEx"
+            );
     }
 
     private static HttpServer startUpstream() {

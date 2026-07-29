@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <included>
     <property name="PLATFORM_TEXT_PATTERN"
-              value="%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %5p [%thread] [%X{traceId:-}] [%X{requestId:-}] %logger{36} - %maskedMsg %maskedKv %maskedMdc%n%safeEx"/>
+              value="%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] [traceId=%X{traceId:-} spanId=%X{spanId:-}] [correlationId=%X{correlationId:-} requestId=%X{requestId:-}] %logger{36} - %maskedMsg %maskedKv %maskedMdc%n%safeEx"/>
+    <property name="PLATFORM_HIGHLIGHT_PATTERN"
+              value="%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %highlight(%-5level) %magenta([%thread]) %cyan([traceId=%X{traceId:-} spanId=%X{spanId:-}]) %yellow([correlationId=%X{correlationId:-} requestId=%X{requestId:-}]) %white(%logger{36}) - %maskedMsg %maskedKv %maskedMdc%n%safeEx"/>
     <property name="PLATFORM_STRUCTURED_FORMAT" value="${PLATFORM_STRUCTURED_FORMAT:-ecs}"/>
     <conversionRule conversionWord="maskedMsg"
                     class="com.company.platform.logging.logback.converter.MaskingMessageConverter"/>

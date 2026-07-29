@@ -1,16 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
-    <springProfile name="local | dev | test">
-        <include resource="com/company/platform/logging/logback/platform-console.xml"/>
+    <!-- Local is also the safe default when no explicit profile is active. -->
+    <springProfile name="default | local">
+        <include resource="com/company/platform/logging/logback/defaults.xml"/>
+        <include resource="com/company/platform/logging/logback/console-highlight-appender.xml"/>
+        <include resource="com/company/platform/logging/logback/audit-appender.xml"/>
+        <include resource="com/company/platform/logging/logback/platform-loggers.xml"/>
+        <root level="${ROOT_LOG_LEVEL:-DEBUG}">
+            <appender-ref ref="PLATFORM_CONSOLE_HIGHLIGHT"/>
+        </root>
     </springProfile>
 
-    <springProfile name="staging | production">
+    <!-- SIT remains human-readable, but defaults to INFO to reduce noise. -->
+    <springProfile name="sit">
+        <include resource="com/company/platform/logging/logback/defaults.xml"/>
+        <include resource="com/company/platform/logging/logback/console-highlight-appender.xml"/>
+        <include resource="com/company/platform/logging/logback/audit-appender.xml"/>
+        <include resource="com/company/platform/logging/logback/platform-loggers.xml"/>
+        <root level="${ROOT_LOG_LEVEL:-INFO}">
+            <appender-ref ref="PLATFORM_CONSOLE_HIGHLIGHT"/>
+        </root>
+    </springProfile>
+
+    <!-- UAT is machine-readable and synchronous for deterministic verification. -->
+    <springProfile name="uat">
         <include resource="com/company/platform/logging/logback/defaults.xml"/>
         <include resource="com/company/platform/logging/logback/console-json-appender.xml"/>
         <include resource="com/company/platform/logging/logback/audit-appender.xml"/>
         <include resource="com/company/platform/logging/logback/platform-loggers.xml"/>
         <root level="${ROOT_LOG_LEVEL:-INFO}">
             <appender-ref ref="PLATFORM_CONSOLE_JSON"/>
+        </root>
+    </springProfile>
+
+    <!-- Production keeps structured stdout and isolates application threads. -->
+    <springProfile name="prod">
+        <include resource="com/company/platform/logging/logback/defaults.xml"/>
+        <include resource="com/company/platform/logging/logback/console-json-appender.xml"/>
+        <include resource="com/company/platform/logging/logback/audit-appender.xml"/>
+        <include resource="com/company/platform/logging/logback/platform-loggers.xml"/>
+        <property name="PLATFORM_ASYNC_DELEGATE" value="PLATFORM_CONSOLE_JSON"/>
+        <include resource="com/company/platform/logging/logback/async-appender.xml"/>
+        <root level="${ROOT_LOG_LEVEL:-INFO}">
+            <appender-ref ref="PLATFORM_ASYNC"/>
         </root>
     </springProfile>
 </configuration>

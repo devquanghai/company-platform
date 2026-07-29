@@ -11,6 +11,9 @@ management:
   tracing:
     sampling:
       probability: 1.0
+    export:
+      zipkin:
+        enabled: false
   endpoints:
     web:
       exposure:
@@ -54,7 +57,7 @@ platform:
           sensitive-headers:
             - Authorization
   logging:
-    environment: local
+    environment: ${PLATFORM_ENVIRONMENT:${SPRING_PROFILES_ACTIVE:local}}
     masking:
       rules:
         - name: integration-email

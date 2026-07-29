@@ -93,8 +93,16 @@ see `docs/examples/logback-spring.xml` for profile-based text/JSON output.
 
 ## 9. Environment profiles
 
-Use TEXT console in local/dev/test. Use ECS/GELF/LOGSTASH stdout in
-staging/production. File logging is opt-in to avoid duplicate container
+Copy `docs/examples/logback-spring.xml` into the consuming application:
+
+- `default`/`local`: highlighted text console, root `DEBUG` by default.
+- `sit`: highlighted text console, root `INFO` by default.
+- `uat`: synchronous ECS JSON stdout for deterministic verification.
+- `prod`: ECS JSON stdout through the bounded platform async appender.
+
+Every text line exposes `traceId`, `spanId`, `correlationId` and `requestId`.
+Spring Boot structured JSON includes Micrometer tracing MDC fields as individual
+searchable fields. File logging remains opt-in to avoid duplicate container
 ingestion.
 
 ## 10. PII masking
@@ -142,6 +150,29 @@ Trace/span context comes from the platform `TraceContextProvider`, backed by
 Spring Boot Micrometer Observation/Tracing when available. The library does not
 depend directly on OpenTelemetry and does not maintain a second tracing or MDC
 lifecycle.
+
+The consuming application must choose a Micrometer Tracing backend. For example,
+the integration application uses Spring Boot's official Brave/Zipkin starter:
+
+```xml
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-zipkin</artifactId>
+</dependency>
+```
+
+```yaml
+management:
+  tracing:
+    sampling:
+      probability: 1.0 # local/SIT; use an operationally appropriate rate in prod
+    export:
+      zipkin:
+        enabled: false # enable and configure the endpoint when a backend is ready
+```
+
+Spring Boot then owns span creation and the MDC `traceId`/`spanId` lifecycle.
+`platform-core` continues to own bounded `correlationId`/`requestId` values.
 
 ## 18. Servlet
 
