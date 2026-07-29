@@ -3,6 +3,7 @@ package com.company.platform.core.auto_configuration;
 import com.company.platform.core.config.jackson.*;
 import com.company.platform.core.configuration.properties.PlatformJacksonProperties;
 import com.company.platform.core.json.JsonMapperHelper;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -26,6 +27,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.UUID;
+import java.util.function.UnaryOperator;
 
 @AutoConfiguration(after = JacksonAutoConfiguration.class)
 @ConditionalOnClass(JsonMapper.class)
@@ -46,83 +48,42 @@ public class PlatformJacksonAutoConfiguration {
         return builder -> customize(builder, properties);
     }
 
-    private static void customize(JsonMapper.Builder builder, PlatformJacksonProperties properties) {
-        builder.configure(
-            DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,
-            properties.isFailOnUnknownProperties()
-        );
-        builder.configure(
-            DeserializationFeature.FAIL_ON_TRAILING_TOKENS,
-            properties.isFailOnTrailingTokens()
-        );
-        builder.configure(
-            DeserializationFeature.ACCEPT_FLOAT_AS_INT,
-            !properties.isFailOnFloatToInteger()
-        );
-        builder.configure(
-            DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES,
-            properties.isFailOnNullForPrimitives()
-        );
-        builder.configure(
-            MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS,
-            properties.isAcceptCaseInsensitiveEnums()
-        );
-        builder.configure(
-            SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS,
-            properties.isOrderMapEntriesByKeys()
-        );
+    public static JsonMapper customize(JsonMapper.Builder builder, PlatformJacksonProperties properties) {
+        builder.enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS)
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, properties.isFailOnUnknownProperties())
+            .configure(DeserializationFeature.FAIL_ON_TRAILING_TOKENS, properties.isFailOnTrailingTokens())
+            .configure(DeserializationFeature.ACCEPT_FLOAT_AS_INT, !properties.isFailOnFloatToInteger())
+            .configure(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES, properties.isFailOnNullForPrimitives())
+            .configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS, properties.isAcceptCaseInsensitiveEnums())
+            .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, properties.isOrderMapEntriesByKeys());
+
         if (properties.isStrictScalarCoercion()) {
             configureStrictScalarCoercion(builder);
         }
-        SimpleModule module =
-            new SimpleModule("platform-core-validation");
 
-        module.addDeserializer(
-            String.class,
-            new StrictStringDeserializer(
-                properties.isTrimStrings(),
-                properties.isAllowUnicode(),
-                properties.isAllowSpecialCharacters()
-            )
-        );
-
-        module.addDeserializer(
-            UUID.class,
-            new StrictUuidDeserializer()
-        );
-
-        module.addDeserializer(
-            LocalDate.class,
-            new StrictLocalDateDeserializer()
-        );
-
-        module.addDeserializer(
-            LocalDateTime.class,
-            new StrictLocalDateTimeDeserializer()
-        );
-
-        module.addDeserializer(
-            OffsetDateTime.class,
-            new StrictOffsetDateTimeDeserializer()
-        );
-
-        module.addDeserializer(
-            Instant.class,
-            new StrictInstantDeserializer()
-        );
-
-        module.addDeserializer(
-            Boolean.class,
-            new StrictBooleanDeserializer()
-        );
-
-        module.addDeserializer(
-            boolean.class,
-            new StrictBooleanDeserializer()
-        );
+        SimpleModule module = new SimpleModule("platform-core-validation");
+        module.addDeserializer(String.class, new StrictStringDeserializer(
+            properties.isTrimStrings(),
+            properties.isAllowUnicode(),
+            properties.isAllowSpecialCharacters()
+        ));
+        module.addDeserializer(UUID.class, new StrictUuidDeserializer());
+        module.addDeserializer(LocalDate.class, new StrictLocalDateDeserializer());
+        module.addDeserializer(LocalDateTime.class, new StrictLocalDateTimeDeserializer());
+        module.addDeserializer(OffsetDateTime.class, new StrictOffsetDateTimeDeserializer());
+        module.addDeserializer(Instant.class, new StrictInstantDeserializer());
+        module.addDeserializer(Boolean.class, new StrictBooleanDeserializer());
+        module.addDeserializer(boolean.class, new StrictBooleanDeserializer());
 
         builder.addModule(module);
+
+        builder.changeDefaultPropertyInclusion(inclusion ->
+            JsonInclude.Value.construct(JsonInclude.Include.NON_NULL, JsonInclude.Include.NON_NULL)
+        );
+
+        return builder.build();
     }
+
 
     private static void configureStrictScalarCoercion(JsonMapper.Builder builder) {
         builder.withCoercionConfig(LogicalType.Integer, coercion -> {

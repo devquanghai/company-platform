@@ -73,6 +73,7 @@ platform:
           pii-type: DATE_OF_BIRTH
           masking-type: PARTIAL
           visible-prefix: 4
+          visible-suffix: 2
 
         - name: integration-phone
           match-type: FIELD_NAME

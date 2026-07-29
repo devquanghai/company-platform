@@ -1,5 +1,6 @@
 package com.company.platform.integration;
 
+import com.company.platform.core.rest.response.ApiResponse;
 import com.company.platform.logging.annotation.crypto.DecryptValue;
 import com.company.platform.logging.annotation.crypto.EncryptResult;
 import com.company.platform.logging.annotation.logging.Loggable;
@@ -37,10 +38,10 @@ public class IntegrationScenarioController {
     }
 
     @PostMapping
-    public IntegrationScenarioResult executePost(@RequestBody @Valid IntegrationRequest request)
+    public ApiResponse<IntegrationScenarioResult> executePost(@RequestBody @Valid IntegrationRequest request)
     {
         log.debug("Executing platform integration scenario");
-        return scenario.executePost(request);
+        return ApiResponse.success(scenario.executePost(request));
     }
 
     @PostMapping("/masking/annotations")
