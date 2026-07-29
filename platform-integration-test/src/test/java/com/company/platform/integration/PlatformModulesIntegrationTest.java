@@ -180,6 +180,28 @@ class PlatformModulesIntegrationTest {
                 .extracting(ILoggingEvent::getFormattedMessage)
                 .anyMatch(message -> message.startsWith(
                     "HTTP POST /platform/integration completed status=400"));
+
+            HttpRequest jacksonRequest = HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:" + serverPort
+                    + "/platform/integration"))
+                .header("Content-Type", "application/json")
+                .header("Accept-Language", "vi")
+                .POST(HttpRequest.BodyPublishers.ofString("""
+                    {
+                      "email":"alice@example.com",
+                      "dateOfBirth":"29/07/2026"
+                    }
+                    """))
+                .build();
+            HttpResponse<String> jacksonResponse = client.send(
+                jacksonRequest, HttpResponse.BodyHandlers.ofString());
+
+            assertThat(jacksonResponse.statusCode()).isEqualTo(400);
+            assertThat(jacksonResponse.body())
+                .contains("\"field\":\"dateOfBirth\"")
+                .contains("\"code\":\"error.validation.field-date\"")
+                .contains("Trường dateOfBirth phải là ngày hợp lệ.")
+                .doesNotContain("DateTimeParseException");
         } finally {
             detach(exceptionLogger, exceptionAppender);
             detach(requestLogger, requestAppender);

@@ -262,6 +262,7 @@ class PlatformExceptionHandlerTest {
             .satisfies(detail -> {
                 assertThat(detail.getField()).isEqualTo("page");
                 assertThat(detail.getCode()).isEqualTo("error.validation.field-required");
+                assertThat(detail.getMessage()).isEqualTo("Field page is required.");
             });
 
         Method method = Form.class.getDeclaredMethod("validate", String.class);
@@ -275,6 +276,9 @@ class PlatformExceptionHandlerTest {
         assertThat(mismatch.getBody().getError().getDetails()).singleElement()
             .satisfies(detail -> {
                 assertThat(detail.getField()).isEqualTo("page");
+                assertThat(detail.getCode()).isEqualTo("error.validation.field-type");
+                assertThat(detail.getMessage())
+                    .isEqualTo("Field page must have type Integer.");
                 assertThat(detail.getRejectedValue()).isEqualTo("abc");
             });
 
@@ -284,6 +288,18 @@ class PlatformExceptionHandlerTest {
             request
         );
         assertThat(unknownType.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(unknownType.getBody().getError().getDetails().getFirst().getMessage())
+            .isEqualTo("Field page must have type unknown.");
+
+        LocaleContextHolder.setLocale(Locale.forLanguageTag("vi"));
+        assertThat(handler.handleTypeMismatch(
+            new MethodArgumentTypeMismatchException(
+                "abc", Integer.class, "page", parameter, null),
+            request
+        ).getBody().getError().getDetails().getFirst().getMessage())
+            .isEqualTo("Trường page phải có kiểu dữ liệu Integer.");
+        LocaleContextHolder.setLocale(Locale.ENGLISH);
+
         properties.setIncludeRejectedValue(false);
         assertThat(handler.handleTypeMismatch(
             new MethodArgumentTypeMismatchException(

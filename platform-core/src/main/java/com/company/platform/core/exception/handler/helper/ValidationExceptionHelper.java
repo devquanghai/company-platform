@@ -110,11 +110,9 @@ public final class ValidationExceptionHelper {
         return new ErrorDetail(
             exception.getParameterName(),
             ValidationCode.FIELD_REQUIRED.getKey(),
-            i18n.getOrDefault(
-                "validation.required",
-                "Field is required.",
-                exception.getParameterName()
-            ),
+            i18n.get(
+                ValidationCode.FIELD_REQUIRED,
+                exception.getParameterName()),
             null,
             null
         );
@@ -143,13 +141,11 @@ public final class ValidationExceptionHelper {
 
         return new ErrorDetail(
             exception.getName(),
-            ValidationCode.FIELD_INVALID.getKey(),
-            i18n.getOrDefault(
-                "validation.invalid.type",
-                "Invalid value type.",
+            ValidationCode.FIELD_TYPE.getKey(),
+            i18n.get(
+                ValidationCode.FIELD_TYPE,
                 exception.getName(),
-                expectedType
-            ),
+                expectedType),
             properties.isIncludeRejectedValue()
                 ? exception.getValue()
                 : null,

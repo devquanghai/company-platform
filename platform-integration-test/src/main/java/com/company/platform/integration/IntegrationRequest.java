@@ -17,7 +17,9 @@ import lombok.Setter;
 import lombok.experimental.FieldDefaults;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 
 @Getter
 @Setter
@@ -33,6 +35,9 @@ public class IntegrationRequest {
     String password;
     @MaskPhone
     String phoneNumber;
+    Boolean isActive;
+    OffsetDateTime offsetDateTime;
+    Instant instant;
     Long corporationId;
     BigDecimal amount;
     @PastOrPresent
