@@ -1,5 +1,6 @@
 package com.company.platform.core.auto_configuration;
 
+import com.company.platform.core.configuration.properties.OpenApiAuthenticationType;
 import com.company.platform.core.configuration.properties.PlatformOpenApiProperties;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
@@ -18,6 +19,11 @@ import org.springframework.context.annotation.Bean;
 @ConditionalOnProperty(prefix = "platform.core.openapi", name = "enabled", matchIfMissing = true)
 @EnableConfigurationProperties(PlatformOpenApiProperties.class)
 public class PlatformOpenApiAutoConfiguration {
+    private static final String JWT_SCHEME = "jwt";
+    private static final String APIKEY_SCHEMA = "api-key";
+    private static final String BASIC_AUTH_SCHEME = "basic";
+    private static final String BEARER_FORMAT = "JWT";
+
 
     @Bean
     @ConditionalOnMissingBean(OpenAPI.class)
@@ -28,28 +34,52 @@ public class PlatformOpenApiAutoConfiguration {
             .description(properties.getDescription()));
 
         SecurityScheme scheme = securityScheme(properties);
-        if (scheme != null) {
-            String schemeName = properties.getSecuritySchemeName();
-            openApi.components(new Components().addSecuritySchemes(schemeName, scheme));
-            openApi.addSecurityItem(new SecurityRequirement().addList(schemeName));
+        if (properties.getAuthenticationType().equals(OpenApiAuthenticationType.CLIENT_ID_SECRET)) {
+            this.addSchemaClientId(openApi);
+        } else {
+            if (scheme != null) {
+                openApi.components(new Components().addSecuritySchemes(scheme.getScheme(), scheme));
+                openApi.addSecurityItem(new SecurityRequirement().addList(scheme.getScheme()));
+            }
         }
         return openApi;
     }
 
     private static SecurityScheme securityScheme(PlatformOpenApiProperties properties) {
         return switch (properties.getAuthenticationType()) {
-            case NONE -> null;
+            case NONE, CLIENT_ID_SECRET -> null;
             case JWT -> new SecurityScheme()
+                .scheme(JWT_SCHEME)
                 .type(SecurityScheme.Type.HTTP)
-                .scheme("bearer")
-                .bearerFormat(properties.getBearerFormat());
+                .bearerFormat(BEARER_FORMAT);
             case BASIC_AUTH -> new SecurityScheme()
-                .type(SecurityScheme.Type.HTTP)
-                .scheme("basic");
+                .scheme(BASIC_AUTH_SCHEME)
+                .type(SecurityScheme.Type.HTTP);
             case API_KEY -> new SecurityScheme()
+                .scheme(APIKEY_SCHEMA)
                 .type(SecurityScheme.Type.APIKEY)
                 .in(properties.getApiKeyLocation())
-                .name(properties.getApiKeyName());
+                .name("X-API-KEY");
         };
+    }
+
+    private void addSchemaClientId(OpenAPI openApi) {
+        SecurityScheme clientId = new SecurityScheme()
+            .type(SecurityScheme.Type.APIKEY)
+            .in(SecurityScheme.In.HEADER)
+            .name("X-Client-Id");
+
+        SecurityScheme clientSecret = new SecurityScheme()
+            .type(SecurityScheme.Type.APIKEY)
+            .in(SecurityScheme.In.HEADER)
+            .name("X-Client-Secret");
+
+        openApi.components(new Components()
+            .addSecuritySchemes("ClientId", clientId)
+            .addSecuritySchemes("ClientSecret", clientSecret));
+
+        openApi.addSecurityItem(new SecurityRequirement()
+            .addList("ClientId")
+            .addList("ClientSecret"));
     }
 }

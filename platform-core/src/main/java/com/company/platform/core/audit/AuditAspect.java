@@ -117,8 +117,8 @@ public final class AuditAspect {
             CurrentTraceContext trace = traceContextProvider.getCurrentContext();
             eventPublisher.publishEvent(AuditEvent.builder()
                 .timestamp(timeProvider.now())
-                .serviceName(properties.getServiceName())
-                .environment(properties.getEnvironment())
+//                .serviceName(properties.getServiceName())
+//                .environment(properties.getEnvironment())
                 .traceId(trace.getTraceId())
                 .spanId(trace.getSpanId())
                 .correlationId(requestContextProvider.getCorrelationId())

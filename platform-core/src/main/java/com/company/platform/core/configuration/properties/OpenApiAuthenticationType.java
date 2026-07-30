@@ -4,5 +4,6 @@ public enum OpenApiAuthenticationType {
     NONE,
     JWT,
     BASIC_AUTH,
-    API_KEY
+    API_KEY,
+    CLIENT_ID_SECRET
 }

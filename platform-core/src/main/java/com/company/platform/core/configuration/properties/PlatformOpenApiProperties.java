@@ -23,10 +23,6 @@ public class PlatformOpenApiProperties {
     String description = "Platform service API";
     /** Kiểu xác thực được khai báo mặc định cho toàn bộ operation. */
     OpenApiAuthenticationType authenticationType = OpenApiAuthenticationType.NONE;
-    /** Tên security scheme trong phần components của OpenAPI. */
-    String securitySchemeName = "bearerAuth";
-    /** Định dạng bearer token hiển thị cho OpenAPI client, ví dụ JWT. */
-    String bearerFormat = "JWT";
     /** Tên header, query parameter hoặc cookie chứa API key. */
     String apiKeyName = "X-API-KEY";
     /** Vị trí nhận API key trong request. */

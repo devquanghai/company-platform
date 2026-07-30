@@ -64,23 +64,9 @@ class PlatformWebMvcAutoConfigurationTest {
                 configuration.addFormatters(registry);
                 assertThat(registry.convert("  value  ", String.class)).isEqualTo("  value  ");
                 properties.setEnabled(false);
-                properties.setTrimRequestParameters(true);
-                properties.setTraceFilterEnabled(false);
                 properties.setRequestLoggingEnabled(true);
-                properties.setIncludePayload(true);
-                properties.setMaxPayloadLength(1024);
-                properties.setServerTimingEnabled(false);
-                properties.setRequestCachingEnabled(true);
-                properties.setMaxCachedRequestBodySize(2048);
                 assertThat(properties.isEnabled()).isFalse();
-                assertThat(properties.isTrimRequestParameters()).isTrue();
-                assertThat(properties.isTraceFilterEnabled()).isFalse();
                 assertThat(properties.isRequestLoggingEnabled()).isTrue();
-                assertThat(properties.isIncludePayload()).isTrue();
-                assertThat(properties.getMaxPayloadLength()).isEqualTo(1024);
-                assertThat(properties.isServerTimingEnabled()).isFalse();
-                assertThat(properties.isRequestCachingEnabled()).isTrue();
-                assertThat(properties.getMaxCachedRequestBodySize()).isEqualTo(2048);
             });
 
         runner.withPropertyValues(

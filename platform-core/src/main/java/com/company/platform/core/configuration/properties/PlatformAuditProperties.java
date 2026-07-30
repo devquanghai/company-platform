@@ -22,12 +22,6 @@ public class PlatformAuditProperties {
     String defaultAuditor = "system";
     /** Phát sự kiện audit khi thao tác được đánh dấu kết thúc với lỗi. */
     boolean publishFailureEvents = true;
-    /** Tên service được ghi vào mọi audit event. */
-    @NotBlank
-    String serviceName = "application";
-    /** Tên môi trường triển khai được ghi vào mọi audit event. */
-    @NotBlank
-    String environment = "default";
     /** Múi giờ IANA dùng để tạo thời điểm auditing JPA. */
     @NotBlank
     String timezone = "UTC";
