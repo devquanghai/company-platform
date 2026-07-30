@@ -84,6 +84,6 @@ public class PlatformWebMvcAutoConfiguration {
         PlatformWebProperties properties,
         ObjectProvider<RequestTimingInterceptor> timingInterceptor
     ) {
-        return new PlatformWebMvcConfiguration(properties, timingInterceptor.getIfAvailable());
+        return new PlatformWebMvcConfiguration(timingInterceptor.getIfAvailable());
     }
 }

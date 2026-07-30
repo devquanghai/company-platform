@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Cache Consistency"
+  short_description: "Review cache atomicity and consistency"
+  default_prompt: "Use $review-cache-consistency to review cache atomicity, CAS, locking, and stampede protection."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Verify Platform Queue"
+  short_description: "Run the complete platform-queue quality gate"
+  default_prompt: "Use $verify-platform-queue to validate platform-queue before delivery."

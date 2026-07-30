@@ -29,7 +29,7 @@ platform:
       authentication-type: CLIENT_ID_SECRET
     web:
       request-logging-enabled: true
-      include-payload: false
+      include-payload: true
   service-exchange:
     enabled: true
     source-application: platform-integration-test

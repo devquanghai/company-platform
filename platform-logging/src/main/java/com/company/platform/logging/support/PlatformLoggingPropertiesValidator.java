@@ -41,7 +41,6 @@ public final class PlatformLoggingPropertiesValidator
     public void validate() {
         validateMasking();
         validateCrypto();
-        rejectRawCorePayloadLogger();
     }
 
     private void validateMasking() {
@@ -132,16 +131,6 @@ public final class PlatformLoggingPropertiesValidator
                 "org.jasypt.encryption.pbe.StandardPBEByteEncryptor",
                 getClass().getClassLoader())) {
             fail("Jasypt provider is enabled but Jasypt is not on the classpath");
-        }
-    }
-
-    private void rejectRawCorePayloadLogger() {
-        boolean requestLogging = environment.getProperty(
-            "platform.core.web.request-logging-enabled", Boolean.class, false);
-        boolean includePayload = environment.getProperty(
-            "platform.core.web.include-payload", Boolean.class, false);
-        if (requestLogging && includePayload) {
-            fail("core raw request payload logging conflicts with secure masking");
         }
     }
 

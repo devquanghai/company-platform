@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Rabbit Queue"
+  short_description: "Review RabbitMQ topology, confirms, acknowledgements, and DLQ"
+  default_prompt: "Use $review-rabbit-queue to review the RabbitMQ queue adapter."

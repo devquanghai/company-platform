@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Kafka Queue"
+  short_description: "Review Kafka reliability, retry, DLT, ordering, and transactions"
+  default_prompt: "Use $review-kafka-queue to review the Kafka queue adapter."

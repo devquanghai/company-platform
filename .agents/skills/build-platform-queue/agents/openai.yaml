@@ -1,0 +1,4 @@
+interface:
+  display_name: "Build Platform Queue"
+  short_description: "Build or extend the enterprise platform queue module"
+  default_prompt: "Use $build-platform-queue to implement or extend platform-queue safely."

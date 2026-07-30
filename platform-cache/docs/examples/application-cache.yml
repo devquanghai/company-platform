@@ -1,0 +1,157 @@
+platform:
+  cache:
+    enabled: true
+    annotations-enabled: true
+    application: ${spring.application.name:application}
+    environment: ${APP_ENVIRONMENT:local}
+
+    defaults:
+      ttl: 10m
+      key-prefix: ${spring.application.name:application}:cache
+      cache-null-values: false
+      key-hash-enabled: false
+      maximum-entry-size: 1048576
+
+    stores:
+      local-default:
+        enabled: true
+        provider: CAFFEINE
+        caffeine:
+          maximum-size: 10000
+          expire-after-write: 10m
+          record-stats: true
+          weak-keys: false
+          weak-values: false
+          soft-values: false
+
+      redis-primary:
+        enabled: true
+        provider: REDIS
+        redis:
+          mode: SENTINEL
+          database: 0
+          client-name: ${spring.application.name:platform-cache}
+          command-timeout: 2s
+          connect-timeout: 2s
+          shutdown-timeout: 2s
+          username: ${REDIS_USERNAME:}
+          password: ${REDIS_PASSWORD:}
+          ssl:
+            enabled: ${REDIS_SSL_ENABLED:false}
+            bundle: ${REDIS_SSL_BUNDLE:}
+            verify-peer: true
+          pool:
+            enabled: true
+            max-active: 50
+            max-idle: 20
+            min-idle: 5
+            max-wait: 1s
+            time-between-eviction-runs: 30s
+          sentinel:
+            master: ${REDIS_SENTINEL_MASTER:mymaster}
+            nodes:
+              - ${REDIS_SENTINEL_1:redis-sentinel-1:26379}
+              - ${REDIS_SENTINEL_2:redis-sentinel-2:26379}
+              - ${REDIS_SENTINEL_3:redis-sentinel-3:26379}
+            username: ${REDIS_SENTINEL_USERNAME:}
+            password: ${REDIS_SENTINEL_PASSWORD:}
+          serialization:
+            key: STRING
+            value: JSON
+            value-envelope-enabled: true
+            schema-version: 1
+            schema-id: platform-cache
+            trusted-packages: []
+          resilience:
+            enabled: true
+            retry:
+              enabled: true
+              max-attempts: 2
+              wait-duration: 100ms
+              exponential-backoff-enabled: true
+              multiplier: 2.0
+              max-wait-duration: 500ms
+              retry-exceptions: []
+              ignore-exceptions: []
+            circuit-breaker:
+              enabled: true
+              sliding-window-size: 20
+              minimum-number-of-calls: 10
+              failure-rate-threshold: 50
+              wait-duration-in-open-state: 10s
+              permitted-calls-in-half-open-state: 3
+            bulkhead:
+              enabled: true
+              max-concurrent-calls: 100
+              max-wait-duration: 0ms
+
+    caches:
+      customer-profile:
+        enabled: true
+        store: redis-primary
+        ttl: 15m
+        cache-null-values: false
+        failure-policy: FALLBACK_LOCAL
+        coordination: false
+        key:
+          prefix: customer-profile
+          version: v1
+          sensitive: true
+        fallback:
+          enabled: true
+          type: CAFFEINE
+          mode: STALE_IF_ERROR
+          local-store: local-default
+          ttl: 2m
+          maximum-stale: 5m
+          clear-on-primary-recovery: true
+          allow-local-write-fallback: false
+        stampede:
+          enabled: true
+          mode: SINGLE_FLIGHT
+          wait-timeout: 2s
+          maximum-inflight: 10000
+        ttl-jitter:
+          enabled: true
+          percentage: 10
+        negative-cache:
+          enabled: true
+          ttl: 30s
+
+      reference-data:
+        enabled: true
+        ttl: 1h
+        multi-level:
+          enabled: true
+          l1-store: local-default
+          l2-store: redis-primary
+          l1-ttl: 5m
+          l2-ttl: 1h
+          populate-l1-on-l2-hit: true
+          write-policy: EVICT_L1_THEN_WRITE_L2
+
+      security-state:
+        enabled: true
+        store: redis-primary
+        ttl: 5m
+        failure-policy: FAIL_CLOSED
+        coordination: true
+        fallback:
+          enabled: false
+
+    locking:
+      enabled: false
+      provider: REDISSON
+      wait-time: 2s
+      lease-time: 30s
+      watchdog-enabled: true
+      fencing-enabled: false
+
+    observability:
+      metrics-enabled: true
+      health-enabled: true
+      events-enabled: true
+      local-hit-observation-enabled: false
+      log-cache-key: HASH
+      log-cache-value: false
+      health-timeout: 1s

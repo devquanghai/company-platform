@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Message Delivery"
+  short_description: "Review messaging delivery, retry, inbox, and outbox semantics"
+  default_prompt: "Use $review-message-delivery to review platform-queue delivery guarantees."

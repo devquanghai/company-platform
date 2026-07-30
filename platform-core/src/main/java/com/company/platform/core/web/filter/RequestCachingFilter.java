@@ -43,8 +43,7 @@ public final class RequestCachingFilter extends OncePerRequestFilter {
         try {
             filterChain.doFilter(
                 new CachedBodyHttpServletRequestWrapper(
-                    request,
-                    properties.getMaxCachedRequestBodySize()
+                    request
                 ),
                 response
             );

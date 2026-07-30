@@ -1,0 +1,359 @@
+platform:
+  cache:
+    enabled: true
+    annotations-enabled: true
+    application: platform-integration-test
+    environment: integration-e2e
+    defaults:
+      ttl: 5m
+      key-prefix: platform-integration
+      cache-null-values: false
+      key-hash-enabled: true
+      maximum-entry-size: 1048576
+    stores:
+      local:
+        enabled: true
+        provider: CAFFEINE
+        caffeine:
+          maximum-size: 1000
+          expire-after-write: 5m
+          record-stats: true
+      fallback-local:
+        enabled: true
+        provider: CAFFEINE
+        caffeine:
+          maximum-size: 500
+          expire-after-write: 2m
+          record-stats: true
+      redis:
+        enabled: true
+        provider: REDIS
+        redis:
+          mode: STANDALONE
+          database: 0
+          client-name: platform-integration-cache
+          command-timeout: 2s
+          connect-timeout: 2s
+          shutdown-timeout: 2s
+          ssl:
+            enabled: false
+          pool:
+            enabled: true
+            max-active: 16
+            max-idle: 8
+            min-idle: 1
+            max-wait: 1s
+          standalone:
+            host: localhost
+            port: 6379
+          serialization:
+            key: STRING
+            value: JSON
+            value-envelope-enabled: true
+            schema-id: integration-cache
+            schema-version: 1
+          resilience:
+            enabled: true
+            retry:
+              enabled: true
+              max-attempts: 2
+              wait-duration: 50ms
+              exponential-backoff-enabled: true
+              multiplier: 2
+              max-wait-duration: 200ms
+            circuit-breaker:
+              enabled: true
+              sliding-window-size: 10
+              minimum-number-of-calls: 5
+              failure-rate-threshold: 50
+              wait-duration-in-open-state: 2s
+              permitted-calls-in-half-open-state: 2
+            bulkhead:
+              enabled: true
+              max-concurrent-calls: 32
+              max-wait-duration: 100ms
+      noop:
+        enabled: true
+        provider: NOOP
+    caches:
+      integration-local:
+        enabled: true
+        store: local
+        ttl: 5m
+        stampede:
+          enabled: true
+          mode: SINGLE_FLIGHT
+          wait-timeout: 2s
+          maximum-inflight: 100
+        ttl-jitter:
+          enabled: true
+          percentage: 10
+        negative-cache:
+          enabled: true
+          ttl: 15s
+      integration-redis:
+        enabled: true
+        store: redis
+        ttl: 5m
+        failure-policy: FAIL_CLOSED
+        key:
+          version: v1
+          hash-tag: integration
+          sensitive: true
+      integration-multi:
+        enabled: true
+        ttl: 5m
+        multi-level:
+          enabled: true
+          l1-store: local
+          l2-store: redis
+          l1-ttl: 30s
+          l2-ttl: 5m
+          populate-l1-on-l2-hit: true
+          write-policy: EVICT_L1_THEN_WRITE_L2
+      integration-fallback:
+        enabled: true
+        store: redis
+        ttl: 5m
+        failure-policy: FALLBACK_LOCAL
+        fallback:
+          enabled: true
+          type: CAFFEINE
+          mode: READ_THROUGH
+          local-store: fallback-local
+          ttl: 1m
+          maximum-stale: 2m
+          clear-on-primary-recovery: true
+      integration-coordination:
+        enabled: true
+        store: redis
+        ttl: 5m
+        failure-policy: FAIL_CLOSED
+        coordination: true
+        key:
+          version: v1
+          hash-tag: integration-coordination
+      integration-noop:
+        enabled: true
+        store: noop
+        ttl: 1m
+        failure-policy: FAIL_OPEN
+    locking:
+      enabled: true
+      provider: INTEGRATION_TEST
+      wait-time: 2s
+      lease-time: 10s
+      watchdog-enabled: false
+      fencing-enabled: true
+    observability:
+      metrics-enabled: true
+      health-enabled: true
+      events-enabled: true
+      local-hit-observation-enabled: true
+      log-cache-key: HASH
+      log-cache-value: false
+      health-timeout: 1s
+
+  queue:
+    enabled: true
+    annotations-enabled: true
+    source-application: platform-integration-test
+    environment: local
+    allow-noop: true
+    defaults:
+      serialization: JSON
+      content-type: application/json
+      require-message-id: true
+      require-correlation-id: true
+      include-trace-context: true
+      topology-declaration-mode: DECLARE_AND_VALIDATE
+      max-headers: 64
+      max-header-bytes: 8192
+      max-total-header-bytes: 32768
+      max-payload-bytes: 1048576
+      max-envelope-bytes: 2097152
+      allowed-custom-headers:
+        - tenant-id
+    brokers:
+      kafka-main:
+        enabled: true
+        provider: KAFKA
+        kafka:
+          bootstrap-servers:
+            - localhost:9092
+          client-id-prefix: platform-integration
+          request-timeout: 10s
+          delivery-timeout: 30s
+          max-block: 10s
+          security-protocol: PLAINTEXT
+          acks: all
+          enable-idempotence: true
+          retries: 10
+          max-in-flight-requests-per-connection: 5
+          transaction-enabled: false
+          ssl:
+            enabled: false
+            verify-hostname: true
+      rabbit-main:
+        enabled: true
+        provider: RABBITMQ
+        rabbit:
+          addresses:
+            - localhost:5672
+          virtual-host: /
+          username: guest
+          password: guest
+          connection-timeout: 5s
+          requested-heartbeat: 10s
+          correlated-confirms: true
+          returns-enabled: true
+          mandatory: true
+          confirm-timeout: 5s
+          ssl:
+            enabled: false
+            verify-hostname: true
+    destinations:
+      kafka-events:
+        enabled: true
+        producer-enabled: true
+        consumer-enabled: true
+        broker: kafka-main
+        publish-mode: DIRECT
+        send-timeout: 10s
+        kafka:
+          topic: platform.integration.events.v1
+          partitions: 1
+          replication-factor: 1
+          require-key: true
+        serialization:
+          format: JSON
+          event-type: IntegrationQueueEvent
+          schema-version: 1
+      kafka-events-dlt:
+        enabled: true
+        producer-enabled: true
+        consumer-enabled: false
+        broker: kafka-main
+        kafka:
+          topic: platform.integration.events.dlt.v1
+          partitions: 1
+          replication-factor: 1
+        serialization:
+          format: JSON
+          event-type: IntegrationQueueEvent
+          schema-version: 1
+      rabbit-events:
+        enabled: true
+        producer-enabled: true
+        consumer-enabled: true
+        broker: rabbit-main
+        publish-mode: DIRECT
+        send-timeout: 10s
+        rabbit:
+          exchange: platform.integration.events
+          exchange-type: TOPIC
+          routing-key: integration.event
+          durable: true
+          persistent: true
+        serialization:
+          format: JSON
+          event-type: IntegrationQueueEvent
+          schema-version: 1
+      rabbit-events-dlq:
+        enabled: true
+        producer-enabled: true
+        consumer-enabled: true
+        broker: rabbit-main
+        rabbit:
+          exchange: platform.integration.events.dlx
+          exchange-type: DIRECT
+          routing-key: integration.event.dlq
+          durable: true
+          persistent: true
+        serialization:
+          format: JSON
+          event-type: IntegrationQueueEvent
+          schema-version: 1
+    subscriptions:
+      kafka-events-handler:
+        enabled: true
+        destination: kafka-events
+        idempotency-enabled: true
+        kafka:
+          group-id: platform-integration-e2e
+          concurrency: 1
+          batch: false
+          transaction-enabled: false
+          strict-ordering: true
+          auto-offset-reset: earliest
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 100ms
+          multiplier: 2
+          max-interval: 1s
+          max-elapsed-time: 10s
+          kafka-mode: BLOCKING
+        dead-letter:
+          enabled: true
+          destination: kafka-events-dlt
+      rabbit-events-handler:
+        enabled: true
+        destination: rabbit-events
+        idempotency-enabled: true
+        rabbit:
+          queue: platform.integration.events
+          queue-type: QUORUM
+          durable: true
+          prefetch: 10
+          concurrency: 1
+          max-concurrency: 2
+          dead-letter-exchange: platform.integration.events.dlx
+          dead-letter-routing-key: integration.event.dlq
+          max-length: 10000
+          delivery-limit: 3
+          single-active-consumer: true
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 100ms
+          multiplier: 2
+          max-interval: 1s
+          max-elapsed-time: 10s
+          rabbit-mode: DEAD_LETTER_LOOP
+        dead-letter:
+          enabled: true
+          destination: rabbit-events-dlq
+          parking-lot-enabled: true
+          parking-lot-destination: rabbit-events-dlq
+      rabbit-events-dlq:
+        enabled: true
+        destination: rabbit-events-dlq
+        idempotency-enabled: false
+        rabbit:
+          queue: platform.integration.events.dlq
+          queue-type: QUORUM
+          durable: true
+          prefetch: 10
+          concurrency: 1
+          max-concurrency: 1
+        retry:
+          enabled: false
+          max-attempts: 1
+          rabbit-mode: NONE
+        dead-letter:
+          enabled: false
+    reliability:
+      outbox-enabled: true
+      inbox-enabled: true
+      outbox-batch-size: 20
+      outbox-poll-interval: 100ms
+      lock-timeout: 5s
+      max-attempts: 5
+    observability:
+      metrics-enabled: true
+      tracing-enabled: true
+      health-enabled: true
+      audit-events-enabled: true
+      log-headers: false
+      log-payload: false

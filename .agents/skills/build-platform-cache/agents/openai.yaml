@@ -1,0 +1,4 @@
+interface:
+  display_name: "Build Platform Cache"
+  short_description: "Build enterprise multi-provider cache module"
+  default_prompt: "Use $build-platform-cache to build or extend platform-cache safely."

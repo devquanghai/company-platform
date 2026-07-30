@@ -1,0 +1,7 @@
+com.company.platform.queue.autoconfigure.PlatformQueueAutoConfiguration
+com.company.platform.queue.autoconfigure.KafkaQueueAutoConfiguration
+com.company.platform.queue.autoconfigure.RabbitQueueAutoConfiguration
+com.company.platform.queue.autoconfigure.QueueReliabilityAutoConfiguration
+com.company.platform.queue.autoconfigure.QueuePublisherAutoConfiguration
+com.company.platform.queue.autoconfigure.QueueListenerAutoConfiguration
+com.company.platform.queue.autoconfigure.QueueObservabilityAutoConfiguration

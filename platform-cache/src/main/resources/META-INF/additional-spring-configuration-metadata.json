@@ -1,0 +1,766 @@
+{
+  "groups": [
+    {
+      "name": "platform.cache",
+      "type": "com.company.platform.cache.autoconfigure.properties.PlatformCacheProperties",
+      "description": "Cấu hình nền tảng cache dùng chung, gồm named store, named cache, khóa phân tán và observability."
+    },
+    {
+      "name": "platform.cache.defaults",
+      "type": "com.company.platform.cache.autoconfigure.properties.CacheDefaultsProperties",
+      "description": "Giá trị mặc định áp dụng khi named cache không khai báo policy riêng."
+    },
+    {
+      "name": "platform.cache.stores",
+      "type": "java.util.Map<java.lang.String,com.company.platform.cache.autoconfigure.properties.CacheStoreProperties>",
+      "description": "Danh sách named store sở hữu tài nguyên Caffeine, Redis hoặc NOOP."
+    },
+    {
+      "name": "platform.cache.caches",
+      "type": "java.util.Map<java.lang.String,com.company.platform.cache.autoconfigure.properties.NamedCacheProperties>",
+      "description": "Danh sách named cache tham chiếu store và định nghĩa TTL, fallback, consistency."
+    },
+    {
+      "name": "platform.cache.locking",
+      "type": "com.company.platform.cache.autoconfigure.properties.LockProperties",
+      "description": "Cấu hình capability khóa phân tán; luôn fail-closed và không fallback sang khóa JVM."
+    },
+    {
+      "name": "platform.cache.observability",
+      "type": "com.company.platform.cache.autoconfigure.properties.ObservabilityProperties",
+      "description": "Cấu hình metric, health, event và chính sách log dữ liệu cache an toàn."
+    }
+  ],
+  "properties": [
+    {
+      "name": "platform.cache.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Bật hoặc tắt toàn bộ auto-configuration của platform-cache.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.cache.annotations-enabled",
+      "type": "java.lang.Boolean",
+      "description": "Bật cầu nối Spring Cache để sử dụng @Cacheable, @CachePut và @CacheEvict.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.cache.application",
+      "type": "java.lang.String",
+      "description": "Tên ứng dụng dùng trong namespace key và telemetry; nên cấu hình từ spring.application.name.",
+      "defaultValue": "application"
+    },
+    {
+      "name": "platform.cache.environment",
+      "type": "java.lang.String",
+      "description": "Tên môi trường triển khai dùng trong validation và telemetry.",
+      "defaultValue": "unknown"
+    },
+    {
+      "name": "platform.cache.defaults.ttl",
+      "type": "java.time.Duration",
+      "description": "TTL mặc định của entry khi named cache không khai báo TTL riêng.",
+      "defaultValue": "10m"
+    },
+    {
+      "name": "platform.cache.defaults.key-prefix",
+      "type": "java.lang.String",
+      "description": "Tiền tố logic mặc định của key; không được chứa dữ liệu nhạy cảm.",
+      "defaultValue": "application:cache"
+    },
+    {
+      "name": "platform.cache.defaults.cache-null-values",
+      "type": "java.lang.Boolean",
+      "description": "Cho phép cache giá trị null theo mặc định; nên giữ false và dùng negative cache có TTL ngắn.",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.cache.defaults.key-hash-enabled",
+      "type": "java.lang.Boolean",
+      "description": "Băm key bằng SHA-256 trước khi lưu; không sử dụng Java hashCode().",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.cache.defaults.maximum-entry-size",
+      "type": "java.lang.Long",
+      "description": "Kích thước tối đa của payload đã serialize, tính theo byte.",
+      "defaultValue": 1048576
+    },
+    {
+      "name": "platform.cache.stores.*.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Bật named store; store bị tắt không được tạo connection hoặc cache tài nguyên.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.cache.stores.*.provider",
+      "type": "com.company.platform.cache.domain.model.CacheProviderType",
+      "description": "Provider của store: CAFFEINE, REDIS hoặc NOOP; MULTI_LEVEL là route cấp cache nên không hợp lệ tại đây.",
+      "defaultValue": "CAFFEINE"
+    },
+    {
+      "name": "platform.cache.stores.*.connection-factory-bean",
+      "type": "java.lang.String",
+      "description": "Tên RedisConnectionFactory do ứng dụng cung cấp để store tái sử dụng; bỏ trống để platform tạo factory riêng."
+    },
+    {
+      "name": "platform.cache.stores.*.caffeine.maximum-size",
+      "type": "java.lang.Long",
+      "description": "Số entry tối đa của mỗi cache Caffeine; bắt buộc dương để tránh cache local không giới hạn.",
+      "defaultValue": 10000
+    },
+    {
+      "name": "platform.cache.stores.*.caffeine.expire-after-write",
+      "type": "java.time.Duration",
+      "description": "Thời gian hết hạn sau lần ghi gần nhất.",
+      "defaultValue": "10m"
+    },
+    {
+      "name": "platform.cache.stores.*.caffeine.expire-after-access",
+      "type": "java.time.Duration",
+      "description": "Thời gian hết hạn sau lần truy cập gần nhất; mặc định không áp dụng."
+    },
+    {
+      "name": "platform.cache.stores.*.caffeine.refresh-after-write",
+      "type": "java.time.Duration",
+      "description": "Chu kỳ refresh bất đồng bộ sau ghi; mặc định không áp dụng."
+    },
+    {
+      "name": "platform.cache.stores.*.caffeine.record-stats",
+      "type": "java.lang.Boolean",
+      "description": "Thu thập thống kê hit, miss và eviction của Caffeine.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.cache.stores.*.caffeine.weak-keys",
+      "type": "java.lang.Boolean",
+      "description": "Dùng weak reference cho key; chỉ bật khi đã hiểu ảnh hưởng của garbage collector.",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.cache.stores.*.caffeine.weak-values",
+      "type": "java.lang.Boolean",
+      "description": "Dùng weak reference cho value; không kết hợp với soft-values.",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.cache.stores.*.caffeine.soft-values",
+      "type": "java.lang.Boolean",
+      "description": "Dùng soft reference cho value; không kết hợp với weak-values.",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.cache.stores.*.redis.mode",
+      "type": "com.company.platform.cache.domain.model.RedisDeploymentMode",
+      "description": "Mô hình Redis được chọn; chỉ nhánh STANDALONE, SENTINEL hoặc CLUSTER tương ứng được dùng.",
+      "defaultValue": "STANDALONE"
+    },
+    {
+      "name": "platform.cache.stores.*.redis.database",
+      "type": "java.lang.Integer",
+      "description": "Redis database index; bắt buộc bằng 0 khi chạy Cluster.",
+      "defaultValue": 0
+    },
+    {
+      "name": "platform.cache.stores.*.redis.client-name",
+      "type": "java.lang.String",
+      "description": "Tên Redis client hiển thị ở phía server, nên dùng spring.application.name.",
+      "defaultValue": "platform-cache"
+    },
+    {
+      "name": "platform.cache.stores.*.redis.command-timeout",
+      "type": "java.time.Duration",
+      "description": "Timeout thực thi một Redis command.",
+      "defaultValue": "2s"
+    },
+    {
+      "name": "platform.cache.stores.*.redis.connect-timeout",
+      "type": "java.time.Duration",
+      "description": "Timeout thiết lập kết nối TCP/TLS tới Redis.",
+      "defaultValue": "2s"
+    },
+    {
+      "name": "platform.cache.stores.*.redis.shutdown-timeout",
+      "type": "java.time.Duration",
+      "description": "Thời gian tối đa chờ đóng tài nguyên Redis.",
+      "defaultValue": "2s"
+    },
+    {
+      "name": "platform.cache.stores.*.redis.username",
+      "type": "java.lang.String",
+      "description": "Redis ACL username; lấy từ secret/environment và không ghi trực tiếp vào source."
+    },
+    {
+      "name": "platform.cache.stores.*.redis.password",
+      "type": "java.lang.String",
+      "description": "Redis password; chỉ tham chiếu secret/environment, tuyệt đối không log."
+    },
+    {
+      "name": "platform.cache.stores.*.redis.ssl.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Bật TLS cho kết nối Redis.",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.cache.stores.*.redis.ssl.verify-peer",
+      "type": "java.lang.Boolean",
+      "description": "Bắt buộc xác thực certificate và hostname của Redis; cấu hình false làm ứng dụng fail fast.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.cache.stores.*.redis.pool.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Bật connection pool cho Redis store.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.cache.stores.*.redis.pool.max-active",
+      "type": "java.lang.Integer",
+      "description": "Số connection hoạt động tối đa trong pool.",
+      "defaultValue": 50
+    },
+    {
+      "name": "platform.cache.stores.*.redis.pool.max-idle",
+      "type": "java.lang.Integer",
+      "description": "Số connection nhàn rỗi tối đa trong pool.",
+      "defaultValue": 20
+    },
+    {
+      "name": "platform.cache.stores.*.redis.pool.min-idle",
+      "type": "java.lang.Integer",
+      "description": "Số connection nhàn rỗi tối thiểu duy trì trong pool.",
+      "defaultValue": 5
+    },
+    {
+      "name": "platform.cache.stores.*.redis.pool.max-wait",
+      "type": "java.time.Duration",
+      "description": "Thời gian tối đa chờ mượn connection từ pool.",
+      "defaultValue": "1s"
+    },
+    {
+      "name": "platform.cache.stores.*.redis.pool.time-between-eviction-runs",
+      "type": "java.time.Duration",
+      "description": "Khoảng thời gian giữa hai lần kiểm tra connection nhàn rỗi.",
+      "defaultValue": "30s"
+    },
+    {
+      "name": "platform.cache.stores.*.redis.standalone.host",
+      "type": "java.lang.String",
+      "description": "Hostname Redis khi mode là STANDALONE.",
+      "defaultValue": "localhost"
+    },
+    {
+      "name": "platform.cache.stores.*.redis.standalone.port",
+      "type": "java.lang.Integer",
+      "description": "Cổng Redis khi mode là STANDALONE.",
+      "defaultValue": 6379
+    },
+    {
+      "name": "platform.cache.stores.*.redis.sentinel.master",
+      "type": "java.lang.String",
+      "description": "Tên master group được Sentinel quản lý; bắt buộc khi mode là SENTINEL."
+    },
+    {
+      "name": "platform.cache.stores.*.redis.sentinel.nodes",
+      "type": "java.util.List<java.lang.String>",
+      "description": "Danh sách Sentinel node dạng host:port.",
+      "defaultValue": []
+    },
+    {
+      "name": "platform.cache.stores.*.redis.sentinel.username",
+      "type": "java.lang.String",
+      "description": "ACL username dùng để xác thực với Sentinel, lấy từ secret/environment."
+    },
+    {
+      "name": "platform.cache.stores.*.redis.sentinel.password",
+      "type": "java.lang.String",
+      "description": "Password xác thực Sentinel, lấy từ secret/environment và không được log."
+    },
+    {
+      "name": "platform.cache.stores.*.redis.cluster.nodes",
+      "type": "java.util.List<java.lang.String>",
+      "description": "Danh sách seed node Redis Cluster dạng host:port.",
+      "defaultValue": []
+    },
+    {
+      "name": "platform.cache.stores.*.redis.cluster.max-redirects",
+      "type": "java.lang.Integer",
+      "description": "Số lần redirect MOVED/ASK tối đa trong Redis Cluster.",
+      "defaultValue": 5
+    },
+    {
+      "name": "platform.cache.stores.*.redis.cluster.topology-refresh.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Bật refresh topology định kỳ cho Redis Cluster.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.cache.stores.*.redis.cluster.topology-refresh.adaptive",
+      "type": "java.lang.Boolean",
+      "description": "Bật adaptive topology refresh khi Lettuce phát hiện thay đổi cluster.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.cache.stores.*.redis.cluster.topology-refresh.period",
+      "type": "java.time.Duration",
+      "description": "Chu kỳ refresh topology Redis Cluster.",
+      "defaultValue": "30s"
+    },
+    {
+      "name": "platform.cache.stores.*.redis.serialization.key",
+      "type": "java.lang.String",
+      "description": "Định dạng serializer của Redis key; chỉ STRING được hỗ trợ an toàn.",
+      "defaultValue": "STRING"
+    },
+    {
+      "name": "platform.cache.stores.*.redis.serialization.value",
+      "type": "java.lang.String",
+      "description": "Định dạng serializer của Redis value; JSON dùng shared JsonMapperHelper, không dùng Java native serialization.",
+      "defaultValue": "JSON"
+    },
+    {
+      "name": "platform.cache.stores.*.redis.serialization.value-envelope-enabled",
+      "type": "java.lang.Boolean",
+      "description": "Đóng gói value trong envelope có schema, version và freshness metadata.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.cache.stores.*.redis.serialization.schema-version",
+      "type": "java.lang.Integer",
+      "description": "Phiên bản schema của value envelope.",
+      "defaultValue": 1
+    },
+    {
+      "name": "platform.cache.stores.*.redis.serialization.schema-id",
+      "type": "java.lang.String",
+      "description": "Định danh schema logic dùng để kiểm tra tương thích payload.",
+      "defaultValue": "platform-cache"
+    },
+    {
+      "name": "platform.cache.stores.*.redis.serialization.trusted-packages",
+      "type": "java.util.List<java.lang.String>",
+      "description": "Allowlist package cho type metadata nếu ứng dụng thật sự cần; mặc định rỗng để an toàn.",
+      "defaultValue": []
+    },
+    {
+      "name": "platform.cache.stores.*.redis.resilience.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Bật pipeline resilience cho các Redis operation.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.cache.stores.*.redis.resilience.retry.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Bật retry có giới hạn cho lỗi kết nối tạm thời.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.cache.stores.*.redis.resilience.retry.max-attempts",
+      "type": "java.lang.Integer",
+      "description": "Tổng số attempt tối đa, gồm lần gọi đầu tiên.",
+      "defaultValue": 2
+    },
+    {
+      "name": "platform.cache.stores.*.redis.resilience.retry.wait-duration",
+      "type": "java.time.Duration",
+      "description": "Thời gian chờ ban đầu giữa các lần retry.",
+      "defaultValue": "100ms"
+    },
+    {
+      "name": "platform.cache.stores.*.redis.resilience.retry.exponential-backoff-enabled",
+      "type": "java.lang.Boolean",
+      "description": "Tăng thời gian chờ theo cấp số nhân giữa các lần retry.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.cache.stores.*.redis.resilience.retry.multiplier",
+      "type": "java.lang.Double",
+      "description": "Hệ số nhân của exponential backoff.",
+      "defaultValue": 2.0
+    },
+    {
+      "name": "platform.cache.stores.*.redis.resilience.retry.max-wait-duration",
+      "type": "java.time.Duration",
+      "description": "Giới hạn trên của thời gian chờ giữa hai attempt.",
+      "defaultValue": "500ms"
+    },
+    {
+      "name": "platform.cache.stores.*.redis.resilience.retry.retry-exceptions",
+      "type": "java.util.List<java.lang.String>",
+      "description": "Allowlist tên class exception hạ tầng được retry; mặc định dùng policy an toàn của thư viện.",
+      "defaultValue": []
+    },
+    {
+      "name": "platform.cache.stores.*.redis.resilience.retry.ignore-exceptions",
+      "type": "java.util.List<java.lang.String>",
+      "description": "Danh sách exception không được retry, ví dụ lỗi input hoặc serialization.",
+      "defaultValue": []
+    },
+    {
+      "name": "platform.cache.stores.*.redis.resilience.circuit-breaker.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Bật circuit breaker cho Redis store.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.cache.stores.*.redis.resilience.circuit-breaker.sliding-window-size",
+      "type": "java.lang.Integer",
+      "description": "Số call trong cửa sổ tính tỷ lệ lỗi.",
+      "defaultValue": 20
+    },
+    {
+      "name": "platform.cache.stores.*.redis.resilience.circuit-breaker.minimum-number-of-calls",
+      "type": "java.lang.Integer",
+      "description": "Số call tối thiểu trước khi circuit breaker đánh giá tỷ lệ lỗi.",
+      "defaultValue": 10
+    },
+    {
+      "name": "platform.cache.stores.*.redis.resilience.circuit-breaker.failure-rate-threshold",
+      "type": "java.lang.Float",
+      "description": "Ngưỡng phần trăm lỗi để chuyển circuit sang OPEN.",
+      "defaultValue": 50.0
+    },
+    {
+      "name": "platform.cache.stores.*.redis.resilience.circuit-breaker.wait-duration-in-open-state",
+      "type": "java.time.Duration",
+      "description": "Thời gian circuit giữ trạng thái OPEN trước khi thử HALF_OPEN.",
+      "defaultValue": "10s"
+    },
+    {
+      "name": "platform.cache.stores.*.redis.resilience.circuit-breaker.permitted-calls-in-half-open-state",
+      "type": "java.lang.Integer",
+      "description": "Số call thăm dò được phép ở trạng thái HALF_OPEN.",
+      "defaultValue": 3
+    },
+    {
+      "name": "platform.cache.stores.*.redis.resilience.bulkhead.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Bật giới hạn concurrency cho Redis store.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.cache.stores.*.redis.resilience.bulkhead.max-concurrent-calls",
+      "type": "java.lang.Integer",
+      "description": "Số Redis operation đồng thời tối đa.",
+      "defaultValue": 100
+    },
+    {
+      "name": "platform.cache.stores.*.redis.resilience.bulkhead.max-wait-duration",
+      "type": "java.time.Duration",
+      "description": "Thời gian tối đa chờ slot bulkhead; 0 nghĩa là từ chối ngay.",
+      "defaultValue": "0ms"
+    },
+    {
+      "name": "platform.cache.caches.*.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Bật named cache.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.cache.caches.*.store",
+      "type": "java.lang.String",
+      "description": "Tên enabled store mà cache tham chiếu; tên sai làm ứng dụng fail fast khi khởi động."
+    },
+    {
+      "name": "platform.cache.caches.*.ttl",
+      "type": "java.time.Duration",
+      "description": "TTL riêng của named cache; mặc định kế thừa platform.cache.defaults.ttl."
+    },
+    {
+      "name": "platform.cache.caches.*.cache-null-values",
+      "type": "java.lang.Boolean",
+      "description": "Cho phép cache null ở named cache; mặc định false.",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.cache.caches.*.failure-policy",
+      "type": "com.company.platform.cache.domain.policy.CacheFailurePolicy",
+      "description": "Chính sách khi cache hỏng: FAIL_OPEN, FAIL_CLOSED hoặc FALLBACK_LOCAL.",
+      "defaultValue": "FAIL_OPEN"
+    },
+    {
+      "name": "platform.cache.caches.*.coordination",
+      "type": "java.lang.Boolean",
+      "description": "Đánh dấu cache dùng cho coordination; bắt buộc fail-closed và cấm local fallback.",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.cache.caches.*.key.prefix",
+      "type": "java.lang.String",
+      "description": "Tiền tố key riêng của named cache; mặc định dùng tên cache đã chuẩn hóa."
+    },
+    {
+      "name": "platform.cache.caches.*.key.version",
+      "type": "java.lang.String",
+      "description": "Phiên bản key để hỗ trợ migration namespace an toàn.",
+      "defaultValue": "v1"
+    },
+    {
+      "name": "platform.cache.caches.*.key.hash-tag",
+      "type": "java.lang.String",
+      "description": "Redis Cluster hash tag cố định cho các key cần cùng slot; không được nhận trực tiếp từ user input."
+    },
+    {
+      "name": "platform.cache.caches.*.key.sensitive",
+      "type": "java.lang.Boolean",
+      "description": "Băm phần key nghiệp vụ bằng SHA-256 và không ghi raw key vào telemetry.",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.cache.caches.*.fallback.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Bật local fallback cho cache Redis thông thường; bị cấm với coordination.",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.cache.caches.*.fallback.type",
+      "type": "com.company.platform.cache.domain.model.CacheProviderType",
+      "description": "Provider fallback; hiện chỉ CAFFEINE được chấp nhận.",
+      "defaultValue": "CAFFEINE"
+    },
+    {
+      "name": "platform.cache.caches.*.fallback.mode",
+      "type": "com.company.platform.cache.domain.policy.CacheFallbackMode",
+      "description": "Chế độ degraded: NONE, READ_ONLY, READ_THROUGH, STALE_IF_ERROR hoặc LOCAL_READ_WRITE.",
+      "defaultValue": "NONE"
+    },
+    {
+      "name": "platform.cache.caches.*.fallback.local-store",
+      "type": "java.lang.String",
+      "description": "Tên Caffeine store dùng làm fallback."
+    },
+    {
+      "name": "platform.cache.caches.*.fallback.ttl",
+      "type": "java.time.Duration",
+      "description": "TTL freshness của entry local fallback.",
+      "defaultValue": "2m"
+    },
+    {
+      "name": "platform.cache.caches.*.fallback.maximum-stale",
+      "type": "java.time.Duration",
+      "description": "Khoảng stale tối đa sau freshness khi mode là STALE_IF_ERROR.",
+      "defaultValue": "5m"
+    },
+    {
+      "name": "platform.cache.caches.*.fallback.clear-on-primary-recovery",
+      "type": "java.lang.Boolean",
+      "description": "Xóa dữ liệu fallback khi primary Redis được xác nhận phục hồi.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.cache.caches.*.fallback.allow-local-write-fallback",
+      "type": "java.lang.Boolean",
+      "description": "Cho phép LOCAL_READ_WRITE sau khi application opt-in rõ ràng; không dùng cho dữ liệu coordination.",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.cache.caches.*.multi-level.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Bật route L1 Caffeine và L2 Redis cho named cache.",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.cache.caches.*.multi-level.l1-store",
+      "type": "java.lang.String",
+      "description": "Tên enabled Caffeine store làm L1."
+    },
+    {
+      "name": "platform.cache.caches.*.multi-level.l2-store",
+      "type": "java.lang.String",
+      "description": "Tên enabled Redis store làm L2."
+    },
+    {
+      "name": "platform.cache.caches.*.multi-level.l1-ttl",
+      "type": "java.time.Duration",
+      "description": "TTL L1; runtime còn giới hạn theo freshness còn lại của L2.",
+      "defaultValue": "5m"
+    },
+    {
+      "name": "platform.cache.caches.*.multi-level.l2-ttl",
+      "type": "java.time.Duration",
+      "description": "TTL của value tại Redis L2.",
+      "defaultValue": "1h"
+    },
+    {
+      "name": "platform.cache.caches.*.multi-level.populate-l1-on-l2-hit",
+      "type": "java.lang.Boolean",
+      "description": "Nạp L1 sau L2 hit nếu namespace và invalidation epoch không thay đổi.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.cache.caches.*.multi-level.write-policy",
+      "type": "com.company.platform.cache.domain.policy.MultiLevelWritePolicy",
+      "description": "Thứ tự mutation giữa L1 và L2; mặc định invalidate L1 trước rồi ghi L2.",
+      "defaultValue": "EVICT_L1_THEN_WRITE_L2"
+    },
+    {
+      "name": "platform.cache.caches.*.stampede.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Bật chống cache stampede cho get-or-load.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.cache.caches.*.stampede.mode",
+      "type": "java.lang.String",
+      "description": "Cơ chế chống stampede; SINGLE_FLIGHT gộp loader trong cùng JVM.",
+      "defaultValue": "SINGLE_FLIGHT"
+    },
+    {
+      "name": "platform.cache.caches.*.stampede.wait-timeout",
+      "type": "java.time.Duration",
+      "description": "Thời gian follower chờ leader; timeout không hủy leader.",
+      "defaultValue": "2s"
+    },
+    {
+      "name": "platform.cache.caches.*.stampede.maximum-inflight",
+      "type": "java.lang.Integer",
+      "description": "Số loader single-flight đang chạy tối đa trong một JVM.",
+      "defaultValue": 10000
+    },
+    {
+      "name": "platform.cache.caches.*.ttl-jitter.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Bật jitter TTL để tránh nhiều entry hết hạn cùng lúc.",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.cache.caches.*.ttl-jitter.percentage",
+      "type": "java.lang.Integer",
+      "description": "Biên độ jitter theo phần trăm TTL, validator giới hạn từ 0 đến 50.",
+      "defaultValue": 10
+    },
+    {
+      "name": "platform.cache.caches.*.negative-cache.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Cache kết quả không tồn tại bằng marker rõ ràng để giảm tải nguồn dữ liệu.",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.cache.caches.*.negative-cache.ttl",
+      "type": "java.time.Duration",
+      "description": "TTL ngắn của negative marker; phải nhỏ hơn TTL value bình thường.",
+      "defaultValue": "30s"
+    },
+    {
+      "name": "platform.cache.locking.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Bật distributed lock khi provider tương ứng có trên classpath.",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.cache.locking.provider",
+      "type": "java.lang.String",
+      "description": "Provider distributed lock; REDISSON là lựa chọn extension được thiết kế.",
+      "defaultValue": "REDISSON"
+    },
+    {
+      "name": "platform.cache.locking.wait-time",
+      "type": "java.time.Duration",
+      "description": "Thời gian tối đa chờ lấy distributed lock.",
+      "defaultValue": "2s"
+    },
+    {
+      "name": "platform.cache.locking.lease-time",
+      "type": "java.time.Duration",
+      "description": "Thời gian lease mặc định trước khi lock tự hết hạn.",
+      "defaultValue": "30s"
+    },
+    {
+      "name": "platform.cache.locking.watchdog-enabled",
+      "type": "java.lang.Boolean",
+      "description": "Cho phép provider gia hạn lease khi owner còn sống.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.cache.locking.fencing-enabled",
+      "type": "java.lang.Boolean",
+      "description": "Yêu cầu fencing token; tài nguyên được bảo vệ phải xác minh token đơn điệu.",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.cache.observability.metrics-enabled",
+      "type": "java.lang.Boolean",
+      "description": "Xuất cache metric với tag cardinality thấp.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.cache.observability.health-enabled",
+      "type": "java.lang.Boolean",
+      "description": "Đăng ký health contributor cho các store đang bật.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.cache.observability.events-enabled",
+      "type": "java.lang.Boolean",
+      "description": "Phát structured cache event đã sanitize.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.cache.observability.local-hit-observation-enabled",
+      "type": "java.lang.Boolean",
+      "description": "Tạo observation cho cả local hit; mặc định tắt để giảm overhead và cardinality.",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.cache.observability.log-cache-key",
+      "type": "java.lang.String",
+      "description": "Chính sách log key: HASH hoặc OMIT; không log raw key.",
+      "defaultValue": "HASH"
+    },
+    {
+      "name": "platform.cache.observability.log-cache-value",
+      "type": "java.lang.Boolean",
+      "description": "Cho phép log value cache; mặc định tắt để tránh lộ PII và payload lớn.",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.cache.observability.health-timeout",
+      "type": "java.time.Duration",
+      "description": "Timeout của một lần kiểm tra health store.",
+      "defaultValue": "1s"
+    }
+  ],
+  "hints": [
+    {
+      "name": "platform.cache.stores.*.provider",
+      "values": [
+        { "value": "CAFFEINE", "description": "Cache local trong từng JVM." },
+        { "value": "REDIS", "description": "Cache phân tán dùng Redis." },
+        { "value": "NOOP", "description": "Luôn miss và không lưu dữ liệu." }
+      ]
+    },
+    {
+      "name": "platform.cache.stores.*.redis.mode",
+      "values": [
+        { "value": "STANDALONE", "description": "Một Redis endpoint." },
+        { "value": "SENTINEL", "description": "Redis master được Sentinel quản lý." },
+        { "value": "CLUSTER", "description": "Redis Cluster phân vùng theo hash slot." }
+      ]
+    },
+    {
+      "name": "platform.cache.caches.*.failure-policy",
+      "values": [
+        { "value": "FAIL_OPEN", "description": "Bỏ qua lỗi cache và tiếp tục tải nguồn dữ liệu." },
+        { "value": "FAIL_CLOSED", "description": "Trả lỗi ngay; bắt buộc cho coordination." },
+        { "value": "FALLBACK_LOCAL", "description": "Áp dụng local fallback đã cấu hình." }
+      ]
+    },
+    {
+      "name": "platform.cache.caches.*.fallback.mode",
+      "values": [
+        { "value": "NONE" },
+        { "value": "READ_ONLY" },
+        { "value": "READ_THROUGH" },
+        { "value": "STALE_IF_ERROR" },
+        { "value": "LOCAL_READ_WRITE" }
+      ]
+    },
+    {
+      "name": "platform.cache.observability.log-cache-key",
+      "values": [
+        { "value": "HASH", "description": "Log digest an toàn của key." },
+        { "value": "OMIT", "description": "Không đưa key vào log/event." }
+      ]
+    }
+  ]
+}

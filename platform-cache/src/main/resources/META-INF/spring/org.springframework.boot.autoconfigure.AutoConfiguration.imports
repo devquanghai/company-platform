@@ -1,0 +1,5 @@
+com.company.platform.cache.autoconfigure.RedisCacheAutoConfiguration
+com.company.platform.cache.autoconfigure.PlatformCacheAutoConfiguration
+com.company.platform.cache.autoconfigure.SpringCacheBridgeAutoConfiguration
+com.company.platform.cache.autoconfigure.CacheObservabilityAutoConfiguration
+com.company.platform.cache.autoconfigure.CacheLockAutoConfiguration

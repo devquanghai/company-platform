@@ -7,10 +7,10 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.MediaType;
 import org.jspecify.annotations.NonNull;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.MediaType;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.util.ContentCachingRequestWrapper;
 import org.springframework.web.util.ContentCachingResponseWrapper;
@@ -40,18 +40,11 @@ public final class RequestResponseLoggingFilter extends OncePerRequestFilter {
         @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
         long startedAt = System.nanoTime();
-        if (!properties.isIncludePayload()) {
-            try {
-                filterChain.doFilter(request, response);
-            } finally {
                 logSummary(request, response, startedAt, null, null);
-            }
-            return;
-        }
 
         HttpServletRequest requestToUse = request instanceof CachedBodyHttpServletRequestWrapper
             ? request
-            : new ContentCachingRequestWrapper(request, properties.getMaxPayloadLength());
+            : new CachedBodyHttpServletRequestWrapper(request);
         ContentCachingResponseWrapper cachedResponse = new ContentCachingResponseWrapper(response);
         try {
             filterChain.doFilter(requestToUse, cachedResponse);
@@ -83,12 +76,13 @@ public final class RequestResponseLoggingFilter extends OncePerRequestFilter {
     ) {
         long durationMillis = (System.nanoTime() - startedAt) / 1_000_000;
         log.info(
-            "HTTP {} {} completed status={} durationMs={} requestPayload={} responsePayload={}",
+            "HTTP: method={} requestUrl={} completed status={} durationMs={} requestParams={} requestPayload={} responsePayload={}",
             request.getMethod(),
-            request.getRequestURI(),
+            request.getRequestURL(),
             response.getStatus(),
             durationMillis,
-            requestPayload,
+            request.getQueryString(),
+            requestPayload != null && requestPayload.trim().isEmpty() ? null : requestPayload,
             responsePayload
         );
     }
@@ -97,12 +91,10 @@ public final class RequestResponseLoggingFilter extends OncePerRequestFilter {
         if (content.length == 0 || !isTextual(contentType)) {
             return null;
         }
-        String value = new String(content, StandardCharsets.UTF_8)
+        return new String(content, StandardCharsets.UTF_8)
             .replace('\r', ' ')
             .replace('\n', ' ')
             .replace('\t', ' ');
-        int limit = Math.min(value.length(), Math.max(0, properties.getMaxPayloadLength()));
-        return value.substring(0, limit);
     }
 
     private static boolean isTextual(String contentType) {

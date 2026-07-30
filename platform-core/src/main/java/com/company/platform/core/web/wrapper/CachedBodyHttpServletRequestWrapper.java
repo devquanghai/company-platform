@@ -13,23 +13,17 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
-/** Servlet request wrapper that provides repeatable, size-bounded body reads. */
+/**
+ * Servlet request wrapper that provides repeatable, size-bounded body reads.
+ */
 public final class CachedBodyHttpServletRequestWrapper extends HttpServletRequestWrapper {
 
     private final byte[] cachedBody;
 
-    public CachedBodyHttpServletRequestWrapper(HttpServletRequest request, int maximumBodySize)
+    public CachedBodyHttpServletRequestWrapper(HttpServletRequest request)
         throws IOException {
         super(Objects.requireNonNull(request, "request must not be null"));
-        if (maximumBodySize < 0 || maximumBodySize == Integer.MAX_VALUE) {
-            throw new IllegalArgumentException(
-                "maximumBodySize must be between 0 and Integer.MAX_VALUE - 1"
-            );
-        }
-        byte[] content = request.getInputStream().readNBytes(maximumBodySize + 1);
-        if (content.length > maximumBodySize) {
-            throw new RequestBodyCachingLimitExceededException(maximumBodySize);
-        }
+        byte[] content = request.getInputStream().readAllBytes();
         this.cachedBody = content;
     }
 

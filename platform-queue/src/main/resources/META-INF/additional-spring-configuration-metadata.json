@@ -1,0 +1,28 @@
+{
+  "properties": [
+    {
+      "name": "platform.queue.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Bật hoặc tắt toàn bộ auto-configuration hàng đợi.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.queue.annotations-enabled",
+      "type": "java.lang.Boolean",
+      "description": "Bật đăng ký listener bằng PlatformQueueListener.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.queue.reliability.outbox-enabled",
+      "type": "java.lang.Boolean",
+      "description": "Bật transactional outbox; yêu cầu OutboxMessageStore.",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.queue.reliability.inbox-enabled",
+      "type": "java.lang.Boolean",
+      "description": "Bật consumer inbox; yêu cầu InboxStore bền vững.",
+      "defaultValue": false
+    }
+  ]
+}

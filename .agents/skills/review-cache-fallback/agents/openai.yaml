@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Cache Fallback"
+  short_description: "Review cache fallback and degraded modes"
+  default_prompt: "Use $review-cache-fallback to review cache fallback and stale-data safety."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Verify Platform Cache"
+  short_description: "Run platform-cache enterprise quality gate"
+  default_prompt: "Use $verify-platform-cache to run the complete platform-cache quality gate."
