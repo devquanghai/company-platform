@@ -1,0 +1,31 @@
+platform:
+  cache:
+    enabled: true
+    annotations-enabled: true
+    application: ${spring.application.name:application}
+    environment: ${APP_ENVIRONMENT:local}
+    defaults:
+      ttl: 10m
+      key-prefix: ${spring.application.name:application}:cache
+      cache-null-values: false
+      key-hash-enabled: false
+      maximum-entry-size: 1048576
+
+    stores:
+      redis-primary:
+        provider: REDIS
+        redis:
+          mode: SENTINEL
+          database: 0
+          sentinel:
+            master: redis-master
+            nodes:
+              - localhost:26379
+            password: aloaluale
+          serialization:
+            key: STRING
+            value: JSON
+    caches:
+      customers:
+        store: redis-primary
+        ttl: 15m

@@ -19,6 +19,7 @@
         <module>platform-service-exchange</module>
         <module>platform-logging</module>
         <module>platform-integration-test</module>
+        <module>platform-integration-test/apps</module>
     </modules>
 
     <properties>

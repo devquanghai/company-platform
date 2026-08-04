@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  # Redis Master
+  redis-master:
+    image: redis:latest
+    container_name: redis-master
+    command: redis-server --requirepass aloaluale --masterauth aloaluale
+    ports:
+      - "6379:6379"
+    networks:
+      - platform
+    volumes:
+      - redis-master-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-a", "aloaluale", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Redis Replica
+  redis-replica:
+    image: redis:latest
+    container_name: redis-replica
+    command: redis-server --requirepass aloaluale --masterauth aloaluale --replicaof redis-master 6379
+    ports:
+      - "6380:6379"
+    networks:
+      - platform
+    volumes:
+      - redis-replica-data:/data
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-a", "aloaluale", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Redis Sentinel
+  redis-sentinel:
+    image: redis:latest
+    container_name: redis-sentinel
+    ports:
+      - "26379:26379"
+    networks:
+      - platform
+    volumes:
+      - redis-sentinel-data:/data
+    depends_on:
+      redis-master:
+        condition: service_healthy
+      redis-replica:
+        condition: service_healthy
+    restart: unless-stopped
+    entrypoint: sh -c
+    command: |
+      "sleep 5 &&
+      cat > /tmp/sentinel.conf <<EOF
+      port 26379
+      sentinel resolve-hostnames yes
+      sentinel announce-hostnames yes
+      sentinel monitor mmsmaster redis-master 6379 1
+      sentinel auth-pass mmsmaster aloaluale
+      sentinel down-after-milliseconds mmsmaster 5000
+      sentinel parallel-syncs mmsmaster 1
+      sentinel failover-timeout mmsmaster 10000
+      bind 0.0.0.0
+      protected-mode no
+      EOF
+      redis-sentinel /tmp/sentinel.conf"
+
+networks:
+  platform:
+    driver: bridge
+
+volumes:
+  redis-master-data:
+  redis-replica-data:
+  redis-sentinel-data:

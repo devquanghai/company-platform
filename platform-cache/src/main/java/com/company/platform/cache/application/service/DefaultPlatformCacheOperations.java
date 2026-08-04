@@ -31,6 +31,7 @@ import com.company.platform.cache.observability.event.CacheOperationEvent;
 import com.company.platform.cache.observability.metrics.CacheMetricsRecorder;
 import com.company.platform.core.time.TimeProvider;
 import com.company.platform.core.json.JsonMapperHelper;
+import lombok.extern.slf4j.Slf4j;
 import tools.jackson.databind.JavaType;
 
 import java.time.Duration;
@@ -46,6 +47,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+@Slf4j
 public final class DefaultPlatformCacheOperations
     implements PlatformCacheOperations, AtomicCacheOperations, OptimisticCacheOperations {
 
@@ -432,6 +434,7 @@ public final class DefaultPlatformCacheOperations
             namespaceToken = backend.namespaceToken();
             lastNamespaceTokens.put(definition.getName(), namespaceToken);
         } catch (RuntimeException failure) {
+            log.error("Cache namespace lookup failed for cache: {}", definition.getName(), failure);
             if (!failOpen(definition)) {
                 throw operationFailure("Cache namespace lookup failed", failure);
             }

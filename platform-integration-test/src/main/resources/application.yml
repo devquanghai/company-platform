@@ -1,6 +1,10 @@
 spring:
   application:
     name: platform-integration-test
+  profiles:
+    group:
+      common: cache
+    active-profiles: dev
 
 logging:
   level:
