@@ -22,7 +22,7 @@ public class PlatformOpenApiProperties {
     /** Mô tả API hiển thị cho người sử dụng tài liệu. */
     String description = "Platform service API";
     /** Kiểu xác thực được khai báo mặc định cho toàn bộ operation. */
-    OpenApiAuthenticationType authenticationType = OpenApiAuthenticationType.NONE;
+    OpenApiAuthenticationType authenticationType = OpenApiAuthenticationType.JWT;
     /** Tên header, query parameter hoặc cookie chứa API key. */
     String apiKeyName = "X-API-KEY";
     /** Vị trí nhận API key trong request. */

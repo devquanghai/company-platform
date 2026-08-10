@@ -1,5 +1,6 @@
 package com.company.platform.logging.application.service;
 
+import com.company.platform.core.context.CurrentUser;
 import com.company.platform.core.context.CurrentUserProvider;
 import com.company.platform.core.context.RequestContextProvider;
 import com.company.platform.core.time.TimeProvider;
@@ -209,7 +210,7 @@ public final class DefaultPlatformLogger implements PlatformLogger {
         }
         put(fields, "event.timestamp", time.now());
         Optional.ofNullable(users).flatMap(CurrentUserProvider::currentUser)
-            .map(user -> user.getUserId()).filter(value -> !value.isBlank())
+            .map(CurrentUser::getUserId).filter(value -> !value.isBlank())
             .ifPresent(value -> {
                 if (userIdMode == PlatformLoggingProperties.UserIdMode.MASK) {
                     put(fields, "user.id", masking.maskValue("userId", value));

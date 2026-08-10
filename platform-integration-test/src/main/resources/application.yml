@@ -4,7 +4,8 @@ spring:
   profiles:
     group:
       common: cache
-    active-profiles: dev
+      dev: common
+    active: dev
 
 logging:
   level:
@@ -30,7 +31,7 @@ platform:
       title: Platform Integration Test
       version: 1.0.0
       description: Platform Integration Test API
-      authentication-type: CLIENT_ID_SECRET
+      authentication-type: JWT
     web:
       request-logging-enabled: true
       include-payload: true

@@ -224,7 +224,7 @@
       "name": "platform.core.openapi.authentication-type",
       "type": "com.company.platform.core.configuration.properties.OpenApiAuthenticationType",
       "description": "Kiểu xác thực được khai báo mặc định cho toàn bộ operation.",
-      "defaultValue": "NONE"
+      "defaultValue": "JWT"
     },
     {
       "name": "platform.core.openapi.security-scheme-name",

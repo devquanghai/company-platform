@@ -41,6 +41,7 @@ platform:
         caffeine:
           maximum-size: 1000
           expire-after-write: 10m
+          refresh-after-write: 1m
           record-stats: true
       caffeine-l1:
         provider: CAFFEINE
@@ -58,8 +59,9 @@ platform:
         provider: REDIS
         redis:
           mode: STANDALONE
-          host: ${CACHE_REDIS_HOST:localhost}
-          port: ${CACHE_REDIS_PORT:6379}
+          standalone:
+            host: ${CACHE_REDIS_HOST:localhost}
+            port: ${CACHE_REDIS_PORT:6379}
           database: ${CACHE_REDIS_DATABASE:0}
           client-name: platform-cache-test-app
           password: ${CACHE_REDIS_PASSWORD:aloaluale}
