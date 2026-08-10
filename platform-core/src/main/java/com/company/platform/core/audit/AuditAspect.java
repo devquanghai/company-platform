@@ -1,5 +1,9 @@
 package com.company.platform.core.audit;
 
+import com.company.platform.core.audit.AuditChangeResolver;
+import com.company.platform.core.audit.AuditEvent;
+import com.company.platform.core.audit.AuditOutcome;
+import com.company.platform.core.audit.Audited;
 import com.company.platform.core.configuration.properties.PlatformAuditProperties;
 import com.company.platform.core.context.RequestContextProvider;
 import com.company.platform.core.time.TimeProvider;

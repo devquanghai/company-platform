@@ -1,6 +1,6 @@
 package com.company.platform.core.auto_configuration;
 
-import com.company.platform.core.config.jackson.*;
+import com.company.platform.core.json.internal.adapter.jackson.*;
 import com.company.platform.core.configuration.properties.PlatformJacksonProperties;
 import com.company.platform.core.json.JsonMapperHelper;
 import com.fasterxml.jackson.annotation.JsonInclude;

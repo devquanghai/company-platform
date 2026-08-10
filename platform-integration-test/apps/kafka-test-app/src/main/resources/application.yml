@@ -18,7 +18,6 @@ management:
 platform:
   queue:
     enabled: true
-    annotations-enabled: true
     source-application: ${spring.application.name}
     environment: ${APP_ENVIRONMENT:local}
     allow-noop: false
@@ -45,14 +44,9 @@ platform:
           delivery-timeout: 30s
           max-block: 10s
           security-protocol: PLAINTEXT
-          acks: all
-          enable-idempotence: true
-          retries: 10
-          max-in-flight-requests-per-connection: 5
-          transaction-enabled: false
+          transactions-enabled: false
           ssl:
             enabled: false
-            verify-hostname: true
     destinations:
       kafka-test-events:
         enabled: true
@@ -78,8 +72,8 @@ platform:
         kafka:
           group-id: ${KAFKA_TEST_CONSUMER_GROUP:platform-kafka-test-app}
           concurrency: ${KAFKA_TEST_CONCURRENCY:1}
-          batch: false
-          transaction-enabled: false
+          mode: REALTIME
+          read-committed: false
           strict-ordering: true
           auto-offset-reset: earliest
         retry:

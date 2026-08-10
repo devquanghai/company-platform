@@ -8,6 +8,6 @@ description: Review Redis-to-Caffeine fallback, degraded mode, stale reads and r
 3. Verify maximum stale limits and stale result signalling.
 4. Verify writes during primary failure and behavior after recovery.
 5. Reject local fallback for locks, idempotency, security state, counters and quotas.
-6. Verify multiple-instance divergence is documented and tested.
+6. Verify multiple-instance divergence is explicit and documented.
 7. Verify low-cardinality metrics and sanitized events for activation and recovery.
 8. Reject silent inconsistency or swallowed infrastructure failures.

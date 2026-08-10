@@ -11,5 +11,5 @@ description: Review platform logging masking rules, annotations, structured fiel
 6. Verify CR/LF/control sanitization and bounded output.
 7. Verify cycle handling and source objects are not mutated.
 8. Verify binary, stream, file and HTTP objects are never serialized.
-9. Require captured-output tests proving sentinel secrets never appear.
+9. Require captured-output or packaged-artifact evidence that sentinel secrets never appear.
 10. Report exploitable/compliance findings before style concerns.

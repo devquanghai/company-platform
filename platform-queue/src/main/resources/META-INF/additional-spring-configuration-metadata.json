@@ -7,22 +7,108 @@
       "defaultValue": true
     },
     {
-      "name": "platform.queue.annotations-enabled",
-      "type": "java.lang.Boolean",
-      "description": "Bật đăng ký listener bằng PlatformQueueListener.",
-      "defaultValue": true
+      "name": "platform.queue.application-name",
+      "type": "java.lang.String",
+      "description": "Tên ứng dụng nguồn được ghi vào metadata của message.",
+      "defaultValue": "unknown"
     },
     {
-      "name": "platform.queue.reliability.outbox-enabled",
+      "name": "platform.queue.insecure-transport-allowed",
+      "type": "java.lang.Boolean",
+      "description": "Cho phép rõ ràng PLAINTEXT/amqp không TLS; local/test cũng bật tương thích qua environment legacy.",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.queue.message.max-payload-size",
+      "type": "org.springframework.util.unit.DataSize",
+      "description": "Kích thước payload tối đa trước khi serialize/deserialize.",
+      "defaultValue": "1MB"
+    },
+    {
+      "name": "platform.queue.message.max-envelope-size",
+      "type": "org.springframework.util.unit.DataSize",
+      "description": "Kích thước envelope tối đa, phải lớn hơn hoặc bằng payload.",
+      "defaultValue": "2MB"
+    },
+    {
+      "name": "platform.queue.message.allowed-headers",
+      "type": "java.util.Set<java.lang.String>",
+      "description": "Allowlist tên custom header; system header không thể bị ghi đè."
+    },
+    {
+      "name": "platform.queue.topology.mode",
+      "type": "com.company.platform.queue.domain.policy.TopologyDeclarationMode",
+      "description": "Chính sách validate/khởi tạo topology khi ứng dụng start.",
+      "defaultValue": "VALIDATE_ONLY"
+    },
+    {
+      "name": "platform.queue.delivery.outbox-enabled",
       "type": "java.lang.Boolean",
       "description": "Bật transactional outbox; yêu cầu OutboxMessageStore.",
       "defaultValue": false
     },
     {
-      "name": "platform.queue.reliability.inbox-enabled",
+      "name": "platform.queue.delivery.inbox-enabled",
       "type": "java.lang.Boolean",
       "description": "Bật consumer inbox; yêu cầu InboxStore bền vững.",
       "defaultValue": false
+    },
+    {
+      "name": "platform.queue.brokers.*.kafka.transactions-enabled",
+      "type": "java.lang.Boolean",
+      "description": "Bật Kafka producer transaction cho broker được đặt tên.",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.queue.brokers.*.kafka.transactional-instance-id",
+      "type": "java.lang.String",
+      "description": "ID duy nhất cho từng replica khi bật Kafka transaction; ngăn producer fencing chéo."
+    },
+    {
+      "name": "platform.queue.brokers.*.rabbit.tls-enabled",
+      "type": "java.lang.Boolean",
+      "description": "Bật TLS cho RabbitMQ broker được đặt tên.",
+      "defaultValue": true
+    },
+    {
+      "name": "platform.queue.destinations.*.kafka.key-required",
+      "type": "java.lang.Boolean",
+      "description": "Yêu cầu stable key để giữ ordering theo partition.",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.queue.destinations.*.kafka.partition-override-allowed",
+      "type": "java.lang.Boolean",
+      "description": "Cho phép caller chọn partition cho destination này.",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.queue.subscriptions.*.kafka.read-committed",
+      "type": "java.lang.Boolean",
+      "description": "Chỉ đọc Kafka record đã commit; không bật container transaction.",
+      "defaultValue": false
+    },
+    {
+      "name": "platform.queue.subscriptions.*.kafka.mode",
+      "type": "com.company.platform.queue.api.kafka.KafkaConsumerMode",
+      "description": "REALTIME xử lý ngay; BATCH/BULK stage bền vững rồi xử lý theo count hoặc age.",
+      "defaultValue": "REALTIME"
+    },
+    {
+      "name": "platform.queue.subscriptions.*.kafka.max-messages",
+      "type": "java.lang.Integer",
+      "description": "Ngưỡng record để claim; mặc định BATCH=500, BULK=100000."
+    },
+    {
+      "name": "platform.queue.subscriptions.*.kafka.max-wait",
+      "type": "java.time.Duration",
+      "description": "Tuổi record cũ nhất để claim; mặc định BATCH=30m, BULK=1d."
+    },
+    {
+      "name": "platform.queue.subscriptions.*.kafka.deferred-poll-interval",
+      "type": "java.time.Duration",
+      "description": "Chu kỳ kiểm tra durable staging store.",
+      "defaultValue": "1s"
     }
   ]
 }

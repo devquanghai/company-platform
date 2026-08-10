@@ -4,21 +4,21 @@ import com.company.platform.core.context.RequestContextProvider;
 import com.company.platform.core.json.JsonMapperHelper;
 import com.company.platform.core.time.TimeProvider;
 import com.company.platform.core.trace.TraceContextProvider;
-import com.company.platform.queue.application.registry.QueueBrokerRegistry;
-import com.company.platform.queue.application.registry.QueueDestinationRegistry;
-import com.company.platform.queue.application.registry.QueueSubscriptionRegistry;
-import com.company.platform.queue.application.port.out.QueueTopologyManager;
-import com.company.platform.queue.application.service.QueueTopologyLifecycle;
+import com.company.platform.queue.configuration.internal.registry.QueueBrokerRegistry;
+import com.company.platform.queue.configuration.internal.registry.QueueDestinationRegistry;
+import com.company.platform.queue.configuration.internal.registry.QueueSubscriptionRegistry;
+import com.company.platform.queue.topology.internal.port.out.QueueTopologyManager;
+import com.company.platform.queue.topology.internal.application.QueueTopologyLifecycle;
 import com.company.platform.queue.autoconfigure.properties.PlatformQueueProperties;
 import com.company.platform.queue.envelope.codec.MessageEnvelopeFactory;
-import com.company.platform.queue.envelope.validation.MessageLimits;
 import com.company.platform.queue.envelope.validation.SafeHeaderPolicy;
-import com.company.platform.queue.reliability.retry.DefaultMessageRetryDecisionPolicy;
+import com.company.platform.queue.reliability.internal.application.DefaultMessageRetryDecisionPolicy;
 import com.company.platform.queue.reliability.retry.MessageRetryDecisionPolicy;
 import com.company.platform.queue.serialization.MessageSerializer;
 import com.company.platform.queue.serialization.json.JsonMessageSerializer;
-import com.company.platform.queue.serialization.registry.DefaultMessageSerializerRegistry;
+import com.company.platform.queue.serialization.internal.adapter.DefaultMessageSerializerRegistry;
 import com.company.platform.queue.serialization.registry.MessageSerializerRegistry;
+import com.company.platform.queue.configuration.internal.QueueMessageDefaults;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -58,13 +58,10 @@ public class PlatformQueueAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     public SafeHeaderPolicy safeHeaderPolicy(PlatformQueueProperties properties) {
-        var defaults = properties.getDefaults();
+        var message = properties.getMessage();
         return new SafeHeaderPolicy(
-            new MessageLimits(
-                defaults.getMaxHeaders(), defaults.getMaxHeaderBytes(),
-                defaults.getMaxTotalHeaderBytes(), defaults.getMaxPayloadBytes(),
-                defaults.getMaxEnvelopeBytes()),
-            defaults.getAllowedCustomHeaders());
+            QueueMessageDefaults.limits(message, properties.getDefaults()),
+            message.getAllowedHeaders());
     }
 
     @Bean

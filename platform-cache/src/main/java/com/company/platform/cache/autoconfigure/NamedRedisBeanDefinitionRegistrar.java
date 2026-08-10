@@ -1,6 +1,6 @@
 package com.company.platform.cache.autoconfigure;
 
-import com.company.platform.cache.adapter.redis.RedisConnectionFactoryBuilder;
+import com.company.platform.cache.internal.adapter.redis.RedisConnectionFactoryBuilder;
 import com.company.platform.cache.autoconfigure.properties.CacheStoreProperties;
 import com.company.platform.cache.autoconfigure.properties.PlatformCacheProperties;
 import com.company.platform.cache.domain.model.CacheProviderType;

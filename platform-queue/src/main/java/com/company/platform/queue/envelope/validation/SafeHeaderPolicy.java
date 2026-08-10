@@ -34,7 +34,7 @@ public final class SafeHeaderPolicy {
             String value = entry.getValue();
             if (!NAME.matcher(name).matches() || PlatformMessageHeaders.RESERVED.contains(name)
                 || !allowedCustomHeaders.contains(name)) {
-                throw new IllegalArgumentException("header is not allowed: " + safeName(name));
+                throw new IllegalArgumentException("header is not allowed");
             }
             if (value == null || containsControl(value)) {
                 throw new IllegalArgumentException("header value is invalid");
@@ -65,9 +65,5 @@ public final class SafeHeaderPolicy {
     private boolean containsControl(String value) {
         return value.chars().anyMatch(character ->
             character < 0x20 && character != '\t' || character == 0x7f);
-    }
-
-    private String safeName(String name) {
-        return name.length() > 64 ? name.substring(0, 64) : name;
     }
 }

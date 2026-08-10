@@ -16,9 +16,10 @@ public class RabbitBrokerProperties {
     private String password;
     private Duration connectionTimeout = Duration.ofSeconds(5);
     private Duration requestedHeartbeat = Duration.ofSeconds(30);
-    private boolean correlatedConfirms = true;
-    private boolean returnsEnabled = true;
-    private boolean mandatory = true;
-    private Duration confirmTimeout = Duration.ofSeconds(5);
+    private Boolean tlsEnabled;
     private SslProperties ssl = new SslProperties();
+
+    public boolean isTlsEnabled() {
+        return tlsEnabled == null ? ssl.isEnabled() : tlsEnabled;
+    }
 }

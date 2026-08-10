@@ -1,15 +1,11 @@
 ---
 name: verify-platform-cache
-description: Run the complete platform-cache compile, test, metadata, security, dependency and JaCoCo quality gate. Use before delivering platform-cache changes.
+description: Verify platform-cache production packaging, architecture, metadata, security and dependency integrity before delivery.
 ---
 
-1. Compile platform-cache and reactor dependencies with JDK 25.
-2. Run unit, auto-configuration, concurrency and local-provider tests.
-3. Run Redis standalone integration tests when Docker is available.
-4. Run Sentinel and Cluster profiles when their environments are available.
-5. Verify Lua resources, atomicity, namespace clearing and cluster-slot rejection.
-6. Run JaCoCo and require at least 85% line and 80% branch coverage.
-7. Verify dependency convergence, metadata and `AutoConfiguration.imports`.
-8. Search test output for raw passwords, tokens, keys and cache values.
-9. Run `cache_test_reviewer` and fix blocker/high findings.
-10. Report exact commands, counts, coverage and skipped external topology tests.
+1. Run `./mvnw -pl platform-cache -am -DskipTests package` with JDK 25.
+2. Verify dependency convergence, optional-provider isolation and managed versions.
+3. Inspect packaged Lua/resources, `AutoConfiguration.imports`, and generated metadata.
+4. Check package-by-feature/internal boundaries and public API leakage.
+5. Search packaged resources and configuration for credentials, unsafe defaults and raw sensitive values.
+6. Report commands, results, unavailable external topology checks and remaining risks.

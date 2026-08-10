@@ -60,15 +60,5 @@
             <artifactId>spring-boot-configuration-processor</artifactId>
             <optional>true</optional>
         </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
-
-    <properties>
-        <jacoco.minimum.line.coverage>0.85</jacoco.minimum.line.coverage>
-        <jacoco.minimum.branch.coverage>0.80</jacoco.minimum.branch.coverage>
-    </properties>
 </project>

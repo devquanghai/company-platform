@@ -2,14 +2,15 @@ package com.company.platform.queue.reliability.outbox;
 
 import com.company.platform.queue.api.model.MessageEnvelope;
 import com.company.platform.queue.api.publish.PublishResult;
-import com.company.platform.queue.application.port.out.PreparedMessage;
-import com.company.platform.queue.application.registry.MessagePublisherRegistry;
-import com.company.platform.queue.application.registry.QueueBrokerRegistry;
-import com.company.platform.queue.application.registry.QueueDestinationRegistry;
+import com.company.platform.queue.publish.internal.port.out.PreparedMessage;
+import com.company.platform.queue.publish.internal.application.MessagePublisherRegistry;
+import com.company.platform.queue.configuration.internal.registry.QueueBrokerRegistry;
+import com.company.platform.queue.configuration.internal.registry.QueueDestinationRegistry;
 import com.company.platform.queue.autoconfigure.properties.PlatformQueueProperties;
 import com.company.platform.queue.domain.result.PublishStatus;
 import com.company.platform.queue.serialization.MessageSerializationContext;
 import com.company.platform.queue.serialization.registry.MessageSerializerRegistry;
+import com.company.platform.queue.configuration.internal.QueueMessageDefaults;
 
 import java.time.Duration;
 import java.util.Objects;
@@ -59,9 +60,9 @@ public final class OutboxPollingPublisher {
             return 0;
         }
         try {
-            var reliability = properties.getReliability();
+            var delivery = properties.getDelivery();
             var records = store.claimBatch(
-                reliability.getOutboxBatchSize(), reliability.getLockTimeout());
+                delivery.getOutboxBatchSize(), delivery.getProcessingLockTimeout());
             records.forEach(this::dispatch);
             return records.size();
         } finally {
@@ -70,7 +71,7 @@ public final class OutboxPollingPublisher {
     }
 
     private void dispatch(OutboxRecord record) {
-        if (record.attemptCount() >= properties.getReliability().getMaxAttempts()) {
+        if (record.attemptCount() >= properties.getDelivery().getOutboxMaxAttempts()) {
             store.markFailed(
                 record.id(), record.ownerId(), record.fencingToken(), DEAD_CODE);
             return;
@@ -81,11 +82,17 @@ public final class OutboxPollingPublisher {
             var format = destination.getSerialization().getFormat();
             var context = new MessageSerializationContext(
                 record.eventType(), record.schemaVersion(),
-                properties.getDefaults().getContentType(),
-                properties.getDefaults().getMaxEnvelopeBytes());
+                QueueMessageDefaults.CONTENT_TYPE,
+                QueueMessageDefaults.limits(properties.getMessage()).maxEnvelopeBytes());
             @SuppressWarnings("unchecked")
             MessageEnvelope<Object> envelope = serializers.require(format)
                 .deserialize(record.payload(), MessageEnvelope.class, context);
+            serializers.require(format).serialize(
+                envelope.payload(), new MessageSerializationContext(
+                    record.eventType(), record.schemaVersion(),
+                    QueueMessageDefaults.CONTENT_TYPE,
+                    QueueMessageDefaults.limits(
+                        properties.getMessage()).maxPayloadBytes()));
             Duration timeout = destination.getSendTimeout();
             PreparedMessage prepared = new PreparedMessage(
                 destination.getBroker(), record.destination(), record.messageKey(),

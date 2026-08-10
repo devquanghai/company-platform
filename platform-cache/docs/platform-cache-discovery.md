@@ -15,7 +15,6 @@
 | Resilience4j | 2.4.0 |
 | Jackson | 3.1.4 effective Boot classpath; root property currently says 3.2.1 |
 | Micrometer | 1.16.6 |
-| JaCoCo | 0.8.14 |
 
 Versions come from the parent, Spring Boot BOM and Resilience4j BOM. The child
 module does not declare dependency versions.
@@ -45,9 +44,9 @@ abstraction exists.
   `AutoConfiguration.imports`; component scanning is not used.
 - Properties use Lombok getters/setters/field defaults and generated metadata,
   supplemented by Vietnamese additional metadata.
-- Auto-configuration tests use `ApplicationContextRunner`.
+- Auto-configuration is validated through metadata and reactor integration checks.
 - Shared modules contain no executable application or runtime credentials.
-- The cache module raises its JaCoCo gate to 85% line and 80% branch.
+- The cache module has no unit-test or coverage gate.
 
 ## Conflicts and migration impact
 

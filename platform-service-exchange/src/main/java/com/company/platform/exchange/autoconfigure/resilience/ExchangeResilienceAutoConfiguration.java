@@ -1,10 +1,10 @@
 package com.company.platform.exchange.autoconfigure.resilience;
 
-import com.company.platform.exchange.application.service.ClientConfigurationResolver;
+import com.company.platform.exchange.client.internal.application.ClientConfigurationResolver;
 import com.company.platform.exchange.autoconfigure.PlatformServiceExchangeAutoConfiguration;
 import com.company.platform.exchange.domain.policy.RetryDecisionPolicy;
-import com.company.platform.exchange.resilience.executor.DefaultResilienceExecutor;
-import com.company.platform.exchange.resilience.executor.DefaultRetryDecisionPolicy;
+import com.company.platform.exchange.resilience.internal.application.DefaultResilienceExecutor;
+import com.company.platform.exchange.resilience.internal.application.DefaultRetryDecisionPolicy;
 import com.company.platform.exchange.resilience.executor.ResilienceExecutor;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import org.springframework.boot.autoconfigure.AutoConfiguration;

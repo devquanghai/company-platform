@@ -247,22 +247,8 @@ Every default extension bean backs off:
 - Exception target, headers, trailers, descriptions, and bodies are sanitized
   before storage.
 
-## 12. Test strategy
+## 12. Verification strategy
 
-Unit tests focus on URI rules, configuration validation, merge semantics, retry
-decision branches, pipeline ordering, fallback selection, masking, truncation,
-shell escaping, event finality, exception normalization, and lifecycle ownership.
-
-`ApplicationContextRunner` tests global enable/disable, property validation,
-classpath conditions, custom-bean back-off, disabled clients, multiple clients,
-auto-configuration imports, and generated configuration metadata.
-
-Integration tests use a local HTTP server and in-process gRPC server for verbs,
-generic response types, non-2xx responses, plaintext channels, status mapping,
-deadline budget, interception, and lifecycle ownership. Generated test
-certificates cover HTTPS SSL Bundle, gRPC TLS, and gRPC mTLS key/trust material.
-Timing-sensitive resilience tests use small deterministic intervals or
-controllable clocks, never long sleeps.
-
-The module enforces at least 85% line and 75% branch coverage, with higher
-focused coverage for policy, masking, audit, and resilience behavior.
+The module is packaged on JDK 25 with compiler, Enforcer, metadata and dependency
+checks. Reactor integration scenarios cover HTTP, HTTPS and gRPC behavior without
+exposing implementation packages as supported API.

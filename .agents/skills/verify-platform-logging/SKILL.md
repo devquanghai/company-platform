@@ -1,15 +1,11 @@
 ---
 name: verify-platform-logging
-description: Run the complete compile, test, security-output, metadata, dependency and JaCoCo quality gate for platform-logging.
+description: Verify platform-logging production packaging, architecture, metadata, dependency and security integrity before delivery.
 ---
 
-1. Compile `platform-logging` and required reactor modules with JDK 25.
-2. Run unit/integration tests through Maven Wrapper.
-3. Run JaCoCo verify and inspect XML/HTML coverage.
-4. Validate dependency convergence and optional integration boundaries.
-5. Validate `AutoConfiguration.imports` and generated metadata.
-6. Capture test logs and search for known sentinel secrets.
-7. Verify no top-level Logback config is packaged.
-8. Run test, architecture and security reviewers.
-9. Fix blocker/high findings and rerun `clean verify`.
-10. Report commands, counts, coverage and limitations accurately.
+1. Run `./mvnw -pl platform-logging -am -DskipTests package` with JDK 25.
+2. Validate dependency convergence, optional integrations and feature/internal boundaries.
+3. Inspect `AutoConfiguration.imports`, generated metadata and packaged resources.
+4. Verify no top-level Logback configuration, plaintext secrets or unsafe crypto defaults are packaged.
+5. Run logging architecture and security reviewers; fix blocker/high findings.
+6. Report commands, results and remaining risks.

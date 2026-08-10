@@ -2,23 +2,25 @@ package com.company.platform.integration.kafkaapp.service;
 
 import com.company.platform.integration.kafkaapp.api.ReceivedKafkaMessage;
 import com.company.platform.integration.kafkaapp.model.KafkaTestEvent;
-import com.company.platform.queue.api.annotation.PlatformQueueListener;
 import com.company.platform.queue.api.consume.MessageContext;
 import com.company.platform.queue.api.consume.MessageHandlingResult;
+import com.company.platform.queue.api.kafka.BaseKafkaConsumer;
 import org.springframework.stereotype.Component;
 
 @Component
-public class KafkaTestListener {
+public class KafkaTestListener extends BaseKafkaConsumer<KafkaTestEvent> {
     private final KafkaMessageProbe probe;
 
     public KafkaTestListener(KafkaMessageProbe probe) {
+        super(
+            "kafka-test-events-subscription",
+            "kafka-test-events-handler",
+            KafkaTestEvent.class);
         this.probe = probe;
     }
 
-    @PlatformQueueListener(
-        handlerId = "kafka-test-events-handler",
-        subscription = "kafka-test-events-subscription")
-    public MessageHandlingResult onMessage(
+    @Override
+    protected MessageHandlingResult receive(
         KafkaTestEvent event, MessageContext context
     ) {
         if (!valid(event)) {

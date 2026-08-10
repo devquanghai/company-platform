@@ -1,19 +1,20 @@
 package com.company.platform.queue.autoconfigure;
 
 import com.company.platform.core.time.TimeProvider;
-import com.company.platform.queue.application.registry.QueueBrokerRegistry;
-import com.company.platform.queue.application.registry.QueueDestinationRegistry;
-import com.company.platform.queue.application.registry.MessagePublisherRegistry;
+import com.company.platform.queue.configuration.internal.registry.QueueBrokerRegistry;
+import com.company.platform.queue.configuration.internal.registry.QueueDestinationRegistry;
+import com.company.platform.queue.publish.internal.application.MessagePublisherRegistry;
 import com.company.platform.queue.autoconfigure.properties.PlatformQueueProperties;
 import com.company.platform.queue.envelope.codec.MessageEnvelopeFactory;
 import com.company.platform.queue.reliability.inbox.InboxStore;
-import com.company.platform.queue.reliability.outbox.DefaultTransactionalMessagePublisher;
+import com.company.platform.queue.api.kafka.DeferredKafkaMessageStore;
+import com.company.platform.queue.reliability.internal.application.DefaultTransactionalMessagePublisher;
 import com.company.platform.queue.reliability.outbox.OutboxMessageStore;
 import com.company.platform.queue.reliability.outbox.OutboxPollingPublisher;
 import com.company.platform.queue.reliability.outbox.OutboxPollingLifecycle;
 import com.company.platform.queue.reliability.outbox.TransactionalMessagePublisher;
 import com.company.platform.queue.serialization.registry.MessageSerializerRegistry;
-import com.company.platform.queue.support.PlatformQueuePropertiesValidator;
+import com.company.platform.queue.configuration.internal.PlatformQueuePropertiesValidator;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -32,11 +33,13 @@ public class QueueReliabilityAutoConfiguration {
     public PlatformQueuePropertiesValidator platformQueuePropertiesValidator(
         PlatformQueueProperties properties,
         ObjectProvider<OutboxMessageStore> outbox,
-        ObjectProvider<InboxStore> inbox
+        ObjectProvider<InboxStore> inbox,
+        ObjectProvider<DeferredKafkaMessageStore> deferredKafka
     ) {
         return new PlatformQueuePropertiesValidator(
             properties, outbox.getIfAvailable() != null,
-            inbox.getIfAvailable() != null);
+            inbox.getIfAvailable() != null,
+            deferredKafka.getIfAvailable() != null);
     }
 
     @Bean
@@ -60,7 +63,7 @@ public class QueueReliabilityAutoConfiguration {
     @ConditionalOnBean(OutboxMessageStore.class)
     @ConditionalOnMissingBean
     @ConditionalOnProperty(
-        prefix = "platform.queue.reliability", name = "outbox-enabled",
+        prefix = "platform.queue.delivery", name = "outbox-enabled",
         havingValue = "true")
     public OutboxPollingPublisher outboxPollingPublisher(
         PlatformQueueProperties properties,
@@ -81,6 +84,6 @@ public class QueueReliabilityAutoConfiguration {
         OutboxPollingPublisher publisher, PlatformQueueProperties properties
     ) {
         return new OutboxPollingLifecycle(
-            publisher, properties.getReliability().getOutboxPollInterval());
+            publisher, properties.getDelivery().getOutboxPollInterval());
     }
 }

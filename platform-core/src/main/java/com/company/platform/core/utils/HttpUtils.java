@@ -2,7 +2,7 @@ package com.company.platform.core.utils;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import com.company.platform.core.web.wrapper.CachedBodyHttpServletRequestWrapper;
+import com.company.platform.core.web.internal.adapter.servlet.CachedBodyHttpServletRequestWrapper;
 import lombok.experimental.UtilityClass;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;

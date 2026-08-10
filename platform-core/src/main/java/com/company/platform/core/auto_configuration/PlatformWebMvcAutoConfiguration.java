@@ -1,13 +1,13 @@
 package com.company.platform.core.auto_configuration;
 
-import com.company.platform.core.config.web.PlatformWebMvcConfiguration;
-import com.company.platform.core.config.web.PlatformApiResponseBodyAdvice;
+import com.company.platform.core.web.internal.configuration.PlatformWebMvcConfiguration;
+import com.company.platform.core.web.internal.configuration.PlatformApiResponseBodyAdvice;
 import com.company.platform.core.configuration.properties.PlatformWebProperties;
 import com.company.platform.core.rest.factory.ResponseMetadataFactory;
-import com.company.platform.core.web.filter.RequestResponseLoggingFilter;
-import com.company.platform.core.web.filter.RequestCachingFilter;
-import com.company.platform.core.web.filter.TraceContextFilter;
-import com.company.platform.core.web.interceptor.RequestTimingInterceptor;
+import com.company.platform.core.web.internal.adapter.servlet.RequestResponseLoggingFilter;
+import com.company.platform.core.web.internal.adapter.servlet.RequestCachingFilter;
+import com.company.platform.core.web.internal.adapter.servlet.TraceContextFilter;
+import com.company.platform.core.web.internal.adapter.servlet.RequestTimingInterceptor;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;

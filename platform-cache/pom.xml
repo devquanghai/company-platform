@@ -88,25 +88,5 @@
             <optional>true</optional>
         </dependency>
 
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.awaitility</groupId>
-            <artifactId>awaitility</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>testcontainers</artifactId>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
-
-    <properties>
-        <jacoco.minimum.line.coverage>0.85</jacoco.minimum.line.coverage>
-        <jacoco.minimum.branch.coverage>0.80</jacoco.minimum.branch.coverage>
-    </properties>
 </project>

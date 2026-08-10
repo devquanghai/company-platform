@@ -14,4 +14,4 @@ description: Review platform-queue RabbitMQ topology, publisher confirms and ret
 7. Verify DLX, DLQ, and parking-lot flows cannot requeue infinitely.
 8. Verify optional delayed-message plugin capability fails clearly when unavailable.
 9. Verify topology mismatch fails without destructive recreation.
-10. Require Testcontainers RabbitMQ coverage for changed broker behavior.
+10. Require executable broker evidence for changed delivery behavior when an environment is available.

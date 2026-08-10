@@ -1,15 +1,62 @@
 package com.company.platform.queue.autoconfigure.properties;
 
+import com.company.platform.queue.api.kafka.KafkaConsumerMode;
 import lombok.Getter;
 import lombok.Setter;
+
+import java.time.Duration;
 
 @Getter
 @Setter
 public class KafkaSubscriptionProperties {
     private String groupId;
     private int concurrency = 1;
-    private boolean batch;
-    private boolean transactionEnabled;
+    private KafkaConsumerMode mode = KafkaConsumerMode.REALTIME;
+    private Integer maxMessages;
+    private Duration maxWait;
+    private Duration deferredPollInterval = Duration.ofSeconds(1);
+    private boolean readCommitted;
+
+    /** @deprecated use {@code read-committed}; this never enabled container transactions. */
+    @Deprecated
+    public boolean isTransactionEnabled() {
+        return readCommitted;
+    }
+
+    /** @deprecated use {@code read-committed}; this never enabled container transactions. */
+    @Deprecated
+    public void setTransactionEnabled(boolean value) {
+        readCommitted = value;
+    }
     private boolean strictOrdering;
     private String autoOffsetReset = "earliest";
+
+    public int getMaxMessages() {
+        if (maxMessages != null) {
+            return maxMessages;
+        }
+        return mode == KafkaConsumerMode.BULK ? 100_000
+            : mode == KafkaConsumerMode.BATCH ? 500 : 1;
+    }
+
+    public Duration getMaxWait() {
+        if (maxWait != null) {
+            return maxWait;
+        }
+        return mode == KafkaConsumerMode.BULK
+            ? Duration.ofDays(1)
+            : mode == KafkaConsumerMode.BATCH ? Duration.ofMinutes(30) : Duration.ZERO;
+    }
+
+    /** @deprecated use {@code mode=BATCH}. */
+    @Deprecated
+    public boolean isBatch() {
+        return mode == KafkaConsumerMode.BATCH;
+    }
+
+    /** @deprecated use {@code mode}. */
+    @Deprecated
+    public void setBatch(boolean value) {
+        mode = value ? KafkaConsumerMode.BATCH : KafkaConsumerMode.REALTIME;
+    }
 }

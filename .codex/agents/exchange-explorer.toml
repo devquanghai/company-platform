@@ -4,7 +4,7 @@ sandbox_mode = "read-only"
 
 developer_instructions = """
 Inspect the repository before implementation.
-Locate parent POMs, dependency management, package conventions, auto-configuration patterns, masking, tracing, event publishing, testing and JaCoCo conventions.
+Locate parent POMs, dependency management, package conventions, auto-configuration patterns, masking, tracing and event publishing.
 Return concise findings with exact file paths and symbols.
 Do not edit files.
 Do not propose duplicate abstractions when an existing reusable component can be integrated.

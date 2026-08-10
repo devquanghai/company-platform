@@ -1,6 +1,6 @@
 package com.company.platform.queue.observability.health;
 
-import com.company.platform.queue.application.registry.QueueBrokerRegistry;
+import com.company.platform.queue.configuration.internal.registry.QueueBrokerRegistry;
 import org.springframework.boot.health.contributor.Health;
 import org.springframework.boot.health.contributor.HealthIndicator;
 

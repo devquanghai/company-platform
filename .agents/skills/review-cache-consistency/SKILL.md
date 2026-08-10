@@ -11,4 +11,4 @@ description: Review cache atomicity, CAS, optimistic updates, stampede protectio
 6. Verify distributed lock ownership, lease handling and fail-closed behavior.
 7. Require fencing when a stale lock holder can mutate an external resource.
 8. Confirm database transactions and database optimistic locking are not replaced.
-9. Require deterministic concurrency tests without long sleeps.
+9. Require deterministic evidence for concurrency guarantees; reject timing-only reasoning.

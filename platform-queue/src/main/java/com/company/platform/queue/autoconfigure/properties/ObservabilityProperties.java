@@ -10,6 +10,4 @@ public class ObservabilityProperties {
     private boolean tracingEnabled = true;
     private boolean healthEnabled = true;
     private boolean auditEventsEnabled = true;
-    private boolean logHeaders;
-    private boolean logPayload;
 }

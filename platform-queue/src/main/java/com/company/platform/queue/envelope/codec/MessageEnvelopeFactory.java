@@ -9,6 +9,7 @@ import com.company.platform.queue.api.publish.PublishRequest;
 import com.company.platform.queue.autoconfigure.properties.DestinationProperties;
 import com.company.platform.queue.autoconfigure.properties.PlatformQueueProperties;
 import com.company.platform.queue.envelope.validation.SafeHeaderPolicy;
+import com.company.platform.queue.configuration.internal.QueueMessageDefaults;
 
 import java.time.Instant;
 import java.util.Objects;
@@ -43,8 +44,7 @@ public final class MessageEnvelopeFactory {
         String correlationId = textOr(
             request.correlationId(),
             requestContext == null ? null : requestContext.getCorrelationId());
-        if (properties.getDefaults().isRequireCorrelationId()
-            && (correlationId == null || correlationId.isBlank())) {
+        if (correlationId == null || correlationId.isBlank()) {
             correlationId = messageId;
         }
         var trace = traceContext == null ? null : traceContext.getCurrentContext();
@@ -60,8 +60,8 @@ public final class MessageEnvelopeFactory {
             messageId, request.eventId(), correlationId, request.causationId(),
             trace == null ? null : trace.getTraceId(),
             trace == null ? null : trace.getSpanId(),
-            properties.getSourceApplication(), request.destination(), eventType,
-            version, now, now, properties.getDefaults().getContentType(),
+            properties.getApplicationName(), request.destination(), eventType,
+            version, now, now, QueueMessageDefaults.CONTENT_TYPE,
             headerPolicy.sanitize(request.headers()));
         return new MessageEnvelope<>(metadata, request.payload());
     }

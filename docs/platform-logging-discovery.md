@@ -6,8 +6,7 @@
 - Java 25; Spring Boot 4.0.7; Spring Framework 7.0.8.
 - Jackson 3.1.4, SLF4J 2.0.18, Logback 1.5.34.
 - Micrometer 1.16.6, Tracing 1.6.6, Lombok 1.18.46.
-- JUnit 5, AssertJ, `ApplicationContextRunner`, Surefire/Failsafe 3.5.5
-  and JaCoCo 0.8.14 are inherited from the root parent.
+- Failsafe 3.5.5 is inherited for reactor-level integration verification.
 - There is no separate physical `platform-parent` or
   `platform-dependencies` module; the root POM performs both roles.
 

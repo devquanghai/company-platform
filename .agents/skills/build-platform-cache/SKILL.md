@@ -3,13 +3,9 @@ name: build-platform-cache
 description: Build or extend platform-cache with named Caffeine, Redis, multi-level and NOOP stores, resilience, consistency, observability, Spring Cache integration and Boot auto-configuration. Use for implementation or refactoring under platform-cache.
 ---
 
-1. Read root `AGENTS.md`, parent POM and `docs/platform-cache-discovery.md`.
-2. Run the read-only `cache_explorer` agent before architectural changes.
+1. Read `AGENTS.md`, parent POM and `docs/platform-cache-discovery.md`; run `cache_explorer` before architecture changes.
+2. Build vertical cache slices under feature-owned `internal` ports/adapters; preserve supported API FQCN.
 3. Reuse platform-core JSON, time, trace, request and exception contracts.
-4. Keep public APIs provider-neutral and auto-configuration free of business logic.
-5. Treat cache as disposable acceleration, never as the source of truth.
-6. Reject unbounded local caches, Java serialization, `KEYS`, raw sensitive keys and values.
-7. Keep distributed coordination fail-closed; never fall back to a JVM lock or local cache.
-8. Implement one vertical slice with behavior tests before starting the next.
-9. Run `cache_architect`, `cache_consistency_reviewer` and `cache_resilience_reviewer`.
-10. Run `./mvnw -pl platform-cache -am clean verify` with JDK 25 and report limitations.
+4. Treat cache as disposable acceleration; reject unbounded local caches, Java serialization, `KEYS`, and sensitive raw keys/values.
+5. Keep distributed coordination fail-closed; never substitute JVM coordination.
+6. Run `cache_architect`, `cache_consistency_reviewer`, `cache_resilience_reviewer`, then `$verify-platform-cache`.

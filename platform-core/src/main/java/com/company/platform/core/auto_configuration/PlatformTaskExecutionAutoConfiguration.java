@@ -1,11 +1,11 @@
 package com.company.platform.core.auto_configuration;
 
-import com.company.platform.core.config.task.PlatformAsyncConfigurer;
-import com.company.platform.core.config.task.ContextCopyingTaskDecorator;
-import com.company.platform.core.config.task.SecurityContextCopyingTaskDecorator;
+import com.company.platform.core.context.internal.adapter.task.PlatformAsyncConfigurer;
+import com.company.platform.core.context.internal.adapter.task.ContextCopyingTaskDecorator;
+import com.company.platform.core.context.internal.adapter.task.SecurityContextCopyingTaskDecorator;
 import com.company.platform.core.configuration.properties.PlatformTaskExecutionProperties;
 import com.company.platform.core.auto_configuration.PlatformCoreAutoConfiguration;
-import com.company.platform.core.exception.handler.PlatformAsyncExceptionHandler;
+import com.company.platform.core.exception.internal.adapter.PlatformAsyncExceptionHandler;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;

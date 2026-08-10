@@ -2,12 +2,12 @@ package com.company.platform.queue.autoconfigure;
 
 import com.company.platform.queue.api.publish.MessagePublisher;
 import com.company.platform.queue.api.publish.TypedMessagePublisherFactory;
-import com.company.platform.queue.application.port.out.ProviderMessagePublisher;
-import com.company.platform.queue.application.registry.MessagePublisherRegistry;
-import com.company.platform.queue.application.registry.QueueBrokerRegistry;
-import com.company.platform.queue.application.registry.QueueDestinationRegistry;
-import com.company.platform.queue.application.service.DefaultMessagePublisher;
-import com.company.platform.queue.application.service.DefaultTypedMessagePublisherFactory;
+import com.company.platform.queue.publish.internal.port.out.ProviderMessagePublisher;
+import com.company.platform.queue.publish.internal.application.MessagePublisherRegistry;
+import com.company.platform.queue.configuration.internal.registry.QueueBrokerRegistry;
+import com.company.platform.queue.configuration.internal.registry.QueueDestinationRegistry;
+import com.company.platform.queue.publish.internal.application.DefaultMessagePublisher;
+import com.company.platform.queue.publish.internal.application.DefaultTypedMessagePublisherFactory;
 import com.company.platform.queue.autoconfigure.properties.PlatformQueueProperties;
 import com.company.platform.queue.envelope.codec.MessageEnvelopeFactory;
 import com.company.platform.queue.reliability.outbox.TransactionalMessagePublisher;

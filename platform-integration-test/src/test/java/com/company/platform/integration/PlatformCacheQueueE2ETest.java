@@ -6,7 +6,7 @@ import com.company.platform.cache.api.operation.AtomicCacheOperations;
 import com.company.platform.cache.api.operation.OptimisticCacheOperations;
 import com.company.platform.cache.api.operation.PlatformCacheOperations;
 import com.company.platform.cache.api.operation.TypedCacheFactory;
-import com.company.platform.cache.application.port.out.CacheBackendRegistry;
+import com.company.platform.cache.internal.application.port.out.CacheBackendRegistry;
 import com.company.platform.cache.domain.result.OptimisticUpdateStatus;
 import com.company.platform.cache.observability.event.CacheEventPublisher;
 import com.company.platform.cache.observability.metrics.CacheMetricsRecorder;

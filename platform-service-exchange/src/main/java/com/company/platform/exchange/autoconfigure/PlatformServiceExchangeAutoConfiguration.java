@@ -1,18 +1,18 @@
 package com.company.platform.exchange.autoconfigure;
 
 import com.company.platform.core.json.JsonMapperHelper;
-import com.company.platform.exchange.application.service.ClientConfigurationResolver;
+import com.company.platform.exchange.client.internal.application.ClientConfigurationResolver;
 import com.company.platform.exchange.autoconfigure.properties.ServiceExchangeProperties;
 import com.company.platform.exchange.domain.model.ProxyEndpoint;
 import com.company.platform.exchange.domain.policy.ClientProxyCustomizer;
 import com.company.platform.exchange.observability.logging.CurlGenerator;
-import com.company.platform.exchange.observability.logging.DefaultCurlGenerator;
-import com.company.platform.exchange.observability.logging.DefaultOutboundDataMasker;
+import com.company.platform.exchange.observability.internal.adapter.logging.DefaultCurlGenerator;
+import com.company.platform.exchange.observability.internal.adapter.logging.DefaultOutboundDataMasker;
 import com.company.platform.exchange.observability.logging.OutboundDataMasker;
-import com.company.platform.exchange.resilience.fallback.DefaultOutboundFallbackRegistry;
+import com.company.platform.exchange.resilience.internal.adapter.DefaultOutboundFallbackRegistry;
 import com.company.platform.exchange.resilience.fallback.OutboundFallbackHandler;
 import com.company.platform.exchange.resilience.fallback.OutboundFallbackRegistry;
-import com.company.platform.exchange.support.ServiceExchangePropertiesValidator;
+import com.company.platform.exchange.configuration.internal.ServiceExchangePropertiesValidator;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;

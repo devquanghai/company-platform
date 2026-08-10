@@ -1,10 +1,10 @@
 package com.company.platform.cache.autoconfigure;
 
-import com.company.platform.cache.adapter.redis.RedisCacheBackend;
-import com.company.platform.cache.application.port.out.CacheBackend;
-import com.company.platform.cache.application.port.out.RedisCacheBackendFactory;
-import com.company.platform.cache.application.resolver.CacheDefinitionRegistry;
-import com.company.platform.cache.application.resolver.CacheStoreDefinition;
+import com.company.platform.cache.internal.adapter.redis.RedisCacheBackend;
+import com.company.platform.cache.internal.application.port.out.CacheBackend;
+import com.company.platform.cache.internal.application.port.out.RedisCacheBackendFactory;
+import com.company.platform.cache.internal.application.resolver.CacheDefinitionRegistry;
+import com.company.platform.cache.internal.application.resolver.CacheStoreDefinition;
 import com.company.platform.cache.autoconfigure.properties.PlatformCacheProperties;
 import com.company.platform.cache.domain.model.CacheProviderType;
 import com.company.platform.core.json.JsonMapperHelper;
@@ -18,8 +18,8 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.RedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
-import com.company.platform.cache.resilience.CacheResilienceExecutor;
-import com.company.platform.cache.resilience.ResilientCacheBackend;
+import com.company.platform.cache.internal.resilience.CacheResilienceExecutor;
+import com.company.platform.cache.internal.resilience.ResilientCacheBackend;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;

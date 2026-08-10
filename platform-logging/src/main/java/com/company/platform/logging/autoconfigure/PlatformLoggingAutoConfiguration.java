@@ -1,7 +1,7 @@
 package com.company.platform.logging.autoconfigure;
 
 import com.company.platform.logging.autoconfigure.properties.PlatformLoggingProperties;
-import com.company.platform.logging.support.PlatformLoggingPropertiesValidator;
+import com.company.platform.logging.configuration.internal.PlatformLoggingPropertiesValidator;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;

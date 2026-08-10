@@ -1,6 +1,5 @@
 package com.company.platform.integration;
 
-import com.company.platform.queue.api.annotation.PlatformQueueListener;
 import com.company.platform.queue.api.consume.MessageContext;
 import com.company.platform.queue.api.consume.MessageHandlingResult;
 import org.springframework.context.annotation.Profile;
@@ -16,9 +15,6 @@ import java.util.function.Predicate;
 public class IntegrationQueueListener {
     private final BlockingQueue<ReceivedEvent> events = new LinkedBlockingQueue<>();
 
-    @PlatformQueueListener(
-        handlerId = "integration-kafka-handler",
-        subscription = "kafka-events-handler")
     public MessageHandlingResult onKafka(
         IntegrationQueueEvent event, MessageContext context
     ) {
@@ -26,9 +22,6 @@ public class IntegrationQueueListener {
         return MessageHandlingResult.ACK;
     }
 
-    @PlatformQueueListener(
-        handlerId = "integration-rabbit-handler",
-        subscription = "rabbit-events-handler")
     public MessageHandlingResult onRabbit(
         IntegrationQueueEvent event, MessageContext context
     ) {

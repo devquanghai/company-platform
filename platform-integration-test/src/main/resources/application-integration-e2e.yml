@@ -156,7 +156,6 @@ platform:
 
   queue:
     enabled: true
-    annotations-enabled: true
     source-application: platform-integration-test
     environment: local
     allow-noop: true
@@ -190,7 +189,7 @@ platform:
           enable-idempotence: true
           retries: 10
           max-in-flight-requests-per-connection: 5
-          transaction-enabled: false
+          transactions-enabled: false
           ssl:
             enabled: false
             verify-hostname: true
@@ -282,8 +281,8 @@ platform:
         kafka:
           group-id: platform-integration-e2e
           concurrency: 1
-          batch: false
-          transaction-enabled: false
+          mode: REALTIME
+          read-committed: false
           strict-ordering: true
           auto-offset-reset: earliest
         retry:

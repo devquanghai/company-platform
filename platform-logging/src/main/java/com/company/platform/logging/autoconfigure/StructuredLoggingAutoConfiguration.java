@@ -7,7 +7,7 @@ import com.company.platform.core.trace.TraceContextProvider;
 import com.company.platform.logging.api.logger.PlatformLogger;
 import com.company.platform.logging.api.masking.DataMaskingService;
 import com.company.platform.logging.api.masking.MaskingHashKeyProvider;
-import com.company.platform.logging.application.service.DefaultPlatformLogger;
+import com.company.platform.logging.logging.internal.application.DefaultPlatformLogger;
 import com.company.platform.logging.audit.publisher.LoggingAuditEventPublisher;
 import com.company.platform.logging.autoconfigure.properties.PlatformLoggingProperties;
 import com.company.platform.logging.observability.metrics.LoggingMetrics;

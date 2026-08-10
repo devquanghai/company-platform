@@ -2,7 +2,7 @@ package com.company.platform.exchange.autoconfigure.observability;
 
 import com.company.platform.exchange.autoconfigure.PlatformServiceExchangeAutoConfiguration;
 import com.company.platform.exchange.observability.metrics.ExchangeMetrics;
-import com.company.platform.exchange.observability.metrics.MicrometerExchangeMetrics;
+import com.company.platform.exchange.observability.internal.adapter.metrics.MicrometerExchangeMetrics;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;

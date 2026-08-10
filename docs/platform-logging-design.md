@@ -136,9 +136,6 @@ secret bytes, carries purpose/algorithm/alias/version, has explicit destruction,
 and has no secret-derived `toString`, equality or hash. Key caching is bounded,
 TTL-based, clearable and destroys evicted entries. It never caches plaintext.
 
-Captured-output tests exercise real SLF4J formatted messages, fluent key-values,
-MDC and cause/suppressed throwables through every shipped TEXT and Boot JSON
-appender; sentinel secrets must be absent. Crypto tests cover authenticated
-header/ciphertext tampering, explicit OAEP parameters, RSA threshold/hybrid,
-key rotation/cache clear/concurrency and secret-free exceptions. Module coverage
-gate is 85% line and 80% branch.
+Verification packages the module with JDK 25, validates auto-configuration and
+configuration metadata, and scans output paths for secret leakage. Crypto and
+logging behavior remain isolated behind feature-owned internal adapters.

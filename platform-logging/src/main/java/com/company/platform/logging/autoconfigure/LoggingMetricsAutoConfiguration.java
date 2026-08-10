@@ -1,7 +1,7 @@
 package com.company.platform.logging.autoconfigure;
 
 import com.company.platform.logging.observability.metrics.LoggingMetrics;
-import com.company.platform.logging.observability.metrics.MicrometerLoggingMetrics;
+import com.company.platform.logging.observability.internal.adapter.metrics.MicrometerLoggingMetrics;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;

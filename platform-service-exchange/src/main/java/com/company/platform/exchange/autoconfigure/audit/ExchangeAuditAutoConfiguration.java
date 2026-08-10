@@ -1,6 +1,6 @@
 package com.company.platform.exchange.autoconfigure.audit;
 
-import com.company.platform.exchange.adapter.outbound.event.SpringOutboundCallEventPublisher;
+import com.company.platform.exchange.audit.internal.adapter.SpringOutboundCallEventPublisher;
 import com.company.platform.exchange.audit.publisher.OutboundCallEventPublisher;
 import com.company.platform.exchange.autoconfigure.PlatformServiceExchangeAutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfiguration;

@@ -1,7 +1,7 @@
 package com.company.platform.logging.autoconfigure;
 
 import com.company.platform.logging.audit.publisher.LoggingAuditEventPublisher;
-import com.company.platform.logging.audit.publisher.SpringLoggingAuditEventPublisher;
+import com.company.platform.logging.audit.internal.adapter.SpringLoggingAuditEventPublisher;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;

@@ -1,10 +1,10 @@
 package com.company.platform.queue.autoconfigure;
 
-import com.company.platform.queue.application.registry.QueueBrokerRegistry;
+import com.company.platform.queue.configuration.internal.registry.QueueBrokerRegistry;
 import com.company.platform.queue.observability.event.QueueAuditEventPublisher;
-import com.company.platform.queue.observability.event.SpringQueueAuditEventPublisher;
+import com.company.platform.queue.observability.internal.adapter.event.SpringQueueAuditEventPublisher;
 import com.company.platform.queue.observability.health.PlatformQueueHealthIndicator;
-import com.company.platform.queue.observability.metrics.MicrometerQueueMetrics;
+import com.company.platform.queue.observability.internal.adapter.metrics.MicrometerQueueMetrics;
 import com.company.platform.queue.observability.metrics.QueueMetrics;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.boot.autoconfigure.AutoConfiguration;

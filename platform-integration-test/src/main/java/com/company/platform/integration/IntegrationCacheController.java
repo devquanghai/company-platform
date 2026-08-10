@@ -1,7 +1,7 @@
 package com.company.platform.integration;
 
-import com.company.platform.cache.adapter.redis.RedisCacheBackend;
-import com.company.platform.cache.application.port.out.CacheBackend;
+import com.company.platform.cache.internal.adapter.redis.RedisCacheBackend;
+import com.company.platform.cache.internal.application.port.out.CacheBackend;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;

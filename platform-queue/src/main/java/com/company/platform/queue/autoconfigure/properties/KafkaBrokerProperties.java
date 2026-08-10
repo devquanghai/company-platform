@@ -19,11 +19,16 @@ public class KafkaBrokerProperties {
     private String saslMechanism;
     private String username;
     private String password;
-    private String acks = "all";
-    private boolean enableIdempotence = true;
-    private int retries = 10;
-    private int maxInFlightRequestsPerConnection = 5;
-    private boolean transactionEnabled;
+    private boolean transactionsEnabled;
     private String transactionalIdPrefix;
+    private String transactionalInstanceId;
     private SslProperties ssl = new SslProperties();
+
+    /** @deprecated use {@code transactions-enabled}. */
+    @Deprecated
+    public boolean isTransactionEnabled() { return transactionsEnabled; }
+
+    /** @deprecated use {@code transactions-enabled}. */
+    @Deprecated
+    public void setTransactionEnabled(boolean value) { transactionsEnabled = value; }
 }

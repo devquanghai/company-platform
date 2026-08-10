@@ -3,7 +3,7 @@ description = "Architecture reviewer for named caches, providers, multi-level ca
 sandbox_mode = "read-only"
 
 developer_instructions = """
-Review package boundaries, public API, provider routing, multi-level behavior,
+Enforce root package-by-feature/internal ports-adapters contract. Review public API, provider routing, multi-level behavior,
 fallback semantics, key design, serialization, lifecycle and auto-configuration.
 Reject static utilities, vendor leakage, hidden inconsistency, unbounded caches
 and duplicate abstractions. Do not edit files.

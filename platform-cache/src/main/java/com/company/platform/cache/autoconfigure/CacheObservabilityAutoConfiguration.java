@@ -1,11 +1,11 @@
 package com.company.platform.cache.autoconfigure;
 
-import com.company.platform.cache.application.port.out.CacheBackendRegistry;
+import com.company.platform.cache.internal.application.port.out.CacheBackendRegistry;
 import com.company.platform.cache.observability.event.CacheEventPublisher;
-import com.company.platform.cache.observability.event.SpringCacheEventPublisher;
+import com.company.platform.cache.observability.internal.adapter.event.SpringCacheEventPublisher;
 import com.company.platform.cache.observability.health.PlatformCacheHealthIndicator;
 import com.company.platform.cache.observability.metrics.CacheMetricsRecorder;
-import com.company.platform.cache.observability.metrics.MicrometerCacheMetricsRecorder;
+import com.company.platform.cache.observability.internal.adapter.metrics.MicrometerCacheMetricsRecorder;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;

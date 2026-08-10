@@ -14,4 +14,4 @@ description: Review platform-queue Kafka producer, consumer, ordering, retry top
 7. Verify Kafka transactions cover Kafka read/process/write only.
 8. Verify named clusters own and close only resources created by the module.
 9. Verify topology validation is non-destructive.
-10. Require Testcontainers Kafka coverage for changed broker behavior.
+10. Require executable broker evidence for changed delivery behavior when an environment is available.

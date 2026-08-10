@@ -42,7 +42,7 @@ public final class PublishRequest<T> {
         partition = builder.partition;
         routingKey = builder.routingKey;
         timeout = builder.timeout;
-        mode = Objects.requireNonNull(builder.mode, "mode");
+        mode = builder.mode;
         serialization = builder.serialization;
     }
 
@@ -83,13 +83,13 @@ public final class PublishRequest<T> {
         private String correlationId;
         private String causationId;
         private String eventType;
-        private int schemaVersion = 1;
+        private int schemaVersion;
         private final Map<String, String> headers = new LinkedHashMap<>();
         private Instant deliverAt;
         private Integer partition;
         private String routingKey;
         private Duration timeout;
-        private PublishMode mode = PublishMode.DIRECT;
+        private PublishMode mode;
         private MessageSerializationFormat serialization;
 
         private Builder(T payload) { this.payload = payload; }
@@ -102,6 +102,10 @@ public final class PublishRequest<T> {
         public Builder<T> eventType(String value) { eventType = value; return this; }
         public Builder<T> schemaVersion(int value) { schemaVersion = value; return this; }
         public Builder<T> header(String name, String value) { headers.put(name, value); return this; }
+        public Builder<T> headers(Map<String, String> values) {
+            headers.putAll(Objects.requireNonNull(values, "values"));
+            return this;
+        }
         public Builder<T> deliverAt(Instant value) { deliverAt = value; return this; }
         public Builder<T> partition(Integer value) { partition = value; return this; }
         public Builder<T> routingKey(String value) { routingKey = value; return this; }

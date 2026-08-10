@@ -3,8 +3,7 @@ description = "Architecture reviewer for platform logging, masking, context prop
 sandbox_mode = "read-only"
 
 developer_instructions = """
-Review package boundaries, public APIs, Logback coupling, SLF4J usage,
+Enforce root package-by-feature/internal ports-adapters contract. Review public APIs, Logback coupling, SLF4J usage,
 auto-configuration, annotations, extension points, MDC lifecycle and structured
 logging. Reject circular dependencies and vendor leakage. Do not edit files.
 """
-

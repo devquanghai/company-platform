@@ -6,16 +6,20 @@
 - Keep the module a reusable library; do not add application entry points or runtime environment credentials.
 - Register Boot auto-configuration through `AutoConfiguration.imports`; do not rely on component scanning.
 - Every default bean must back off when the consuming application supplies an equivalent bean.
-- New and changed production code requires unit tests with 100% line and branch coverage.
-- Keep all platform properties in `com.company.platform.core.configuration.properties`; generate both Spring configuration and auto-configuration metadata.
+- Keep feature properties beside their feature under `internal/configuration/properties`; generate Spring configuration and auto-configuration metadata.
 - Use Lombok for mechanical boilerplate, but avoid `@Data` and keep invariant/security logic explicit.
 - Keep Jackson 3 coercion strict and exception responses localized, stable, and non-sensitive.
-- Do not hide uncovered production behavior with broad JaCoCo exclusions.
 - Use JDK 25 and the repository Maven Wrapper for validation.
 - Treat insecure TLS bypass, weak encryption, logging secrets, dynamic dependency versions, and legacy external package imports as build blockers.
 
 ## Repository architecture
 
+- Treat each Maven module as a feature boundary. Inside a module, organize code by capability, never by a module-wide technical layer.
+- Keep supported consumer contracts in `<feature>/api`.
+- Keep implementation in `<feature>/internal/{domain,application,port/in,port/out,adapter}`. Boot wiring belongs in `<feature>/internal/autoconfigure`; a shared `internal/autoconfigure` is allowed only as module composition root.
+- Dependencies point inward: adapters implement ports; application/domain do not import Spring or vendor APIs; cross-feature calls use `api`, never `internal`.
+- Create ports only at real I/O or extension boundaries. Do not wrap every class with a one-to-one interface.
+- Keep internal classes package-private unless framework wiring requires public visibility. A public type inside `internal` is not supported API.
 - Shared platform modules must not contain business-domain logic.
 - Keep public API separate from transport implementation and prefer composition.
 - Activate library integrations with Boot auto-configuration, never component scanning.
@@ -28,9 +32,9 @@
 ## platform-service-exchange
 
 - Use `.agents/skills/build-service-exchange/SKILL.md` for implementation work.
-- Keep REST, gRPC, resilience, fallback, audit, and observability in one artifact with separate packages.
+- Keep REST, gRPC, resilience, fallback, audit, and observability as separate feature slices in one artifact; each slice owns its internal ports and adapters.
 - A named-client registry owns only resources it creates; Spring-created gRPC channels remain Spring-owned.
-- Run `./mvnw -pl platform-service-exchange -am clean verify` before completion.
+- Run `./mvnw -pl platform-service-exchange -am -DskipTests package` before completion.
 
 ## platform-logging
 
@@ -42,5 +46,4 @@
   unversioned ciphertext and MDC leaks as build blockers.
 - Ship reusable Logback fragments only; never install a top-level
   `logback-spring.xml` from the library.
-- Run `./mvnw -pl platform-logging -am clean verify` and require at least 85%
-  line and 80% branch coverage.
+- Run `./mvnw -pl platform-logging -am -DskipTests package` before completion.

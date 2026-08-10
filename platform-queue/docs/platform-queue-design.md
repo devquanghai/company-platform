@@ -18,9 +18,12 @@ Guarantees are path-specific:
   are deduplicated only when the handler uses inbox/application idempotency at
   the correct transaction boundary.
 
-Kafka transactions cover only Kafka read/process/write plus offset commit.
-There is no exactly-once guarantee for business side effects, automatic
-Kafka/Rabbit failover, or in-memory production durability.
+Kafka producer transactions cover only operations explicitly executed through
+the producer transaction API. Consumer `read-committed` configures isolation
+only; this library does not currently wire a transactional listener container
+or a transactional DLT recoverer. There is no exactly-once guarantee for
+business side effects, automatic Kafka/Rabbit failover, or in-memory production
+durability.
 
 ## Hexagonal boundaries
 
@@ -66,13 +69,41 @@ for one event. Listener annotations refer to a subscription; a compatibility
 exists. Provider-specific properties remain separate:
 
 - Kafka destination: topic and producer key/partition policy. Kafka
-  subscription: group, offset, transaction, retry topics and DLT.
+  subscription: group, offset isolation, retry topics and DLT.
 - Rabbit destination: exchange/routing key/persistence. Rabbit subscription:
   queue, binding, acknowledgement, retry queues and DLX/DLQ.
 
 Registries are immutable snapshots constructed after fail-fast validation.
 They never choose an implicit default broker and never resolve unregistered
 runtime input.
+
+### Lean configuration
+
+The top-level configuration groups are `message`, `topology`, `delivery`,
+`brokers`, `destinations`, `subscriptions` and `observability`. Safety
+invariants are not runtime configuration: Kafka always uses `acks=all`,
+idempotence, bounded retries and at most five in-flight requests; Rabbit
+publishers always use correlated confirms, returns and mandatory publishing;
+TLS always verifies hostnames. JSON is the default payload format, message IDs
+are always generated when missing, and correlation IDs fall back to request
+context and then message ID.
+
+Legacy keys must migrate as follows: `source-application` to
+`application-name`, `defaults.*` to `message.*` or `topology.mode`,
+`reliability.outbox-enabled` to `delivery.outbox-enabled`,
+`reliability.inbox-enabled` to `delivery.inbox-enabled`,
+`reliability.lock-timeout` to `delivery.processing-lock-timeout`, and
+`reliability.max-attempts` to `delivery.outbox-max-attempts`. Kafka producer
+`transaction-enabled` becomes `transactions-enabled`, consumer
+`transaction-enabled` becomes `read-committed`, Rabbit `ssl.enabled` becomes
+`tls-enabled`, `require-key` becomes `key-required`, and
+`allow-partition-override` to `partition-override-allowed`. The `acks`,
+`enable-idempotence`, `correlated-confirms`, `returns-enabled`, `mandatory`,
+`verify-hostname` and `annotations-enabled` keys were removed because they are
+either invariants or had no effect.
+
+Deprecated binding aliases remain for one migration cycle. Applications must
+not supply old and new forms of the same setting together.
 
 ## Publish flow
 
@@ -93,6 +124,15 @@ The request/destination selects the mode before execution:
 - `OUTBOX`: write the serialized envelope only, in the caller's local database
   transaction. The poller publishes after commit.
 
+`BaseKafkaProducer<T>` uses `KafkaDestinationResolver` to validate and fix a
+Kafka-backed logical destination and payload type while
+allowing each send to supply a `KafkaPublishMessage<T>` with key,
+message/event ID, correlation/causation ID, event type, schema version, custom
+headers, partition and timeout. `KafkaPublishFailureHandler` is a fail-open
+publish-failure extension point. Its context contains no payload, credential or
+native `ProducerRecord`, and handlers do not retry automatically because a
+timeout can have an `UNKNOWN_OUTCOME`.
+
 Kafka returns topic/partition/offset after the send future completes with an
 acceptable ACK policy; `acks=0` is rejected for confirmation-aware and outbox
 paths. Rabbit resolves both correlated confirm and mandatory-return outcomes
@@ -103,8 +143,8 @@ Platform-owned Kafka producers enforce `acks=all`, explicit idempotence,
 positive retries, at most five in-flight requests, bounded request/block/delivery
 timeouts and stable keys where ordering is required. Ambiguous timeouts map to
 `UNKNOWN_OUTCOME`. Consumers enforce auto-commit off; record handlers default
-to `AckMode.RECORD` and transactional/recovery handlers commit an offset only
-after the required boundary.
+to `AckMode.RECORD`. Setting `read-committed=true` only hides uncommitted Kafka
+records; it does not make handler side effects or offset commits transactional.
 
 Rabbit messages are persistent for durable destinations. Critical paths require
 durable topology, mandatory publishing, correlated confirms and returns. The
@@ -129,9 +169,9 @@ broker container
 ```
 
 Fatal malformed, unsupported-schema, oversized and security-invalid messages do
-not retry. `maxAttempts` includes the original delivery; combined retry has one
-total bounded budget with capped backoff/jitter. Kafka blocking retry is short;
-non-blocking retry uses retry topics. Rabbit delayed retry uses TTL/DLX unless
+not retry. `maxAttempts` includes the original delivery and uses a bounded
+exponential backoff. Kafka currently accepts `NONE` or `BLOCKING`; startup rejects
+`NON_BLOCKING`/`COMBINED` until retry-topic recovery is implemented. Rabbit delayed retry uses TTL/DLX unless
 an explicitly enabled plugin is validated. Attempt headers are system-owned,
 bounded and never trusted from caller input. If retry/DLT publication fails or
 has an unknown outcome, the original is not acknowledged. A DLT/DLQ consumer
@@ -139,21 +179,72 @@ does not enter the same retry chain automatically.
 
 ## Listener registration
 
-`PlatformQueueListenerBeanPostProcessor` validates public/non-private method
-signatures and unique handler IDs. `PlatformQueueListenerRegistrar` resolves
-the logical destination and delegates to the matching broker listener
-container adapter. Disabled destinations create no container. Broker-native
-records/channels are internal and never form the primary handler contract.
+The module ships no custom listener annotation. Applications using native
+Spring factories use `@KafkaListener` or `@RabbitListener` directly. Applications
+using platform named brokers extend `BaseKafkaConsumer<T>` or
+`BaseRabbitConsumer<T>`; the internal registrar resolves the logical destination
+and delegates to the matching broker adapter.
 
-Kafka container transactions and non-blocking retry topics are mutually
-exclusive and fail startup. A transactional listener uses bounded blocking
-retry and a transactional recoverer so DLT publication plus recovered offset
-commit occur in a new Kafka transaction. Retry-topic subscriptions are
-non-transactional and require idempotency. Kafka ordering is per partition only;
-strict ordering requires a stable non-null key, forbids non-blocking retry and
-uses partition pause/blocking retry. Retry/DLT topics preserve the key and have
-partition parity. Increasing partitions is treated as an ordering-affecting
-governance change.
+Applications can extend `BaseKafkaConsumer<T>`, declare the subscription and
+`Class<T>` in the constructor, and implement `receive`. Auto-configuration
+registers this consumer directly. The explicit `Class<T>` avoids generic type
+erasure and removes the need for an annotated method that only forwards a call.
+
+Kafka consumers can request `read_committed` isolation but do not gain a
+transactional processing boundary from that setting. Retry-topic subscriptions
+require idempotency. Kafka ordering is per partition only; strict ordering
+requires a stable non-null key, forbids non-blocking retry and uses partition
+pause/blocking retry. Concurrency may scale across partitions; records sharing
+the same key remain on one partition and are processed serially. Retry/DLT topics preserve the key and have partition
+parity. Increasing partitions is treated as an ordering-affecting governance
+change.
+
+Kafka consumer modes:
+
+- `REALTIME`: process one record and commit only after ACK/inbox completion.
+- `BATCH`: durably stage, then claim one ordered partition batch when 500 records
+  or the oldest record reaches 30 minutes.
+- `BULK`: same flow with 100000 records or one day.
+
+`BATCH` and `BULK` require both `InboxStore` and
+`DeferredKafkaMessageStore`. Kafka offsets are committed only after staging.
+The durable store deduplicates subscription/topic/partition/offset, permits one
+fenced claim per partition, and returns contiguous offsets in ascending order.
+Partial retry is safe because already processed message IDs are rejected by the
+inbox. Inbox retention must exceed the maximum deferred retry/replay window.
+`markDeadLetter` atomically completes the successful prefix, marks only the
+failed head terminal, preserves the untouched suffix, and keeps newer offsets
+blocked until that transition commits. This is at-least-once processing, not
+exactly-once; irreversible business mutations should use the same database
+transaction as a transactional inbox implementation or carry a fencing token.
+
+```yaml
+platform:
+  queue:
+    subscriptions:
+      invoice-batch:
+        destination: invoice-events
+        idempotency-enabled: true
+        kafka:
+          group-id: invoice-batch-v1
+          mode: BATCH
+          max-messages: 500
+          max-wait: 30m
+          strict-ordering: true
+      invoice-bulk:
+        destination: invoice-events
+        idempotency-enabled: true
+        kafka:
+          group-id: invoice-bulk-v1
+          mode: BULK
+          max-messages: 100000
+          max-wait: 1d
+          strict-ordering: true
+```
+
+Both modes require application-provided durable `InboxStore` and
+`DeferredKafkaMessageStore` implementations. No in-memory production fallback
+is installed.
 
 Rabbit listeners use manual acknowledgement, `defaultRequeueRejected=false`,
 bounded prefetch/concurrency and acknowledge only on the consumer channel.
@@ -248,8 +339,9 @@ pollers, stops main/retry/DLT containers with bounded in-flight drain, then
 closes module producer factories/admin/connections/executors. Fencing is a
 fatal lifecycle event.
 
-Kafka topology modes are `NONE`, `VALIDATE_ONLY` (default), and
-`CREATE_MISSING`; creation never alters/deletes topics or increases partitions.
+Topology modes are `DISABLED`, `VALIDATE_ONLY` (default),
+`DECLARE_IF_MISSING`, and `DECLARE_AND_VALIDATE`; declaration never
+alters/deletes topics or increases partitions.
 Rabbit uses one connection/admin per broker with
 `explicitDeclarationsOnly=true`; declarables identify exactly that admin and
 containers receive it explicitly. Rabbit mismatches are fatal and are never
@@ -272,17 +364,11 @@ names. All maps validate before any connection is created. Optional provider
 classes are isolated behind class conditions so loading the module without a
 broker dependency cannot resolve provider types.
 
-## Test strategy
+## Verification strategy
 
-- `ApplicationContextRunner`: flags, named configuration, validation, back-off,
-  metadata and missing optional classpaths.
-- Unit tests: envelope/header limits, serializers/upcasters, resolution,
-  confirmation mapping, retry classification, inbox/outbox state machines and
-  event sanitization.
-- Testcontainers: Kafka keys/headers/retry/DLT/transactions and Rabbit topology,
-  confirms/returns/ack/retry/DLQ.
-- Concurrency tests: inbox uniqueness and outbox claim/lease recovery.
-- Quality gate: JDK 25 Maven runtime, Java 21 release, 85% line and 80% branch.
+- Package with JDK 25 and Java 21 release target.
+- Validate auto-configuration metadata and optional broker classpaths.
+- Exercise broker behavior only through reactor integration scenarios.
 - Dependency convergence asserts one effective `tools.jackson` version before
   release; the discovered 3.2.1-declared/3.1.4-effective drift is a release
   blocker if unresolved by the parent.

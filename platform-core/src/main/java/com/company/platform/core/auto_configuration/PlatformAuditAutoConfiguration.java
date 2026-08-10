@@ -2,10 +2,10 @@ package com.company.platform.core.auto_configuration;
 
 import com.company.platform.core.audit.AuditAspect;
 import com.company.platform.core.audit.AuditChangeResolver;
-import com.company.platform.core.audit.DefaultAuditChangeResolver;
-import com.company.platform.core.audit.jpa.SecurityContextAuditorAware;
-import com.company.platform.core.audit.jpa.SystemAuditorAware;
-import com.company.platform.core.config.audit.PlatformAuditingConfiguration;
+import com.company.platform.core.audit.internal.application.DefaultAuditChangeResolver;
+import com.company.platform.core.audit.internal.adapter.jpa.SecurityContextAuditorAware;
+import com.company.platform.core.audit.internal.adapter.jpa.SystemAuditorAware;
+import com.company.platform.core.audit.internal.configuration.PlatformAuditingConfiguration;
 import com.company.platform.core.configuration.properties.PlatformAuditProperties;
 import com.company.platform.core.auto_configuration.PlatformCoreAutoConfiguration;
 import com.company.platform.core.context.RequestContextProvider;

@@ -3,6 +3,7 @@ package com.company.platform.integration.kafkaapp.api;
 import com.company.platform.core.time.TimeProvider;
 import com.company.platform.integration.kafkaapp.model.KafkaTestEvent;
 import com.company.platform.integration.kafkaapp.service.KafkaMessageProbe;
+import com.company.platform.queue.api.kafka.BaseKafkaProducer;
 import com.company.platform.queue.api.publish.MessagePublisher;
 import com.company.platform.queue.api.publish.PublishRequest;
 import com.company.platform.queue.api.publish.PublishResult;

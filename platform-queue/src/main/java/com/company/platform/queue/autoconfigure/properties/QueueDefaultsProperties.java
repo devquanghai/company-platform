@@ -1,13 +1,15 @@
 package com.company.platform.queue.autoconfigure.properties;
 
-import com.company.platform.queue.serialization.MessageSerializationFormat;
 import com.company.platform.queue.domain.policy.TopologyDeclarationMode;
+import com.company.platform.queue.serialization.MessageSerializationFormat;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
 
+/** @deprecated use {@link MessageProperties} and {@link TopologyProperties}. */
+@Deprecated
 @Getter
 @Setter
 public class QueueDefaultsProperties {
@@ -17,12 +19,11 @@ public class QueueDefaultsProperties {
     private boolean requireCorrelationId = true;
     private boolean includeTraceContext = true;
     private boolean logPayload;
-    private TopologyDeclarationMode topologyDeclarationMode =
-        TopologyDeclarationMode.VALIDATE_ONLY;
-    private int maxHeaders = 64;
-    private int maxHeaderBytes = 8 * 1024;
-    private int maxTotalHeaderBytes = 32 * 1024;
-    private int maxPayloadBytes = 1024 * 1024;
-    private int maxEnvelopeBytes = 2 * 1024 * 1024;
+    private TopologyDeclarationMode topologyDeclarationMode;
+    private Integer maxHeaders;
+    private Integer maxHeaderBytes;
+    private Integer maxTotalHeaderBytes;
+    private Integer maxPayloadBytes;
+    private Integer maxEnvelopeBytes;
     private Set<String> allowedCustomHeaders = new LinkedHashSet<>();
 }

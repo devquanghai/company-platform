@@ -13,8 +13,8 @@
   targets Java 21 (`maven.compiler.release=21`).
 - Auto-configuration uses `@AutoConfiguration`, explicit
   `AutoConfiguration.imports`, `@ConditionalOnMissingBean`, and no component scan.
-- Tests use JUnit 5, AssertJ, Mockito, `ApplicationContextRunner`, Surefire and
-  Failsafe. Queue coverage must override the root gate to 85% line / 80% branch.
+- Reactor integration verification uses Failsafe; the module has no unit-test or
+  coverage gate.
 
 ## Managed versions
 
@@ -65,8 +65,9 @@ outbox store, or generic broker health abstraction to reuse.
 
 - Keep provider-neutral ports/models free of Kafka, AMQP, channel, producer and
   consumer native types. Broker-specific controls belong to Kafka/Rabbit APIs.
-- Delivery is at-least-once. Kafka transactions cover Kafka read/process/write
-  and offset commit only; database consistency requires outbox/inbox.
+- Delivery is at-least-once. Producer transactions are explicit; consumer
+  `read_committed` isolation does not create a transactional processing
+  boundary. Database consistency requires outbox/inbox.
 - Never route automatically between Kafka and RabbitMQ and never use an
   in-memory production durability fallback.
 - `spring-kafka` and `spring-rabbit` are optional dependencies guarded by

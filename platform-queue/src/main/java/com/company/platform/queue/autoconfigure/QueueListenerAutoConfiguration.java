@@ -1,19 +1,18 @@
 package com.company.platform.queue.autoconfigure;
 
-import com.company.platform.queue.application.registry.DefaultPlatformQueueListenerRegistrar;
-import com.company.platform.queue.application.registry.PlatformQueueListenerBeanPostProcessor;
-import com.company.platform.queue.application.registry.PlatformQueueListenerRegistrar;
-import com.company.platform.queue.application.registry.QueueSubscriptionRegistry;
-import com.company.platform.queue.application.registry.QueueDestinationRegistry;
-import com.company.platform.queue.application.registry.QueueBrokerRegistry;
-import com.company.platform.queue.application.port.in.QueueListenerContainerAdapter;
-import com.company.platform.queue.application.service.QueueMessageProcessor;
+import com.company.platform.queue.consume.internal.application.DefaultPlatformQueueListenerRegistrar;
+import com.company.platform.queue.consume.internal.application.PlatformQueueListenerRegistrar;
+import com.company.platform.queue.configuration.internal.registry.QueueSubscriptionRegistry;
+import com.company.platform.queue.configuration.internal.registry.QueueDestinationRegistry;
+import com.company.platform.queue.configuration.internal.registry.QueueBrokerRegistry;
+import com.company.platform.queue.consume.internal.port.out.QueueListenerContainerAdapter;
+import com.company.platform.queue.consume.internal.application.QueueMessageProcessor;
 import com.company.platform.queue.autoconfigure.properties.PlatformQueueProperties;
 import com.company.platform.queue.reliability.inbox.InboxStore;
 import com.company.platform.queue.reliability.retry.MessageRetryDecisionPolicy;
 import com.company.platform.queue.serialization.registry.MessageSerializerRegistry;
+import com.company.platform.queue.envelope.validation.SafeHeaderPolicy;
 import org.springframework.beans.factory.ObjectProvider;
-import com.company.platform.queue.application.resolver.PlatformQueueListenerMetadataResolver;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -21,15 +20,9 @@ import org.springframework.context.annotation.Bean;
 
 @AutoConfiguration(after = PlatformQueueAutoConfiguration.class)
 @ConditionalOnProperty(
-    prefix = "platform.queue", name = {"enabled", "annotations-enabled"},
+    prefix = "platform.queue", name = "enabled",
     havingValue = "true", matchIfMissing = true)
 public class QueueListenerAutoConfiguration {
-
-    @Bean
-    @ConditionalOnMissingBean
-    public PlatformQueueListenerMetadataResolver queueListenerMetadataResolver() {
-        return new PlatformQueueListenerMetadataResolver();
-    }
 
     @Bean
     @ConditionalOnMissingBean
@@ -49,19 +42,11 @@ public class QueueListenerAutoConfiguration {
         PlatformQueueProperties properties,
         MessageSerializerRegistry serializers,
         MessageRetryDecisionPolicy retryPolicy,
-        ObjectProvider<InboxStore> inbox
+        ObjectProvider<InboxStore> inbox,
+        SafeHeaderPolicy headerPolicy
     ) {
         return new QueueMessageProcessor(
-            properties, serializers, retryPolicy, inbox.getIfAvailable());
+            properties, serializers, retryPolicy, inbox.getIfAvailable(), headerPolicy);
     }
 
-    @Bean
-    @ConditionalOnMissingBean
-    public static PlatformQueueListenerBeanPostProcessor
-        platformQueueListenerBeanPostProcessor(
-            PlatformQueueListenerMetadataResolver resolver,
-            PlatformQueueListenerRegistrar registrar
-        ) {
-        return new PlatformQueueListenerBeanPostProcessor(resolver, registrar);
-    }
 }

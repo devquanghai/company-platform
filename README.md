@@ -51,9 +51,9 @@ java -version
 ./mvnw dependency:tree -pl platform-core
 ```
 
-Unit test theo `*Test`, `*Tests`, `*TestCase`; integration test theo `*IT`, `*ITCase`, `*IntegrationTest`. JaCoCo mặc định yêu cầu line 80% và branch 70%. Module có lý do chính đáng có thể override `jacoco.minimum.*`, các property `jacoco.exclude.*`, hoặc tạm dùng `-Djacoco.skip=true`. Không loại cả package chỉ để đạt ngưỡng.
+Repository không duy trì unit test hoặc JaCoCo. Integration test theo `*IT`, `*ITCase`, `*IntegrationTest` nằm trong `platform-integration-test` và chạy qua Failsafe.
 
-`-Plocal` tắt deploy nhưng vẫn giữ test. `-Pci` chạy test, coverage và dependency convergence. `-Prelease` gắn source/Javadoc JAR nhưng không tự deploy. Signing chỉ bật khi thêm `-Dgpg.sign=true`.
+`-Plocal` tắt deploy. `-Pci` chạy integration test và dependency convergence. `-Prelease` gắn source/Javadoc JAR nhưng không tự deploy. Signing chỉ bật khi thêm `-Dgpg.sign=true`.
 
 ## Kế thừa và mở rộng
 
@@ -107,7 +107,6 @@ Parent phải được publish nếu repository khác cần kế thừa. Trong c
 
 - **Enforcer báo sai Java**: trỏ `JAVA_HOME` tới JDK 25 rồi chạy lại `./mvnw -version`.
 - **Không tải được Wrapper/dependency**: kiểm tra proxy, DNS, TLS và Maven mirror trong `settings.xml`.
-- **Coverage fail**: bổ sung test hoặc override có giải trình; không vô hiệu hóa coverage toàn repository.
 - **Dependency convergence fail ở CI**: xem `dependency:tree`, ưu tiên BOM; chỉ override version khi có lý do và comment rõ.
 - **Deploy thiếu repository/401**: kiểm tra `distributionManagement`, server ID khớp `settings.xml`, và biến môi trường Nexus.
 - **Application không executable**: khai báo `spring-boot-maven-plugin` trong chính module service.

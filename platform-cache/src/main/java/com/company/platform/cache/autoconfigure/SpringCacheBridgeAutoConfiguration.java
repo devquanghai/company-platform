@@ -1,8 +1,8 @@
 package com.company.platform.cache.autoconfigure;
 
-import com.company.platform.cache.adapter.springcache.PlatformSpringCacheManager;
+import com.company.platform.cache.internal.adapter.springcache.PlatformSpringCacheManager;
 import com.company.platform.cache.api.operation.PlatformCacheOperations;
-import com.company.platform.cache.application.resolver.CacheDefinitionRegistry;
+import com.company.platform.cache.internal.application.resolver.CacheDefinitionRegistry;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.cache.autoconfigure.CacheAutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;

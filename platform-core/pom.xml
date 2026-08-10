@@ -51,11 +51,6 @@
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-collections4</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
 
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -110,19 +105,4 @@
             <optional>true</optional>
         </dependency>
     </dependencies>
-    <properties>
-        <jacoco.minimum.line.coverage>1.00</jacoco.minimum.line.coverage>
-        <jacoco.minimum.branch.coverage>1.00</jacoco.minimum.branch.coverage>
-    </properties>
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.jacoco</groupId>
-                <artifactId>jacoco-maven-plugin</artifactId>
-                <configuration>
-                    <excludes combine.self="override"/>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
 </project>

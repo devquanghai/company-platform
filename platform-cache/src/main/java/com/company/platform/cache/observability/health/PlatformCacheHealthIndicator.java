@@ -1,7 +1,7 @@
 package com.company.platform.cache.observability.health;
 
-import com.company.platform.cache.application.port.out.CacheBackend;
-import com.company.platform.cache.application.port.out.CacheBackendRegistry;
+import com.company.platform.cache.internal.application.port.out.CacheBackend;
+import com.company.platform.cache.internal.application.port.out.CacheBackendRegistry;
 import org.springframework.boot.health.contributor.Health;
 import org.springframework.boot.health.contributor.HealthIndicator;
 

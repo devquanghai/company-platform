@@ -1,10 +1,10 @@
 name = "cache_explorer"
-description = "Read-only explorer for parent POM, Spring Cache, Redis, Caffeine, platform-core, logging, metrics and test conventions."
+description = "Read-only explorer for parent POM, Spring Cache, Redis, Caffeine, platform-core, logging, metrics and package conventions."
 sandbox_mode = "read-only"
 
 developer_instructions = """
 Inspect parent POMs, dependency management, platform-core, existing Redis or
-cache configuration, serialization, logging, metrics, health and tests.
+cache configuration, serialization, logging, metrics, health and package boundaries.
 Return reusable abstractions, conflicts, version constraints, exact paths and symbols.
 Do not edit files.
 """

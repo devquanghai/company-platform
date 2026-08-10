@@ -1,12 +1,12 @@
 package com.company.platform.exchange.autoconfigure.grpc;
 
-import com.company.platform.exchange.adapter.outbound.grpc.DefaultGrpcChannelRegistry;
-import com.company.platform.exchange.adapter.outbound.grpc.DefaultGrpcClientFactory;
+import com.company.platform.exchange.grpc.internal.adapter.DefaultGrpcChannelRegistry;
+import com.company.platform.exchange.grpc.internal.adapter.DefaultGrpcClientFactory;
 import com.company.platform.exchange.api.grpc.GrpcCallOperations;
 import com.company.platform.exchange.api.grpc.GrpcChannelRegistry;
 import com.company.platform.exchange.api.grpc.GrpcClientFactory;
-import com.company.platform.exchange.application.service.ClientConfigurationResolver;
-import com.company.platform.exchange.application.service.DefaultGrpcCallOperations;
+import com.company.platform.exchange.client.internal.application.ClientConfigurationResolver;
+import com.company.platform.exchange.grpc.internal.application.DefaultGrpcCallOperations;
 import com.company.platform.exchange.autoconfigure.PlatformServiceExchangeAutoConfiguration;
 import com.company.platform.exchange.autoconfigure.resilience.ExchangeResilienceAutoConfiguration;
 import com.company.platform.exchange.domain.policy.RetryDecisionPolicy;

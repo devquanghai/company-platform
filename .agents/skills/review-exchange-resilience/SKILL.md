@@ -12,4 +12,4 @@ description: Review retry, circuit breaker, rate limiter, bulkhead, timeout and 
 7. Verify rate-limit and circuit-open errors are normalized.
 8. Verify fallback executes only after the resilience pipeline has failed.
 9. Verify the final audit event is published exactly once.
-10. Require focused tests for every policy branch.
+10. Trace every policy branch and report any branch lacking executable evidence.

@@ -415,10 +415,7 @@ Metrics use cache, store, provider, operation, outcome and tier only. Spring
 events carry safe metadata plus trace/request identifiers. Health contributors
 never expose credentials, nodes with credentials, raw failures, keys or values.
 
-## Tests
+## Verification
 
-Unit tests cover registries, key generation, serialization, Caffeine, NOOP,
-multi-level flow, resilience, single-flight, atomic and optimistic behavior.
-`ApplicationContextRunner` verifies conditional wiring and overrides. Redis
-standalone, Sentinel and Cluster suites are isolated behind integration
-profiles when Docker/topology support is available.
+Package with JDK 25, validate metadata and dependency convergence, then exercise
+Redis topologies only through reactor integration scenarios when available.
