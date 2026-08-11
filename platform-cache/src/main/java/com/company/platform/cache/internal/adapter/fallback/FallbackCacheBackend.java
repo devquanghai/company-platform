@@ -94,7 +94,7 @@ public final class FallbackCacheBackend implements CacheBackend {
     public Optional<BackendCacheEntry> get(String key) {
         try {
             Optional<BackendCacheEntry> primaryValue = primary.get(key);
-            recoverIfNecessary();
+            recoverAfterRead();
             if (primaryValue.isPresent()) {
                 BackendCacheEntry entry = primaryValue.get();
                 shadow(key, entry.getValue(), entry.getVersion(), entry.getRemainingTtl());
@@ -113,7 +113,7 @@ public final class FallbackCacheBackend implements CacheBackend {
     public void put(String key, Object value, Duration ttl) {
         try {
             primary.put(key, value, ttl);
-            recoverIfNecessary();
+            recoverAfterPrimarySuccess();
             shadow(key, value, 1L, ttl);
         } catch (RuntimeException failure) {
             requireInfrastructure(failure);
@@ -130,7 +130,7 @@ public final class FallbackCacheBackend implements CacheBackend {
     public boolean putIfAbsent(String key, Object value, Duration ttl) {
         try {
             boolean stored = primary.putIfAbsent(key, value, ttl);
-            recoverIfNecessary();
+            recoverAfterPrimarySuccess();
             if (stored) {
                 shadow(key, value, 1L, ttl);
             }
@@ -164,6 +164,7 @@ public final class FallbackCacheBackend implements CacheBackend {
         try {
             String token = primary.namespaceToken();
             lastNamespace.set(token);
+            recoverAfterPrimarySuccess();
             return token;
         } catch (RuntimeException failure) {
             requireInfrastructure(failure);
@@ -181,7 +182,7 @@ public final class FallbackCacheBackend implements CacheBackend {
     public long increment(String key, long delta, Duration ttl) {
         try {
             long result = primary.increment(key, delta, ttl);
-            recoverIfNecessary();
+            recoverAfterPrimarySuccess();
             shadow(key, result, 1L, ttl);
             return result;
         } catch (RuntimeException failure) {
@@ -196,7 +197,7 @@ public final class FallbackCacheBackend implements CacheBackend {
     ) {
         try {
             boolean result = primary.compareAndSet(key, expectedValue, newValue);
-            recoverIfNecessary();
+            recoverAfterPrimarySuccess();
             if (result) {
                 shadow(key, newValue, 1L, localTtl);
             }
@@ -264,8 +265,9 @@ public final class FallbackCacheBackend implements CacheBackend {
     }
 
     private boolean allowsLocalWrite() {
-        return mode == CacheFallbackMode.READ_THROUGH
-            || (mode == CacheFallbackMode.LOCAL_READ_WRITE && localWriteFallback);
+        return localWriteFallback
+            && (mode == CacheFallbackMode.READ_THROUGH
+                || mode == CacheFallbackMode.LOCAL_READ_WRITE);
     }
 
     private Duration positive(Duration value, String name) {
@@ -291,9 +293,26 @@ public final class FallbackCacheBackend implements CacheBackend {
         throw failure;
     }
 
-    private void recoverIfNecessary() {
-        if (degraded.compareAndSet(true, false) && clearOnPrimaryRecovery) {
+    private void recoverAfterRead() {
+        if (!degraded.get()) {
+            return;
+        }
+        try {
+            primary.namespaceToken();
+        } catch (RuntimeException ignored) {
+            return;
+        }
+        recoverAfterPrimarySuccess();
+    }
+
+    private void recoverAfterPrimarySuccess() {
+        if (!degraded.compareAndSet(true, false) || !clearOnPrimaryRecovery) {
+            return;
+        }
+        try {
             local.clear();
+        } catch (RuntimeException ignored) {
+            degraded.set(true);
         }
     }
 

@@ -142,8 +142,17 @@ public final class DefaultPlatformCacheOperations
             definition.getProperties().getStampede().getWaitTimeout(),
             definition.getProperties().getStampede().getMaximumInflight(),
             () -> {
-                Optional<BackendCacheEntry> rechecked =
-                    lookup.backend().get(lookup.encodedKey());
+                Optional<BackendCacheEntry> rechecked;
+                try {
+                    rechecked = lookup.backend().get(lookup.encodedKey());
+                } catch (RuntimeException failure) {
+                    if (!failOpen(definition)) {
+                        throw operationFailure(
+                            "Cache read failed during single-flight recheck",
+                            failure);
+                    }
+                    rechecked = Optional.empty();
+                }
                 if (rechecked.isPresent() && !rechecked.get().isStale()) {
                     Object value = rechecked.get().getValue();
                     return isNullValue(value)

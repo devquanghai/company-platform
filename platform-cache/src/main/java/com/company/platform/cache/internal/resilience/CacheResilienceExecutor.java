@@ -7,6 +7,7 @@ import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
+import org.springframework.dao.QueryTimeoutException;
 import org.springframework.data.redis.RedisConnectionFailureException;
 import io.github.resilience4j.core.IntervalFunction;
 
@@ -103,6 +104,7 @@ public final class CacheResilienceExecutor {
         Throwable current = failure;
         while (current != null) {
             if (current instanceof RedisConnectionFailureException
+                || current instanceof QueryTimeoutException
                 || current instanceof java.net.ConnectException
                 || current instanceof java.net.SocketTimeoutException) {
                 return true;
