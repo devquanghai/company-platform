@@ -56,9 +56,18 @@ platform:
           prefix: haipq1_test-cache
         store: redis-primary
         ttl: 1m
+        failure-policy: FAIL_OPEN
 
       test-cache-caffeine:
         key:
           prefix: haipq1_test-cache-caffeine
         store: caffeine-primary
         ttl: 1m
+
+      test-cache-optimistic:
+        key:
+          prefix: haipq1_test-cache-optimistic
+        store: redis-primary
+        ttl: 1m
+        coordination: true
+        failure-policy: FAIL_CLOSED
