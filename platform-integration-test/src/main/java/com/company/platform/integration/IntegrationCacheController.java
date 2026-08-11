@@ -18,7 +18,6 @@ public class IntegrationCacheController {
 
     public static final String CACHE_NAME = "integration-local";
     private Map<String, String> cache = new HashMap<>();
-    private final RedisCacheBackend cacheBackend;
 
     @GetMapping("/cached")
     public Map<String, String> getCachedData() {
@@ -43,7 +42,6 @@ public class IntegrationCacheController {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
-        cacheBackend.put(CACHE_NAME, cache, Duration.ofMinutes(2)); // Cache for 1 hour
         return data;
     }
 }

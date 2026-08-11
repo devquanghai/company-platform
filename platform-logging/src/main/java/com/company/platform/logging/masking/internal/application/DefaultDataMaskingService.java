@@ -27,6 +27,7 @@ import java.lang.reflect.Modifier;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
+import java.time.*;
 import java.time.temporal.TemporalAccessor;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -449,6 +450,10 @@ public final class DefaultDataMaskingService implements DataMaskingService {
         if (value instanceof CharSequence || value instanceof Number
             || value instanceof Boolean || value instanceof Character
             || value instanceof Enum<?>) {
+            return String.valueOf(value);
+        }
+        if (value instanceof TemporalAccessor || value instanceof UUID
+            || value instanceof URI) {
             return String.valueOf(value);
         }
         return "<object-not-logged>";

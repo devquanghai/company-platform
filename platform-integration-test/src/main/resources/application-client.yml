@@ -1,0 +1,22 @@
+platform:
+  service-exchange:
+    enabled: true
+    source-application: platform-integration-test
+    clients:
+      echo:
+        protocol: HTTP
+        http:
+          base-url: ${INTEGRATION_ECHO_BASE_URL:http://localhost:8080}
+        resilience:
+          enabled: true
+        audit:
+          enabled: true
+        logging:
+          enabled: true
+          curl-enabled: true
+          sensitive-fields:
+            - email
+            - password
+            - token
+          sensitive-headers:
+            - Authorization

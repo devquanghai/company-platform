@@ -1,0 +1,37 @@
+platform:
+  logging:
+    masking:
+      rules:
+        - name: integration-email
+          match-type: FIELD_NAME
+          fields:
+            - email
+          pii-type: EMAIL
+          masking-type: PARTIAL
+          visible-prefix: 2
+          preserve-domain: true
+
+        - name: integration-date-of-birth
+          match-type: FIELD_NAME
+          fields:
+            - dateOfBirth
+          pii-type: DATE_OF_BIRTH
+          masking-type: PARTIAL
+          visible-prefix: 4
+          visible-suffix: 2
+
+        - name: integration-phone
+          match-type: FIELD_NAME
+          fields:
+            - phone
+            - phoneNumber
+            - mobile
+            - mobileNumber
+          pii-type: PHONE
+          masking-type: PARTIAL
+          visible-prefix: 3
+          visible-suffix: 3
+
+    crypto:
+      defaults:
+        key-alias: integration-data

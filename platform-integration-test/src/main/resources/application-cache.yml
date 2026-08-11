@@ -15,17 +15,30 @@ platform:
       redis-primary:
         provider: REDIS
         redis:
-          mode: SENTINEL
+          mode: STANDALONE
           database: 0
-          sentinel:
-            master: redis-master
-            nodes:
-              - localhost:26379
-            password: aloaluale
+          client-name: ${spring.application.name:application}-cache
+          password: ${REDIS_PRIMARY_PASSWORD:aloaluale}
+          standalone:
+            host: ${REDIS_PRIMARY_HOST:localhost}
+            port: ${REDIS_PRIMARY_PORT:6379}
           serialization:
             key: STRING
             value: JSON
+            value-envelope-enabled: true
+            schema-id: ${spring.application.name:application}-cache
+            schema-version: 1
+          resilience:
+            enabled: true
+            retry:
+              enabled: true
+              max-attempts: 2
+              wait-duration: 50ms
+          ssl:
+            enabled: false
     caches:
       customers:
+        key:
+          prefix: ${spring.application.name:application}:cache:customers
         store: redis-primary
         ttl: 15m

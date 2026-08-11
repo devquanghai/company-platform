@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
     <!-- Application owns Logback bootstrap; platform-logging supplies reusable fragments. -->
-    <springProfile name="default | local | integration-e2e">
+    <springProfile name="default | local | dev | integration-e2e">
         <include resource="com/company/platform/logging/logback/defaults.xml"/>
         <include resource="com/company/platform/logging/logback/console-highlight-appender.xml"/>
         <include resource="com/company/platform/logging/logback/audit-appender.xml"/>

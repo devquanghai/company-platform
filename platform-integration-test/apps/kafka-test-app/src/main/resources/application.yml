@@ -16,6 +16,12 @@ management:
       show-details: always
 
 platform:
+  core:
+    openapi:
+      bearer-format: JWT
+      security-scheme-name: bearerAuth
+    web:
+      request-caching-enabled: true
   queue:
     enabled: true
     source-application: ${spring.application.name}

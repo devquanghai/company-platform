@@ -3,14 +3,14 @@ spring:
     name: platform-integration-test
   profiles:
     group:
-      common: cache
-      dev: common
-    active: dev
+      common: core, logging, client, cache
+      local: common
+    active: local
 
 logging:
   level:
     root: INFO
-    com.company.platform: DEBUG
+    com.company.platform: INFO
 
 management:
   tracing:
@@ -23,73 +23,3 @@ management:
     web:
       exposure:
         include: health,info,metrics
-
-platform:
-  core:
-    openapi:
-      enabled: true
-      title: Platform Integration Test
-      version: 1.0.0
-      description: Platform Integration Test API
-      authentication-type: JWT
-    web:
-      request-logging-enabled: true
-      include-payload: true
-  service-exchange:
-    enabled: true
-    source-application: platform-integration-test
-    clients:
-      echo:
-        protocol: HTTP
-        http:
-          base-url: ${INTEGRATION_ECHO_BASE_URL:http://localhost:8080}
-        resilience:
-          enabled: true
-        audit:
-          enabled: true
-        logging:
-          enabled: true
-          curl-enabled: true
-          sensitive-fields:
-            - email
-            - password
-            - token
-          sensitive-headers:
-            - Authorization
-  logging:
-    environment: ${PLATFORM_ENVIRONMENT:${SPRING_PROFILES_ACTIVE:local}}
-    masking:
-      rules:
-        - name: integration-email
-          match-type: FIELD_NAME
-          fields:
-            - email
-          pii-type: EMAIL
-          masking-type: PARTIAL
-          visible-prefix: 2
-          preserve-domain: true
-
-        - name: integration-date-of-birth
-          match-type: FIELD_NAME
-          fields:
-            - dateOfBirth
-          pii-type: DATE_OF_BIRTH
-          masking-type: PARTIAL
-          visible-prefix: 4
-          visible-suffix: 2
-
-        - name: integration-phone
-          match-type: FIELD_NAME
-          fields:
-            - phone
-            - phoneNumber
-            - mobile
-            - mobileNumber
-          pii-type: PHONE
-          masking-type: PARTIAL
-          visible-prefix: 3
-          visible-suffix: 3
-
-    crypto:
-      defaults:
-        key-alias: integration-data
