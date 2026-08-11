@@ -174,6 +174,137 @@ public final class DefaultPlatformCacheOperations
     }
 
     @Override
+    public <K, V> V getOrLoad(
+        String cacheName,
+        K key,
+        CacheType<V> valueType,
+        Supplier<V> loader
+    ) {
+        Objects.requireNonNull(valueType, "valueType must not be null");
+        Objects.requireNonNull(loader, "loader must not be null");
+
+        Lookup lookup = lookup(cacheName, key);
+
+        Optional<BackendCacheEntry> cached;
+
+        try {
+            cached = lookup.backend().get(lookup.encodedKey());
+        } catch (RuntimeException failure) {
+            if (!failOpen(lookup.definition())) {
+                throw operationFailure("Cache read failed", failure);
+            }
+
+            cached = Optional.empty();
+        }
+
+        if (cached.isPresent() && !cached.get().isStale()) {
+            Object stored = cached.get().getValue();
+
+            return isNullValue(stored)
+                ? null
+                : convert(stored, valueType);
+        }
+
+        NamedCacheDefinition definition = lookup.definition();
+
+        long snappedEpoch = entryEpoch(lookup.encodedKey());
+
+        return singleFlight.execute(
+            definition.getName()
+                + "|"
+                + snappedEpoch
+                + "|"
+                + lookup.encodedKey(),
+
+            definition.getProperties()
+                .getStampede()
+                .getWaitTimeout(),
+
+            definition.getProperties()
+                .getStampede()
+                .getMaximumInflight(),
+
+            () -> {
+
+                Optional<BackendCacheEntry> rechecked;
+
+                try {
+                    rechecked = lookup.backend().get(
+                        lookup.encodedKey()
+                    );
+                } catch (RuntimeException failure) {
+                    if (!failOpen(definition)) {
+                        throw operationFailure(
+                            "Cache read failed during single-flight recheck",
+                            failure
+                        );
+                    }
+
+                    rechecked = Optional.empty();
+                }
+
+                if (rechecked.isPresent() && !rechecked.get().isStale()) {
+                    Object stored = rechecked.get().getValue();
+
+                    return isNullValue(stored)
+                        ? null
+                        : convert(stored, valueType);
+                }
+
+                V loaded = loader.get();
+
+                boolean shouldCache =
+                    loaded != null
+                        || definition.isCacheNullValues()
+                        || definition.getProperties()
+                        .getNegativeCache()
+                        .isEnabled();
+
+                if (shouldCache) {
+                    keyMutex.execute(
+                        lookup.encodedKey(),
+                        () -> {
+                            if (entryEpoch(lookup.encodedKey()) != snappedEpoch) {
+                                return;
+                            }
+
+                            Object stored = storedValue(
+                                definition,
+                                loaded
+                            );
+
+                            enforceMaximumSize(
+                                definition,
+                                stored
+                            );
+
+                            try {
+                                lookup.backend().put(
+                                    lookup.encodedKey(),
+                                    stored,
+                                    effectiveTtl(
+                                        definition,
+                                        loaded
+                                    )
+                                );
+                            } catch (RuntimeException failure) {
+                                if (!failOpen(definition)) {
+                                    throw operationFailure(
+                                        "Cache mutation failed",
+                                        failure
+                                    );
+                                }
+                            }
+                        }
+                    );
+                }
+
+                return loaded;
+            }
+        );
+    }
+
+    @Override
     public <K, V> CacheResult<V> getResult(
         String cacheName, K key, Class<V> valueType
     ) {

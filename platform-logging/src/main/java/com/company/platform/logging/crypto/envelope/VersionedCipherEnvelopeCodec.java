@@ -54,7 +54,8 @@ public final class VersionedCipherEnvelopeCodec implements CipherEnvelopeCodec {
         }
         String[] parts = encoded.substring(PREFIX.length(), encoded.length() - 1)
             .split(":", -1);
-        if (parts.length != 10 || !"v1".equals(parts[0])) {
+        if (parts.length != 10
+            || !("v1".equals(parts[0]) || "v2".equals(parts[0]))) {
             fail("unsupported cipher envelope version");
         }
         try {

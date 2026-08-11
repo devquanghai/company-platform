@@ -7,4 +7,4 @@ platform:
       description: Platform Integration Test API
       authentication-type: JWT
     web:
-      request-logging-enabled: true
+      request-logging-enabled: false

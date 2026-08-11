@@ -9,7 +9,7 @@ import com.company.platform.integration.encrypt.dto.response.RsaDecryptResponse;
 import com.company.platform.integration.encrypt.dto.response.RsaEncryptResponse;
 import com.company.platform.integration.encrypt.dto.response.RsaSignResponse;
 import com.company.platform.integration.encrypt.dto.response.RsaVerifyResponse;
-import com.company.platform.integration.encrypt.service.RsaService;
+import com.company.platform.integration.encrypt.service.RsaServices;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @Validated
 public class RsaController {
-    private final RsaService rsaService;
+    private final RsaServices rsaService;
 
     @PostMapping("/encrypt")
     public ApiResponse<RsaEncryptResponse> encrypt(@RequestBody @Valid RsaEncryptRequest request) {

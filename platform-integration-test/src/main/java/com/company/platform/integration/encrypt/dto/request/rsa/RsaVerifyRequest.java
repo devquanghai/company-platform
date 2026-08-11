@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.FieldDefaults;
+import jakarta.validation.constraints.NotBlank;
 
 @Getter
 @Setter
@@ -12,7 +13,8 @@ import lombok.experimental.FieldDefaults;
 @NoArgsConstructor
 @FieldDefaults(level = lombok.AccessLevel.PRIVATE)
 public class RsaVerifyRequest {
-    String encryptedData;
+    @NotBlank
+    String data;
+    @NotBlank
     String signature;
-    String publicKey;
 }

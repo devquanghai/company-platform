@@ -1,4 +1,4 @@
-package com.company.platform.integration;
+package com.company.platform.integration.encrypt;
 
 import com.company.platform.logging.api.crypto.KeyProvider;
 import com.company.platform.logging.domain.exception.PlatformCryptoException;
@@ -14,6 +14,8 @@ import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.security.GeneralSecurityException;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.util.Arrays;
 
 /**
@@ -27,7 +29,21 @@ public class IntegrationCryptoConfiguration {
 
     @Bean
     KeyProvider integrationKeyProvider() {
-        return new EphemeralIntegrationKeyProvider(generateKey());
+        return new EphemeralIntegrationKeyProvider(generateKey(), generateKey());
+    }
+
+    @Bean
+    KeyPair integrationRsaKeyPair() {
+        try {
+            KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+            generator.initialize(3072);
+            return generator.generateKeyPair();
+        } catch (GeneralSecurityException exception) {
+            throw new PlatformCryptoException(
+                "PLATFORM.INTEGRATION.RSA_KEY",
+                "Unable to initialize the integration RSA key pair"
+            );
+        }
     }
 
     private static byte[] generateKey() {
@@ -47,10 +63,12 @@ public class IntegrationCryptoConfiguration {
     static final class EphemeralIntegrationKeyProvider
         implements KeyProvider, DisposableBean {
 
-        private final byte[] encodedKey;
+        private final byte[] aesKey;
+        private final byte[] pbeKey;
 
-        EphemeralIntegrationKeyProvider(byte[] encodedKey) {
-            this.encodedKey = encodedKey.clone();
+        EphemeralIntegrationKeyProvider(byte[] aesKey, byte[] pbeKey) {
+            this.aesKey = aesKey.clone();
+            this.pbeKey = pbeKey.clone();
         }
 
         @Override
@@ -64,24 +82,30 @@ public class IntegrationCryptoConfiguration {
         }
 
         private KeyMaterial resolve(KeyReference reference) {
-            if (reference.getAlgorithm() != CryptoAlgorithm.AES_GCM_256) {
+            if (reference.getAlgorithm() != CryptoAlgorithm.AES_GCM_256
+                && reference.getAlgorithm() != CryptoAlgorithm.PBE) {
                 throw new PlatformCryptoException(
                     "PLATFORM.INTEGRATION.CRYPTO_ALGORITHM",
-                    "The integration key provider supports AES-GCM-256 only"
+                    "The integration key provider supports AES-GCM-256 and PBE only"
                 );
             }
+            String keyAlgorithm = reference.getAlgorithm() == CryptoAlgorithm.PBE
+                ? "PBE" : "AES";
+            byte[] key = reference.getAlgorithm() == CryptoAlgorithm.PBE
+                ? pbeKey : aesKey;
             return new KeyMaterial(
                 reference.getAlias(),
                 new KeyVersion("ephemeral-v1", true),
                 reference.getPurpose(),
                 reference.getAlgorithm(),
-                new SecretKeySpec(encodedKey.clone(), "AES")
+                new SecretKeySpec(key.clone(), keyAlgorithm)
             );
         }
 
         @Override
         public void destroy() {
-            Arrays.fill(encodedKey, (byte) 0);
+            Arrays.fill(aesKey, (byte) 0);
+            Arrays.fill(pbeKey, (byte) 0);
         }
     }
 }

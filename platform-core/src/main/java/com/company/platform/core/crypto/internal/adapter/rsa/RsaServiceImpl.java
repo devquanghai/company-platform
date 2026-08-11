@@ -6,6 +6,8 @@ import com.company.platform.core.exception.PlatformInfrastructureException;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.crypto.Cipher;
+import javax.crypto.spec.OAEPParameterSpec;
+import javax.crypto.spec.PSource;
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.security.PrivateKey;
@@ -13,7 +15,9 @@ import java.security.PublicKey;
 import java.security.Signature;
 import java.security.interfaces.RSAKey;
 import java.security.interfaces.RSAPrivateKey;
+import java.security.spec.MGF1ParameterSpec;
 import java.util.Base64;
+import java.util.Arrays;
 
 @Slf4j
 public final class RsaServiceImpl implements RsaService {
@@ -21,6 +25,8 @@ public final class RsaServiceImpl implements RsaService {
     private static final String RSA_TRANSFORMATION = "RSA/ECB/OAEPWithSHA-256AndMGF1Padding";
     private static final String SIGNATURE_ALGORITHM = "SHA256withRSA";
     private static final String PROVIDER = "SunRsaSign";
+    private static final OAEPParameterSpec OAEP = new OAEPParameterSpec(
+        "SHA-256", "MGF1", MGF1ParameterSpec.SHA256, PSource.PSpecified.DEFAULT);
 
     /**
      * Encrypt data using Public Key (PEM or from Certificate)
@@ -30,7 +36,7 @@ public final class RsaServiceImpl implements RsaService {
             validateKeySize(publicKey);
 
             Cipher cipher = Cipher.getInstance(RSA_TRANSFORMATION);
-            cipher.init(Cipher.ENCRYPT_MODE, publicKey);
+            cipher.init(Cipher.ENCRYPT_MODE, publicKey, OAEP);
 
             byte[] encrypted = cipher.doFinal(plainText.getBytes(StandardCharsets.UTF_8));
             return Base64.getEncoder().encodeToString(encrypted);
@@ -46,48 +52,20 @@ public final class RsaServiceImpl implements RsaService {
         String plainText,
         PublicKey publicKey
     ) {
-
-        byte[] aesKey =
-            AesUtils.generateAesKey();
-
-        byte[] encryptedAesKey =
-            AesUtils.encryptAesKey(
-                aesKey,
-                publicKey
-            );
-
-        byte[] encryptedPayload =
-            AesUtils.hybridEncrypt(
-                plainText.getBytes(
-                    StandardCharsets.UTF_8
-                ),
-                aesKey
-            );
-
-        byte[] result =
-            new byte[
-                encryptedAesKey.length
-                    + encryptedPayload.length
-                ];
-
-        System.arraycopy(
-            encryptedAesKey,
-            0,
-            result,
-            0,
-            encryptedAesKey.length
-        );
-
-        System.arraycopy(
-            encryptedPayload,
-            0,
-            result,
-            encryptedAesKey.length,
-            encryptedPayload.length
-        );
-
-        return Base64.getEncoder()
-            .encodeToString(result);
+        validateKeySize(publicKey);
+        byte[] aesKey = AesUtils.generateAesKey();
+        try {
+            byte[] encryptedAesKey = AesUtils.encryptAesKey(aesKey, publicKey);
+            byte[] encryptedPayload = AesUtils.hybridEncrypt(
+                plainText.getBytes(StandardCharsets.UTF_8), aesKey);
+            byte[] result = new byte[encryptedAesKey.length + encryptedPayload.length];
+            System.arraycopy(encryptedAesKey, 0, result, 0, encryptedAesKey.length);
+            System.arraycopy(encryptedPayload, 0, result, encryptedAesKey.length,
+                encryptedPayload.length);
+            return Base64.getEncoder().encodeToString(result);
+        } finally {
+            Arrays.fill(aesKey, (byte) 0);
+        }
     }
 
     /**
@@ -98,7 +76,7 @@ public final class RsaServiceImpl implements RsaService {
             validateKeySize(privateKey);
 
             Cipher cipher = Cipher.getInstance(RSA_TRANSFORMATION);
-            cipher.init(Cipher.DECRYPT_MODE, privateKey);
+            cipher.init(Cipher.DECRYPT_MODE, privateKey, OAEP);
 
             byte[] decrypted = cipher.doFinal(Base64.getDecoder().decode(cipherTextBase64));
             return new String(decrypted, StandardCharsets.UTF_8);
@@ -114,7 +92,7 @@ public final class RsaServiceImpl implements RsaService {
         String encryptedData,
         PrivateKey privateKey
     ) {
-
+        validateKeySize(privateKey);
         byte[] combinedData =
             Base64.getDecoder()
                 .decode(encryptedData);
@@ -142,36 +120,19 @@ public final class RsaServiceImpl implements RsaService {
             rsaBlockSize
         );
 
-        byte[] aesKey =
-            AesUtils.decryptAesKey(
+        byte[] aesKey = AesUtils.decryptAesKey(
                 encryptedAesKey,
                 privateKey
             );
-
-        byte[] encryptedPayload =
-            new byte[
-                combinedData.length
-                    - rsaBlockSize
-                ];
-
-        System.arraycopy(
-            combinedData,
-            rsaBlockSize,
-            encryptedPayload,
-            0,
-            encryptedPayload.length
-        );
-
-        byte[] plainBytes =
-            AesUtils.hybridDecrypt(
-                encryptedPayload,
-                aesKey
-            );
-
-        return new String(
-            plainBytes,
-            StandardCharsets.UTF_8
-        );
+        try {
+            byte[] encryptedPayload = new byte[combinedData.length - rsaBlockSize];
+            System.arraycopy(combinedData, rsaBlockSize, encryptedPayload, 0,
+                encryptedPayload.length);
+            byte[] plainBytes = AesUtils.hybridDecrypt(encryptedPayload, aesKey);
+            return new String(plainBytes, StandardCharsets.UTF_8);
+        } finally {
+            Arrays.fill(aesKey, (byte) 0);
+        }
     }
 
     /**

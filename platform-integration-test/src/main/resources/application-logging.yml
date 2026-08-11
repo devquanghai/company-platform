@@ -35,3 +35,7 @@ platform:
     crypto:
       defaults:
         key-alias: integration-data
+      providers:
+        jasypt:
+          enabled: true
+          algorithm: PBEWithHmacSHA512AndAES_256

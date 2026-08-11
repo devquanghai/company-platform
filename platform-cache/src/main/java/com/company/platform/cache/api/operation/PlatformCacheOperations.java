@@ -17,6 +17,8 @@ public interface PlatformCacheOperations {
     <K, V> V getOrLoad(
         String cacheName, K key, Class<V> valueType, Supplier<V> loader);
 
+    <K, V> V getOrLoad( String cacheName, K key, CacheType<V> valueType, Supplier<V> loader );
+
     <K, V> CacheResult<V> getResult(
         String cacheName, K key, Class<V> valueType);
 

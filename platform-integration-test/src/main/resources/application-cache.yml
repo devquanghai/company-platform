@@ -12,6 +12,14 @@ platform:
       maximum-entry-size: 1048576
 
     stores:
+      caffeine-primary:
+        provider: CAFFEINE
+        caffeine:
+          maximum-size: 10000
+          expire-after-write: 10m
+          expire-after-access: 10m
+          refresh-after-write: 5m
+
       redis-primary:
         provider: REDIS
         redis:
@@ -42,3 +50,15 @@ platform:
           prefix: ${spring.application.name:application}:cache:customers
         store: redis-primary
         ttl: 15m
+
+      test-cache:
+        key:
+          prefix: haipq1_test-cache
+        store: redis-primary
+        ttl: 1m
+
+      test-cache-caffeine:
+        key:
+          prefix: haipq1_test-cache-caffeine
+        store: caffeine-primary
+        ttl: 1m

@@ -84,7 +84,8 @@ public class CryptoAutoConfiguration {
     @ConditionalOnMissingBean(name = "platformJasyptPbeCryptoStrategy")
     CryptoStrategy jasyptPbeCryptoStrategy(PlatformLoggingProperties properties) {
         return new JasyptPbeCryptoStrategy(
-            properties.getCrypto().getProviders().getJasypt().getAlgorithm());
+            properties.getCrypto().getProviders().getJasypt().getAlgorithm(),
+            properties.getCrypto().isAllowLegacyAlgorithms());
     }
 
     @Bean

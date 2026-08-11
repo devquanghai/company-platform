@@ -1,18 +1,17 @@
-package com.company.platform.integration.encrypt.dto.request.rsa;
+package com.company.platform.integration.cache.dto.request;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.FieldDefaults;
-import jakarta.validation.constraints.NotBlank;
 
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @FieldDefaults(level = lombok.AccessLevel.PRIVATE)
-public class RsaSignRequest {
-    @NotBlank
-    String data;
+public class CacheRequest {
+    String key;
+    String value;
 }

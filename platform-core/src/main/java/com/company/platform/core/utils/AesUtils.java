@@ -9,6 +9,8 @@ import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.OAEPParameterSpec;
+import javax.crypto.spec.PSource;
 import javax.crypto.spec.SecretKeySpec;
 import java.security.NoSuchAlgorithmException;
 import java.security.GeneralSecurityException;
@@ -17,6 +19,7 @@ import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
+import java.security.spec.MGF1ParameterSpec;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Base64;
@@ -33,7 +36,8 @@ public class AesUtils {
     @SuppressWarnings("java:S5542")
     private static final String RSA_TRANSFORMATION =
             "RSA/ECB/OAEPWithSHA-256AndMGF1Padding";
-    private static final String LEGACY_RSA_TRANSFORMATION = "RSA/ECB/PKCS1Padding";
+    private static final OAEPParameterSpec RSA_OAEP = new OAEPParameterSpec(
+        "SHA-256", "MGF1", MGF1ParameterSpec.SHA256, PSource.PSpecified.DEFAULT);
     private static final int LEGACY_IV_LENGTH = 16;
 
     private static final String LOG_ENCRYPT_ERROR = "AES encrypt failed";
@@ -171,7 +175,8 @@ public class AesUtils {
 
             cipher.init(
                     Cipher.ENCRYPT_MODE,
-                    publicKey
+                    publicKey,
+                    RSA_OAEP
             );
 
             return cipher.doFinal(
@@ -195,11 +200,7 @@ public class AesUtils {
     ) {
         try {
 
-            try {
-                return decryptRsaKey(encryptedAesKey, privateKey, RSA_TRANSFORMATION);
-            } catch (GeneralSecurityException currentFormatFailure) {
-                return decryptRsaKey(encryptedAesKey, privateKey, LEGACY_RSA_TRANSFORMATION);
-            }
+            return decryptRsaKey(encryptedAesKey, privateKey);
         } catch (Exception ex) {
 
             log.error(
@@ -298,11 +299,10 @@ public class AesUtils {
 
     private static byte[] decryptRsaKey(
         byte[] encryptedAesKey,
-        PrivateKey privateKey,
-        String transformation
+        PrivateKey privateKey
     ) throws GeneralSecurityException {
-        Cipher cipher = Cipher.getInstance(transformation);
-        cipher.init(Cipher.DECRYPT_MODE, privateKey);
+        Cipher cipher = Cipher.getInstance(RSA_TRANSFORMATION);
+        cipher.init(Cipher.DECRYPT_MODE, privateKey, RSA_OAEP);
         return cipher.doFinal(encryptedAesKey);
     }
 }

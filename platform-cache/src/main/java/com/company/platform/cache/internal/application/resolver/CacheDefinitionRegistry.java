@@ -1,6 +1,5 @@
 package com.company.platform.cache.internal.application.resolver;
 
-import com.company.platform.cache.autoconfigure.properties.CacheStoreProperties;
 import com.company.platform.cache.autoconfigure.properties.NamedCacheProperties;
 import com.company.platform.cache.autoconfigure.properties.PlatformCacheProperties;
 import com.company.platform.cache.domain.exception.PlatformCacheConfigurationException;
@@ -8,11 +7,7 @@ import com.company.platform.cache.domain.model.CacheProviderType;
 import com.company.platform.cache.internal.support.PlatformCachePropertiesValidator;
 
 import java.time.Duration;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 public final class CacheDefinitionRegistry {
     private final Map<String, CacheStoreDefinition> stores;

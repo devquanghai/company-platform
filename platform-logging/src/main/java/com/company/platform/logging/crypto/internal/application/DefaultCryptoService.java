@@ -116,7 +116,11 @@ public final class DefaultCryptoService implements CryptoService {
         CryptoContext context = new CryptoContext(request, material, null);
         CryptoStrategy strategy = strategy(request);
         CryptoResult result = strategy.encryptResult(plaintext.clone(), context);
-        CipherEnvelope envelope = CipherEnvelope.builder().formatVersion("v1")
+        String formatVersion = request.getProvider()
+            == com.company.platform.logging.domain.model.CryptoProviderType.JASYPT
+            && request.getAlgorithm()
+            == com.company.platform.logging.domain.model.CryptoAlgorithm.PBE ? "v2" : "v1";
+        CipherEnvelope envelope = CipherEnvelope.builder().formatVersion(formatVersion)
             .provider(request.getProvider()).algorithm(request.getAlgorithm())
             .keyAlias(material.alias()).keyVersion(material.version().getValue())
             .mode(result.getMode()).nonce(result.getNonce())
