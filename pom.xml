@@ -20,7 +20,6 @@
         <module>platform-logging</module>
         <module>platform-database</module>
         <module>platform-integration-test</module>
-        <module>platform-integration-test/apps</module>
     </modules>
 
     <properties>

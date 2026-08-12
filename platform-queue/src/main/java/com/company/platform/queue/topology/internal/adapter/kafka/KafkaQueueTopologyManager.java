@@ -6,10 +6,9 @@ import com.company.platform.queue.topology.internal.port.out.TopologyValidationR
 import com.company.platform.queue.autoconfigure.properties.DestinationProperties;
 import com.company.platform.queue.autoconfigure.properties.PlatformQueueProperties;
 import com.company.platform.queue.domain.model.QueueProviderType;
-import com.company.platform.queue.configuration.internal.adapter.kafka.KafkaSecurityConfiguration;
 import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
+import org.springframework.kafka.core.KafkaAdmin;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -23,9 +22,13 @@ public final class KafkaQueueTopologyManager implements QueueTopologyManager {
     private static final String PROVISION_FAILED =
         "QUEUE.KAFKA_TOPOLOGY_PROVISION_FAILED";
     private final PlatformQueueProperties properties;
+    private final KafkaAdmin kafkaAdmin;
 
-    public KafkaQueueTopologyManager(PlatformQueueProperties properties) {
+    public KafkaQueueTopologyManager(
+        PlatformQueueProperties properties, KafkaAdmin kafkaAdmin
+    ) {
         this.properties = properties;
+        this.kafkaAdmin = kafkaAdmin;
     }
 
     @Override
@@ -36,7 +39,7 @@ public final class KafkaQueueTopologyManager implements QueueTopologyManager {
                 var names = destinations.stream()
                     .map(entry -> entry.getValue().getKafka().getTopic()).toList();
                 var descriptions = admin.describeTopics(names).allTopicNames()
-                    .get(timeout(brokerName).toMillis(), TimeUnit.MILLISECONDS);
+                    .get(timeout().toMillis(), TimeUnit.MILLISECONDS);
                 destinations.forEach(entry -> {
                     var configured = entry.getValue().getKafka();
                     var actual = descriptions.get(configured.getTopic());
@@ -59,7 +62,7 @@ public final class KafkaQueueTopologyManager implements QueueTopologyManager {
         destinationsByBroker().forEach((brokerName, destinations) -> {
             try (AdminClient admin = admin(brokerName)) {
                 var existing = admin.listTopics().names()
-                    .get(timeout(brokerName).toMillis(), TimeUnit.MILLISECONDS);
+                    .get(timeout().toMillis(), TimeUnit.MILLISECONDS);
                 List<NewTopic> missing = destinations.stream()
                     .filter(entry -> !existing.contains(
                         entry.getValue().getKafka().getTopic()))
@@ -71,7 +74,7 @@ public final class KafkaQueueTopologyManager implements QueueTopologyManager {
                 counts[1] += destinations.size() - missing.size();
                 if (!missing.isEmpty()) {
                     admin.createTopics(missing).all()
-                        .get(timeout(brokerName).toMillis(), TimeUnit.MILLISECONDS);
+                        .get(timeout().toMillis(), TimeUnit.MILLISECONDS);
                     counts[0] += missing.size();
                 }
             } catch (Exception exception) {
@@ -99,20 +102,10 @@ public final class KafkaQueueTopologyManager implements QueueTopologyManager {
     }
 
     private AdminClient admin(String brokerName) {
-        var kafka = properties.getBrokers().get(brokerName).getKafka();
-        Map<String, Object> config = new LinkedHashMap<>();
-        config.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG,
-            kafka.getBootstrapServers());
-        config.put(AdminClientConfig.CLIENT_ID_CONFIG,
-            kafka.getClientIdPrefix() + "-admin-" + brokerName);
-        config.put(AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG,
-            Math.toIntExact(kafka.getRequestTimeout().toMillis()));
-        KafkaSecurityConfiguration.apply(config, kafka);
-        return AdminClient.create(config);
+        return AdminClient.create(kafkaAdmin.getConfigurationProperties());
     }
 
-    private Duration timeout(String brokerName) {
-        return properties.getBrokers().get(brokerName)
-            .getKafka().getRequestTimeout();
+    private Duration timeout() {
+        return Duration.ofSeconds(30);
     }
 }

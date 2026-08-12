@@ -55,30 +55,38 @@ public final class MultiLevelCacheBackend implements CacheBackend {
     public void put(String key, Object value, Duration ttl) {
         l1.evict(key);
         dirtyDoNotPopulate.add(key);
-        l2.put(key, value, ttl);
-        repopulate(key);
-        dirtyDoNotPopulate.remove(key);
+        try {
+            l2.put(key, value, ttl);
+            repopulate(key);
+        } finally {
+            dirtyDoNotPopulate.remove(key);
+        }
     }
 
     @Override
     public boolean putIfAbsent(String key, Object value, Duration ttl) {
         l1.evict(key);
         dirtyDoNotPopulate.add(key);
-        boolean stored = l2.putIfAbsent(key, value, ttl);
-        if (stored) {
-            repopulate(key);
+        try {
+            boolean stored = l2.putIfAbsent(key, value, ttl);
+            if (stored) {
+                repopulate(key);
+            }
+            return stored;
+        } finally {
+            dirtyDoNotPopulate.remove(key);
         }
-        dirtyDoNotPopulate.remove(key);
-        return stored;
     }
 
     @Override
     public boolean evict(String key) {
         l1.evict(key);
         dirtyDoNotPopulate.add(key);
-        boolean removed = l2.evict(key);
-        dirtyDoNotPopulate.remove(key);
-        return removed;
+        try {
+            return l2.evict(key);
+        } finally {
+            dirtyDoNotPopulate.remove(key);
+        }
     }
 
     @Override
@@ -102,10 +110,13 @@ public final class MultiLevelCacheBackend implements CacheBackend {
     public long increment(String key, long delta, Duration ttl) {
         l1.evict(key);
         dirtyDoNotPopulate.add(key);
-        long result = l2.increment(key, delta, ttl);
-        repopulate(key);
-        dirtyDoNotPopulate.remove(key);
-        return result;
+        try {
+            long result = l2.increment(key, delta, ttl);
+            repopulate(key);
+            return result;
+        } finally {
+            dirtyDoNotPopulate.remove(key);
+        }
     }
 
     @Override
@@ -114,21 +125,26 @@ public final class MultiLevelCacheBackend implements CacheBackend {
     ) {
         l1.evict(key);
         dirtyDoNotPopulate.add(key);
-        boolean updated = l2.compareAndSet(key, expectedValue, newValue);
-        if (updated) {
-            repopulate(key);
+        try {
+            boolean updated = l2.compareAndSet(key, expectedValue, newValue);
+            if (updated) {
+                repopulate(key);
+            }
+            return updated;
+        } finally {
+            dirtyDoNotPopulate.remove(key);
         }
-        dirtyDoNotPopulate.remove(key);
-        return updated;
     }
 
     @Override
     public boolean compareAndDelete(String key, Object expectedValue) {
         l1.evict(key);
         dirtyDoNotPopulate.add(key);
-        boolean deleted = l2.compareAndDelete(key, expectedValue);
-        dirtyDoNotPopulate.remove(key);
-        return deleted;
+        try {
+            return l2.compareAndDelete(key, expectedValue);
+        } finally {
+            dirtyDoNotPopulate.remove(key);
+        }
     }
 
     @Override
@@ -137,12 +153,16 @@ public final class MultiLevelCacheBackend implements CacheBackend {
     ) {
         l1.evict(key);
         dirtyDoNotPopulate.add(key);
-        BackendUpdateResult result = l2.updateIfVersion(key, expectedVersion, newValue);
-        if (result.getStatus() == BackendUpdateResult.Status.UPDATED) {
-            cacheEntry(key, result.getEntry());
+        try {
+            BackendUpdateResult result =
+                l2.updateIfVersion(key, expectedVersion, newValue);
+            if (result.getStatus() == BackendUpdateResult.Status.UPDATED) {
+                cacheEntry(key, result.getEntry());
+            }
+            return result;
+        } finally {
+            dirtyDoNotPopulate.remove(key);
         }
-        dirtyDoNotPopulate.remove(key);
-        return result;
     }
 
     @Override
@@ -151,12 +171,15 @@ public final class MultiLevelCacheBackend implements CacheBackend {
     ) {
         l1.evict(key);
         dirtyDoNotPopulate.add(key);
-        BackendUpdateResult result = l2.compute(key, updater);
-        if (result.getStatus() == BackendUpdateResult.Status.UPDATED) {
-            cacheEntry(key, result.getEntry());
+        try {
+            BackendUpdateResult result = l2.compute(key, updater);
+            if (result.getStatus() == BackendUpdateResult.Status.UPDATED) {
+                cacheEntry(key, result.getEntry());
+            }
+            return result;
+        } finally {
+            dirtyDoNotPopulate.remove(key);
         }
-        dirtyDoNotPopulate.remove(key);
-        return result;
     }
 
     private void repopulate(String key) {

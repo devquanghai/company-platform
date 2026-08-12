@@ -103,14 +103,14 @@ public final class CacheDefinitionRegistry {
                 resolvedStores, cache.getMultiLevel().getL2Store(), name, "L2");
             return new NamedCacheDefinition(
                 name, CacheProviderType.MULTI_LEVEL, null, l1, l2, ttl,
-                cacheNullValues, platform.getDefaults().getMaximumEntrySize(), prefix, cache);
+                cacheNullValues, platform.getDefaults().getMaximumEntrySize().toBytes(), prefix, cache);
         }
 
         CacheStoreDefinition primary = requireResolvedStore(
             resolvedStores, cache.getStore(), name, "primary");
         return new NamedCacheDefinition(
             name, primary.getProvider(), primary, null, null, ttl,
-            cacheNullValues, platform.getDefaults().getMaximumEntrySize(), prefix, cache);
+            cacheNullValues, platform.getDefaults().getMaximumEntrySize().toBytes(), prefix, cache);
     }
 
     private CacheStoreDefinition requireResolvedStore(

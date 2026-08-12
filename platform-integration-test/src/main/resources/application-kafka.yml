@@ -1,8 +1,22 @@
+spring:
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:19092}
+    client-id: platform-integration
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.ByteArraySerializer
+      acks: all
+      properties:
+        enable.idempotence: true
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
+      enable-auto-commit: false
+      auto-offset-reset: earliest
+
 platform:
   queue:
     enabled: true
-    application-name: ${spring.application.name}
-    environment: ${APP_ENVIRONMENT:local}
     allow-noop: false
     topology:
       mode: DECLARE_AND_VALIDATE
@@ -10,16 +24,6 @@ platform:
       integration-kafka:
         enabled: true
         provider: KAFKA
-        kafka:
-          bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:19092}
-          client-id-prefix: platform-integration
-          request-timeout: 10s
-          delivery-timeout: 30s
-          max-block: 10s
-          security-protocol: PLAINTEXT
-          transactions-enabled: false
-          ssl:
-            enabled: false
     destinations:
       queue-realtime:
         broker: integration-kafka
@@ -75,7 +79,6 @@ platform:
           concurrency: ${KAFKA_REALTIME_CONCURRENCY:3}
           mode: REALTIME
           strict-ordering: true
-          auto-offset-reset: earliest
         retry:
           enabled: true
           max-attempts: 3
@@ -94,7 +97,6 @@ platform:
           max-wait: ${KAFKA_BATCH_MAX_WAIT:30m}
           deferred-poll-interval: ${KAFKA_BATCH_POLL_INTERVAL:1s}
           strict-ordering: true
-          auto-offset-reset: earliest
         retry:
           enabled: true
           max-attempts: 3
@@ -113,7 +115,6 @@ platform:
           max-wait: ${KAFKA_BULK_MAX_WAIT:1d}
           deferred-poll-interval: ${KAFKA_BULK_POLL_INTERVAL:5s}
           strict-ordering: true
-          auto-offset-reset: earliest
         retry:
           enabled: true
           max-attempts: 3

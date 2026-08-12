@@ -9,6 +9,4 @@ import lombok.Setter;
 public class BrokerProperties {
     private boolean enabled = true;
     private QueueProviderType provider;
-    private KafkaBrokerProperties kafka = new KafkaBrokerProperties();
-    private RabbitBrokerProperties rabbit = new RabbitBrokerProperties();
 }

@@ -182,7 +182,8 @@ protect this metadata from eviction.
 
 ## Resilience and fallback
 
-The synchronous pipeline is bulkhead, circuit breaker, retry, Redis operation.
+Redis client resilience uses native Spring Data Redis/Lettuce configuration;
+the platform does not mirror Resilience4j properties or build a retry pipeline.
 Retries are bounded and restricted to transient connectivity failures.
 Fallback runs only after primary failure and follows the named-cache policy.
 Coordination caches must use fail-closed.
@@ -199,7 +200,7 @@ It preserves Redis TTL and coherent envelope freshness. Java `UnaryOperator`
 updates use bounded
 WATCH/MULTI-style optimistic retry; the updater must be side-effect-free because
 it may run more than once. Version conflicts never count as infrastructure or
-circuit-breaker failures.
+infrastructure failures.
 
 Single-flight identity includes store, cache, namespace token, the snapped
 entry invalidation epoch and encoded key. A follower at a newer epoch never
@@ -272,7 +273,7 @@ increment entry epoch -> invalidate L1 -> mutate L2
   failure -> mark DIRTY_DO_NOT_POPULATE -> emit partial/degraded outcome
 ```
 
-Invalidation events contain application/environment namespace, cache,
+Invalidation events contain the cache namespace, cache,
 namespace token, entry epoch, key digest, event ID, source instance, timestamp and
 trace ID. Handlers are idempotent. Self events may be ignored only after local
 epoch increment and invalidation. Pub/Sub is best effort, never durable or
@@ -337,12 +338,12 @@ not a raw `Throwable` or vendor exception.
   optimistic transaction atomically compares expected entry version, writes
   payload plus `entryVersion + 1`, and preserves coherent TTL/freshness.
 - Optimistic results distinguish updated, version conflict, missing and failed.
-  Conflict does not enter retry/circuit-breaker infrastructure metrics.
+  Conflict is not classified as an infrastructure failure.
 
 ## Logical clear
 
 The namespace token is Redis-backed for distributed stores, atomic,
-non-expiring and scoped by application/environment/cache. Clear uses Lua to
+non-expiring and scoped by cache prefix/cache. Clear uses Lua to
 replace it with a cryptographically random opaque 128-bit token. Caffeine uses
 an equivalent local token.
 
@@ -399,7 +400,7 @@ store, or behavior inside auto-configuration is allowed.
 | Sentinel/Cluster profiles | discovery, reconnect, slots, cross-slot rejection |
 | Multi-level | L1/L2 paths, generation stale-fill race, remaining TTL |
 | Fallback | all modes, stale bound, outage epoch, recovery, forbidden caches |
-| Resilience | transient-only retry, circuit states, bulkhead, fail policies |
+| Resilience | native Redis client settings, fallback and fail policies |
 | Single-flight | success/failure/timeout/interrupt cleanup and e1/e2 race with latches |
 | Spring Cache | manager replacement/back-off and annotation behavior |
 | Locks | fail-closed SPI, ownership and no local fallback |

@@ -12,11 +12,10 @@ import com.company.platform.queue.autoconfigure.properties.SubscriptionPropertie
 import com.company.platform.queue.domain.model.QueueProviderType;
 import com.company.platform.queue.domain.policy.RetryDecision;
 import com.company.platform.queue.envelope.header.PlatformMessageHeaders;
-import com.company.platform.queue.configuration.internal.adapter.rabbit.RabbitConnectionFactoryConfigurer;
 import com.rabbitmq.client.Channel;
 import org.springframework.amqp.core.AcknowledgeMode;
 import org.springframework.amqp.core.Message;
-import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
+import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
 import org.springframework.amqp.rabbit.listener.api.ChannelAwareMessageListener;
 import org.springframework.beans.factory.DisposableBean;
@@ -36,18 +35,19 @@ public final class NamedRabbitListenerContainerAdapter
     private final TimeProvider time;
     private final List<SimpleMessageListenerContainer> containers =
         new CopyOnWriteArrayList<>();
-    private final List<CachingConnectionFactory> factories =
-        new CopyOnWriteArrayList<>();
+    private final SimpleRabbitListenerContainerFactory containerFactory;
     private final AtomicBoolean running = new AtomicBoolean();
 
     public NamedRabbitListenerContainerAdapter(
         PlatformQueueProperties properties,
         QueueMessageProcessor processor,
-        TimeProvider time
+        TimeProvider time,
+        SimpleRabbitListenerContainerFactory containerFactory
     ) {
         this.properties = properties;
         this.processor = processor;
         this.time = time;
+        this.containerFactory = containerFactory;
     }
 
     @Override
@@ -62,11 +62,9 @@ public final class NamedRabbitListenerContainerAdapter
         DestinationProperties destination
     ) {
         String brokerName = destination.getBroker();
-        CachingConnectionFactory factory = connectionFactory(brokerName);
-        factories.add(factory);
         var rabbit = subscription.getRabbit();
         SimpleMessageListenerContainer container =
-            new SimpleMessageListenerContainer(factory);
+            containerFactory.createListenerContainer();
         container.setListenerId("platformQueueRabbit-" + endpoint.handlerId());
         container.setQueueNames(rabbit.getQueue());
         container.setAcknowledgeMode(AcknowledgeMode.MANUAL);
@@ -155,14 +153,7 @@ public final class NamedRabbitListenerContainerAdapter
     public void destroy() {
         stop();
         containers.forEach(SimpleMessageListenerContainer::destroy);
-        factories.forEach(CachingConnectionFactory::destroy);
         containers.clear();
-        factories.clear();
-    }
-
-    private CachingConnectionFactory connectionFactory(String brokerName) {
-        var broker = properties.getBrokers().get(brokerName).getRabbit();
-        return RabbitConnectionFactoryConfigurer.create(broker, false);
     }
 
     private int attempt(Message message) {

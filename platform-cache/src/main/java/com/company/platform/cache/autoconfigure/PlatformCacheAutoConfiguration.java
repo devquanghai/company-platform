@@ -19,7 +19,6 @@ import com.company.platform.cache.internal.application.resolver.NamedCacheDefini
 import com.company.platform.cache.internal.application.service.DefaultPlatformCacheOperations;
 import com.company.platform.cache.internal.application.service.DefaultTypedCacheFactory;
 import com.company.platform.cache.autoconfigure.properties.CacheStoreProperties;
-import com.company.platform.cache.autoconfigure.properties.CaffeineProperties;
 import com.company.platform.cache.autoconfigure.properties.PlatformCacheProperties;
 import com.company.platform.cache.domain.model.CacheProviderType;
 import com.company.platform.cache.internal.support.DefaultCacheKeyEncoder;
@@ -34,6 +33,7 @@ import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.cache.autoconfigure.CacheProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 
@@ -44,8 +44,14 @@ import java.util.Map;
 @AutoConfiguration(after = RedisCacheAutoConfiguration.class)
 @ConditionalOnProperty(
     prefix = "platform.cache", name = "enabled", matchIfMissing = true)
-@EnableConfigurationProperties(PlatformCacheProperties.class)
+@EnableConfigurationProperties({PlatformCacheProperties.class, CacheProperties.class})
 public class PlatformCacheAutoConfiguration {
+
+    private final CacheProperties cacheProperties;
+
+    public PlatformCacheAutoConfiguration(CacheProperties cacheProperties) {
+        this.cacheProperties = cacheProperties;
+    }
 
     @Bean
     @ConditionalOnMissingBean
@@ -179,15 +185,9 @@ public class PlatformCacheAutoConfiguration {
         if (store == null || store.getProvider() != CacheProviderType.CAFFEINE) {
             throw new IllegalStateException("Caffeine store is unavailable");
         }
-        CaffeineProperties settings = store.getCaffeine();
         return new CaffeineCacheBackend(CaffeineCacheSettings.builder()
-            .maximumSize(settings.getMaximumSize())
+            .spec(cacheProperties.getCaffeine().getSpec())
             .defaultTtl(ttl)
-            .expireAfterAccess(settings.getExpireAfterAccess())
-            .recordStats(settings.isRecordStats())
-            .weakKeys(settings.isWeakKeys())
-            .weakValues(settings.isWeakValues())
-            .softValues(settings.isSoftValues())
             .build());
     }
 

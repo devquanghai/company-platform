@@ -16,6 +16,8 @@ import com.company.platform.queue.reliability.outbox.TransactionalMessagePublish
 import com.company.platform.queue.serialization.registry.MessageSerializerRegistry;
 import com.company.platform.queue.configuration.internal.PlatformQueuePropertiesValidator;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.amqp.autoconfigure.RabbitProperties;
+import org.springframework.boot.kafka.autoconfigure.KafkaProperties;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -34,12 +36,15 @@ public class QueueReliabilityAutoConfiguration {
         PlatformQueueProperties properties,
         ObjectProvider<OutboxMessageStore> outbox,
         ObjectProvider<InboxStore> inbox,
-        ObjectProvider<DeferredKafkaMessageStore> deferredKafka
+        ObjectProvider<DeferredKafkaMessageStore> deferredKafka,
+        ObjectProvider<RabbitProperties> rabbitProperties,
+        ObjectProvider<KafkaProperties> kafkaProperties
     ) {
         return new PlatformQueuePropertiesValidator(
             properties, outbox.getIfAvailable() != null,
             inbox.getIfAvailable() != null,
-            deferredKafka.getIfAvailable() != null);
+            deferredKafka.getIfAvailable() != null,
+            rabbitProperties.getIfAvailable(), kafkaProperties.getIfAvailable());
     }
 
     @Bean

@@ -13,7 +13,6 @@ import lombok.experimental.FieldDefaults;
 public class CacheStoreProperties {
     boolean enabled = true;
     CacheProviderType provider = CacheProviderType.CAFFEINE;
-    @Valid CaffeineProperties caffeine = new CaffeineProperties();
     @Valid RedisProperties redis = new RedisProperties();
     String connectionFactoryBean;
 }

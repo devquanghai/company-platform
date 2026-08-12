@@ -15,8 +15,6 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.UnaryOperator;
-import io.github.resilience4j.bulkhead.BulkheadFullException;
-import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import org.springframework.dao.QueryTimeoutException;
 import org.springframework.data.redis.RedisConnectionFailureException;
 
@@ -282,8 +280,6 @@ public final class FallbackCacheBackend implements CacheBackend {
         while (current != null) {
             if (current instanceof RedisConnectionFailureException
                 || current instanceof QueryTimeoutException
-                || current instanceof CallNotPermittedException
-                || current instanceof BulkheadFullException
                 || current instanceof java.net.ConnectException
                 || current instanceof java.net.SocketTimeoutException) {
                 return;

@@ -1,26 +1,22 @@
 # Caffeine only
 
 ```yaml
+spring:
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=10000,recordStats
+
 platform:
   cache:
-    application: ${spring.application.name:application}
     stores:
-      local-default:
+      local:
         provider: CAFFEINE
-        caffeine:
-          maximum-size: 10000
-          expire-after-write: 10m
-          record-stats: true
     caches:
-      local-settings:
-        store: local-default
-        ttl: 30m
-        ttl-jitter:
-          enabled: true
-          percentage: 10
+      customer-profile:
+        store: local
+        ttl: 10m
 ```
 
-Caffeine chỉ chia sẻ trong cùng JVM. `maximum-size` và TTL là bắt buộc về mặt
-vận hành. Không dùng cấu hình này cho coordination hoặc dữ liệu cần nhất quán
-giữa nhiều replica.
-
+Capacity/options thuộc Caffeine native spec; named TTL là policy orchestration
+của platform.

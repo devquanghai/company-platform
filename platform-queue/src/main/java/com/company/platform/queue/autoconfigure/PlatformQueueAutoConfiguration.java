@@ -25,6 +25,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
+import org.springframework.core.env.Environment;
 
 @AutoConfiguration
 @EnableConfigurationProperties(PlatformQueueProperties.class)
@@ -60,7 +61,7 @@ public class PlatformQueueAutoConfiguration {
     public SafeHeaderPolicy safeHeaderPolicy(PlatformQueueProperties properties) {
         var message = properties.getMessage();
         return new SafeHeaderPolicy(
-            QueueMessageDefaults.limits(message, properties.getDefaults()),
+            QueueMessageDefaults.limits(message),
             message.getAllowedHeaders());
     }
 
@@ -82,14 +83,15 @@ public class PlatformQueueAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     public MessageEnvelopeFactory messageEnvelopeFactory(
-        PlatformQueueProperties properties,
+        Environment environment,
         TimeProvider timeProvider,
         ObjectProvider<RequestContextProvider> requestContext,
         ObjectProvider<TraceContextProvider> traceContext,
         SafeHeaderPolicy headers
     ) {
         return new MessageEnvelopeFactory(
-            properties, timeProvider, requestContext.getIfAvailable(),
+            environment.getProperty("spring.application.name", "unknown"),
+            timeProvider, requestContext.getIfAvailable(),
             traceContext.getIfAvailable(), headers);
     }
 

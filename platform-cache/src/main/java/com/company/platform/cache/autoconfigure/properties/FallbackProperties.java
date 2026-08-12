@@ -1,6 +1,5 @@
 package com.company.platform.cache.autoconfigure.properties;
 
-import com.company.platform.cache.domain.model.CacheProviderType;
 import com.company.platform.cache.domain.policy.CacheFallbackMode;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -14,7 +13,6 @@ import java.time.Duration;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class FallbackProperties {
     boolean enabled;
-    CacheProviderType type = CacheProviderType.CAFFEINE;
     CacheFallbackMode mode = CacheFallbackMode.NONE;
     String localStore;
     Duration ttl = Duration.ofMinutes(2);

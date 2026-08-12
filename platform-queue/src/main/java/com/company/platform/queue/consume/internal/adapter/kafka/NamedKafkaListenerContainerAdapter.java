@@ -17,16 +17,12 @@ import com.company.platform.queue.domain.model.QueueProviderType;
 import com.company.platform.queue.domain.policy.RetryDecision;
 import com.company.platform.queue.consume.internal.port.out.KafkaDeadLetterPublisher;
 import com.company.platform.queue.envelope.header.PlatformMessageHeaders;
-import com.company.platform.queue.configuration.internal.adapter.kafka.KafkaSecurityConfiguration;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.internals.RecordHeaders;
-import org.apache.kafka.common.serialization.ByteArrayDeserializer;
-import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.context.SmartLifecycle;
-import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.ContainerProperties;
@@ -60,6 +56,7 @@ public final class NamedKafkaListenerContainerAdapter
     private final TimeProvider time;
     private final DeferredKafkaMessageStore deferredStore;
     private final KafkaDeadLetterPublisher deadLetterPublisher;
+    private final ConcurrentKafkaListenerContainerFactory<String, byte[]> containerFactory;
     private final List<AbstractMessageListenerContainer<String, byte[]>> containers =
         new CopyOnWriteArrayList<>();
     private final AtomicBoolean running = new AtomicBoolean();
@@ -73,13 +70,15 @@ public final class NamedKafkaListenerContainerAdapter
         QueueMessageProcessor processor,
         TimeProvider time,
         DeferredKafkaMessageStore deferredStore,
-        KafkaDeadLetterPublisher deadLetterPublisher
+        KafkaDeadLetterPublisher deadLetterPublisher,
+        ConcurrentKafkaListenerContainerFactory<String, byte[]> containerFactory
     ) {
         this.properties = properties;
         this.processor = processor;
         this.time = time;
         this.deferredStore = deferredStore;
         this.deadLetterPublisher = deadLetterPublisher;
+        this.containerFactory = containerFactory;
     }
 
     @Override
@@ -94,12 +93,9 @@ public final class NamedKafkaListenerContainerAdapter
         DestinationProperties destination
     ) {
         String brokerName = destination.getBroker();
-        var broker = properties.getBrokers().get(brokerName).getKafka();
-        Map<String, Object> config = consumerConfig(
-            brokerName, broker, subscription);
-        var factory = new DefaultKafkaConsumerFactory<String, byte[]>(config);
-        ContainerProperties containerProperties =
-            new ContainerProperties(destination.getKafka().getTopic());
+        var container = containerFactory.createContainer(
+            destination.getKafka().getTopic());
+        ContainerProperties containerProperties = container.getContainerProperties();
         containerProperties.setGroupId(subscription.getKafka().getGroupId());
         containerProperties.setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
         containerProperties.setObservationEnabled(
@@ -125,8 +121,6 @@ public final class NamedKafkaListenerContainerAdapter
                         endpoint, subscription, destination, brokerName,
                         record, acknowledgment));
         }
-        var container = new ConcurrentMessageListenerContainer<String, byte[]>(
-            factory, containerProperties);
         container.setCommonErrorHandler(kafkaErrorHandler(
             subscription, brokerName));
         container.setBeanName("platformQueueKafka-" + endpoint.handlerId());
@@ -532,32 +526,6 @@ public final class NamedKafkaListenerContainerAdapter
         if (heartbeat != null) {
             heartbeat.shutdownNow();
         }
-    }
-
-    private Map<String, Object> consumerConfig(
-        String brokerName,
-        com.company.platform.queue.autoconfigure.properties.KafkaBrokerProperties broker,
-        SubscriptionProperties subscription
-    ) {
-        Map<String, Object> config = new LinkedHashMap<>();
-        config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, broker.getBootstrapServers());
-        config.put(ConsumerConfig.CLIENT_ID_CONFIG,
-            broker.getClientIdPrefix() + "-consumer-" + brokerName);
-        config.put(ConsumerConfig.GROUP_ID_CONFIG, subscription.getKafka().getGroupId());
-        config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
-        config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
-        config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
-            subscription.getKafka().getAutoOffsetReset());
-        config.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG,
-            subscription.getKafka().isReadCommitted()
-                ? "read_committed" : "read_uncommitted");
-        if (subscription.getKafka().getMode() != KafkaConsumerMode.REALTIME) {
-            config.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG,
-                Math.min(subscription.getKafka().getMaxMessages(), 10_000));
-        }
-        KafkaSecurityConfiguration.apply(config, broker);
-        return config;
     }
 
     private java.time.Duration backoff(

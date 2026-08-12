@@ -15,21 +15,7 @@ public class KafkaSubscriptionProperties {
     private Integer maxMessages;
     private Duration maxWait;
     private Duration deferredPollInterval = Duration.ofSeconds(1);
-    private boolean readCommitted;
-
-    /** @deprecated use {@code read-committed}; this never enabled container transactions. */
-    @Deprecated
-    public boolean isTransactionEnabled() {
-        return readCommitted;
-    }
-
-    /** @deprecated use {@code read-committed}; this never enabled container transactions. */
-    @Deprecated
-    public void setTransactionEnabled(boolean value) {
-        readCommitted = value;
-    }
     private boolean strictOrdering;
-    private String autoOffsetReset = "earliest";
 
     public int getMaxMessages() {
         if (maxMessages != null) {

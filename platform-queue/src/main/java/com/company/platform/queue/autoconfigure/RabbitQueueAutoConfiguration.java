@@ -15,14 +15,19 @@ import com.company.platform.queue.consume.internal.application.PlatformQueueList
 import com.company.platform.queue.consume.internal.application.QueueMessageProcessor;
 import com.company.platform.queue.autoconfigure.properties.PlatformQueueProperties;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
+import org.springframework.amqp.core.AmqpAdmin;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.beans.factory.ObjectProvider;
 
-@AutoConfiguration(after = PlatformQueueAutoConfiguration.class)
+@AutoConfiguration(
+    after = PlatformQueueAutoConfiguration.class,
+    afterName = "org.springframework.boot.amqp.autoconfigure.RabbitAutoConfiguration")
 @ConditionalOnClass(RabbitTemplate.class)
 @ConditionalOnProperty(
     prefix = "platform.queue", name = "enabled",
@@ -34,9 +39,11 @@ public class RabbitQueueAutoConfiguration {
     public NamedRabbitPublisher namedRabbitPublisher(
         PlatformQueueProperties properties,
         QueueDestinationRegistry destinations,
-        TimeProvider timeProvider
+        TimeProvider timeProvider,
+        RabbitTemplate rabbitTemplate
     ) {
-        return RabbitPublisherFactory.create(properties, destinations, timeProvider);
+        return RabbitPublisherFactory.create(
+            properties, destinations, timeProvider, rabbitTemplate);
     }
 
     @Bean
@@ -44,18 +51,21 @@ public class RabbitQueueAutoConfiguration {
     public NamedRabbitListenerContainerAdapter namedRabbitListenerContainerAdapter(
         PlatformQueueProperties properties,
         QueueMessageProcessor processor,
-        TimeProvider timeProvider
+        TimeProvider timeProvider,
+        SimpleRabbitListenerContainerFactory containerFactory
     ) {
         return new NamedRabbitListenerContainerAdapter(
-            properties, processor, timeProvider);
+            properties, processor, timeProvider, containerFactory);
     }
 
     @Bean
     @ConditionalOnMissingBean(RabbitQueueTopologyManager.class)
+    @ConditionalOnBean(AmqpAdmin.class)
     public RabbitQueueTopologyManager rabbitQueueTopologyManager(
-        PlatformQueueProperties properties
+        PlatformQueueProperties properties,
+        AmqpAdmin amqpAdmin
     ) {
-        return new RabbitQueueTopologyManager(properties);
+        return new RabbitQueueTopologyManager(properties, amqpAdmin);
     }
 
     @Bean

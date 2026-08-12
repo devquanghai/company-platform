@@ -11,8 +11,6 @@ import java.time.Duration;
 @Setter
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class StampedeProperties {
-    boolean enabled = true;
-    String mode = "SINGLE_FLIGHT";
     Duration waitTimeout = Duration.ofSeconds(2);
     int maximumInflight = 10_000;
 }

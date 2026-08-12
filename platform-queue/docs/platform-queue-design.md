@@ -79,31 +79,17 @@ runtime input.
 
 ### Lean configuration
 
-The top-level configuration groups are `message`, `topology`, `delivery`,
-`brokers`, `destinations`, `subscriptions` and `observability`. Safety
-invariants are not runtime configuration: Kafka always uses `acks=all`,
-idempotence, bounded retries and at most five in-flight requests; Rabbit
-publishers always use correlated confirms, returns and mandatory publishing;
-TLS always verifies hostnames. JSON is the default payload format, message IDs
-are always generated when missing, and correlation IDs fall back to request
-context and then message ID.
+The top-level platform groups are `message`, `topology`, `delivery`, `brokers`,
+`destinations`, `subscriptions` and `observability`. Kafka connectivity,
+producer, consumer, admin, transaction, SASL and SSL settings are owned by
+`spring.kafka.*`. Rabbit connection, cache, publisher and listener defaults are
+owned by `spring.rabbitmq.*`. The module consumes Boot-managed templates,
+container factories and admins; it does not translate platform properties into
+native client maps.
 
-Legacy keys must migrate as follows: `source-application` to
-`application-name`, `defaults.*` to `message.*` or `topology.mode`,
-`reliability.outbox-enabled` to `delivery.outbox-enabled`,
-`reliability.inbox-enabled` to `delivery.inbox-enabled`,
-`reliability.lock-timeout` to `delivery.processing-lock-timeout`, and
-`reliability.max-attempts` to `delivery.outbox-max-attempts`. Kafka producer
-`transaction-enabled` becomes `transactions-enabled`, consumer
-`transaction-enabled` becomes `read-committed`, Rabbit `ssl.enabled` becomes
-`tls-enabled`, `require-key` becomes `key-required`, and
-`allow-partition-override` to `partition-override-allowed`. The `acks`,
-`enable-idempotence`, `correlated-confirms`, `returns-enabled`, `mandatory`,
-`verify-hostname` and `annotations-enabled` keys were removed because they are
-either invariants or had no effect.
-
-Deprecated binding aliases remain for one migration cycle. Applications must
-not supply old and new forms of the same setting together.
+No deprecated binding aliases are retained. `spring.application.name` is the
+message source application. `platform.queue.*` is limited to logical routing,
+cross-provider delivery behavior, envelope limits and reliability policies.
 
 ## Publish flow
 

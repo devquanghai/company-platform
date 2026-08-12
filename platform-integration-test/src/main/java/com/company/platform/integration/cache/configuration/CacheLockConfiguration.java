@@ -24,7 +24,6 @@ public class CacheLockConfiguration {
     @Bean
     @ConditionalOnMissingBean(DistributedLockOperations.class)
     DistributedLockOperations integrationDistributedLockOperations(
-        @Qualifier("platformCacheRedisConnectionFactory__redis-primary")
         RedisConnectionFactory connectionFactory
     ) {
         return new RedisDistributedLockOperations(connectionFactory);

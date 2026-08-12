@@ -12,5 +12,8 @@ import java.util.Set;
 public class MessageProperties {
     private DataSize maxPayloadSize = DataSize.ofMegabytes(1);
     private DataSize maxEnvelopeSize = DataSize.ofMegabytes(2);
+    private int maxHeaders = 64;
+    private int maxHeaderBytes = 8192;
+    private int maxTotalHeaderBytes = 32768;
     private Set<String> allowedHeaders = new LinkedHashSet<>();
 }

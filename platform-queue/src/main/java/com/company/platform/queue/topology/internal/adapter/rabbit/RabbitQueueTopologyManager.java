@@ -6,14 +6,12 @@ import com.company.platform.queue.topology.internal.port.out.TopologyValidationR
 import com.company.platform.queue.autoconfigure.properties.PlatformQueueProperties;
 import com.company.platform.queue.autoconfigure.properties.RabbitSubscriptionProperties;
 import com.company.platform.queue.domain.model.QueueProviderType;
-import com.company.platform.queue.configuration.internal.adapter.rabbit.RabbitConnectionFactoryConfigurer;
+import org.springframework.amqp.core.AmqpAdmin;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.Exchange;
 import org.springframework.amqp.core.ExchangeBuilder;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
-import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
-import org.springframework.amqp.rabbit.core.RabbitAdmin;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -25,18 +23,20 @@ public final class RabbitQueueTopologyManager implements QueueTopologyManager {
     private static final String PROVISION_FAILED =
         "QUEUE.RABBIT_TOPOLOGY_PROVISION_FAILED";
     private final PlatformQueueProperties properties;
+    private final AmqpAdmin admin;
 
-    public RabbitQueueTopologyManager(PlatformQueueProperties properties) {
+    public RabbitQueueTopologyManager(
+        PlatformQueueProperties properties, AmqpAdmin admin
+    ) {
         this.properties = properties;
+        this.admin = admin;
     }
 
     @Override
     public TopologyValidationResult validate() {
         List<String> errors = new ArrayList<>();
         subscriptionsByBroker().forEach((brokerName, subscriptions) -> {
-            CachingConnectionFactory factory = connectionFactory(brokerName);
             try {
-                RabbitAdmin admin = new RabbitAdmin(factory);
                 subscriptions.forEach(entry -> {
                     if (admin.getQueueInfo(entry.getValue().getRabbit().getQueue()) == null) {
                         errors.add(INVALID + ":" + entry.getKey());
@@ -44,8 +44,6 @@ public final class RabbitQueueTopologyManager implements QueueTopologyManager {
                 });
             } catch (Exception exception) {
                 errors.add(INVALID + ":" + brokerName);
-            } finally {
-                factory.destroy();
             }
         });
         return new TopologyValidationResult(errors.isEmpty(), errors);
@@ -56,9 +54,7 @@ public final class RabbitQueueTopologyManager implements QueueTopologyManager {
         int[] counts = new int[2];
         List<String> errors = new ArrayList<>();
         subscriptionsByBroker().forEach((brokerName, subscriptions) -> {
-            CachingConnectionFactory factory = connectionFactory(brokerName);
             try {
-                RabbitAdmin admin = new RabbitAdmin(factory);
                 for (var entry : subscriptions) {
                     var subscription = entry.getValue();
                     var destination = properties.getDestinations().get(
@@ -80,8 +76,6 @@ public final class RabbitQueueTopologyManager implements QueueTopologyManager {
                 }
             } catch (Exception exception) {
                 errors.add(PROVISION_FAILED + ":" + brokerName);
-            } finally {
-                factory.destroy();
             }
         });
         return new TopologyProvisionResult(counts[0], counts[1], errors);
@@ -179,8 +173,4 @@ public final class RabbitQueueTopologyManager implements QueueTopologyManager {
         return result;
     }
 
-    private CachingConnectionFactory connectionFactory(String brokerName) {
-        var broker = properties.getBrokers().get(brokerName).getRabbit();
-        return RabbitConnectionFactoryConfigurer.create(broker, false);
-    }
 }

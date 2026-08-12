@@ -12,15 +12,17 @@ Module kế thừa dependency management của repository; application chỉ c�
 dependency `com.company.platform:platform-cache` và khai báo tối thiểu:
 
 ```yaml
+spring:
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=10000,recordStats
+
 platform:
   cache:
-    application: ${spring.application.name}
     stores:
       local-default:
         provider: CAFFEINE
-        caffeine:
-          maximum-size: 10000
-          expire-after-write: 10m
     caches:
       customer-profile:
         store: local-default
@@ -63,8 +65,9 @@ application service/adapter. Thiết kế chi tiết ở
 
 ## Caffeine
 
-Caffeine là local cache riêng từng JVM. Mỗi cache phải được giới hạn bằng
-`maximum-size` và TTL. Local atomic operation chỉ bảo đảm atomic trong một JVM.
+Caffeine là local cache riêng từng JVM. Capacity và native options được cấu hình
+trực tiếp bằng `spring.cache.caffeine.spec`; TTL theo logical cache vẫn nằm ở
+`platform.cache.caches.*.ttl`. Local atomic operation chỉ bảo đảm atomic trong một JVM.
 Không dùng Caffeine cho quota, idempotency, security state, balance hoặc
 distributed coordination.
 
@@ -72,17 +75,36 @@ Xem [caffeine-only.md](docs/examples/caffeine-only.md).
 
 ## Redis
 
-Redis store dùng JSON envelope an toàn, timeout hữu hạn, pool và resilience.
-Module hỗ trợ:
+Redis connection, standalone/sentinel/cluster, credential, SSL, timeout và
+Lettuce pool dùng trực tiếp `spring.data.redis.*`. Module không tạo connection
+factory mặc định; nó sử dụng `redisConnectionFactory` do Spring Boot quản lý.
+Platform chỉ bổ sung JSON envelope, named cache, resilience và orchestration.
+
+Ví dụ:
+
+```yaml
+spring:
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 2s
+      lettuce:
+        pool:
+          max-active: 16
+```
+
+Spring Boot tự nhận topology từ native configuration:
 
 - `STANDALONE`: một endpoint.
 - `SENTINEL`: master group và danh sách Sentinel node.
 - `CLUSTER`: seed nodes, redirect và topology refresh; database bắt buộc bằng
   `0`.
 
-Chỉ nhánh deployment mode được chọn được dùng để tạo connection. Có thể khai
-báo nhiều Redis store hoặc tham chiếu `connection-factory-bean` do application
-quản lý. Chi tiết ở
+Một native connection mặc định có thể được alias bởi nhiều logical store. Khi
+cần nhiều Redis connection thật sự, application khai báo thêm
+`RedisConnectionFactory` bean và logical store tham chiếu bằng
+`connection-factory-bean`. Chi tiết ở
 [redis-deployment-modes.md](docs/redis-deployment-modes.md).
 
 ## Multi-level L1 + L2
@@ -167,10 +189,10 @@ thứ hai. Loader failure được chia sẻ nhưng không được cache.
 
 ## Resilience
 
-Redis pipeline áp dụng bulkhead, circuit breaker rồi retry có giới hạn. Chỉ lỗi
-kết nối tạm thời được retry; validation, serialization và version conflict
-không phải infrastructure failure. Timeout là hữu hạn ở connection, command,
-pool và health.
+Connection/command/pool timeout và retry ở tầng Redis client được cấu hình bằng
+`spring.data.redis.*` cùng native Lettuce options. Module không mirror hoặc tự
+build Resilience4j retry/circuit-breaker/bulkhead; failure policy, local fallback
+và degraded behavior là capability riêng của named cache.
 
 `FAIL_OPEN` cho phép tải source of truth, `FAIL_CLOSED` trả lỗi và
 `FALLBACK_LOCAL` áp dụng policy local đã xác thực. Xem
@@ -248,7 +270,7 @@ hoặc key version và triển khai migration có kiểm soát. Xem
 
 ## Key design và Redis Cluster hash slot
 
-Key vật lý chứa application/environment, cache prefix/version, namespace token
+Key vật lý chứa cache prefix/version, namespace token
 và encoded user key. Sensitive key dùng SHA-256; không dùng `hashCode()`. Không
 đưa raw key/value vào log, metric hoặc exception. Hash tag phải cố định từ
 configuration, không cho user input chèn `{}`. Mọi key của một Lua script phải
@@ -261,7 +283,7 @@ dùng raw key. Metric cần theo dõi gồm hit/miss/load, operation latency, ev
 fallback/stale, circuit state, lock acquisition và serialization failure.
 Structured event chỉ chứa metadata đã sanitize và trace/request context nếu có.
 
-Health contributor kiểm tra store đang bật với `health-timeout`, không tạo
+Health contributor kiểm tra store đang bật, không tạo
 connection cho disabled store và không làm lộ endpoint/credential. Cache health
 không đồng nghĩa source of truth bị lỗi.
 
@@ -307,4 +329,3 @@ không đồng nghĩa source of truth bị lỗi.
 - [Serialization](docs/cache-serialization.md)
 - [Distributed locking](docs/distributed-locking.md)
 - [Cấu hình đầy đủ](docs/examples/application-cache.yml)
-

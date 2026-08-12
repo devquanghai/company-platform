@@ -13,7 +13,6 @@ import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageBuilder;
 import org.springframework.amqp.core.MessageDeliveryMode;
 import org.springframework.amqp.rabbit.connection.CorrelationData;
-import org.springframework.beans.factory.DisposableBean;
 
 import java.time.Duration;
 import java.util.Map;
@@ -22,7 +21,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
 
 public final class NamedRabbitPublisher
-    implements ProviderMessagePublisher, RabbitQueueOperations, DisposableBean {
+    implements ProviderMessagePublisher, RabbitQueueOperations {
 
     private final Map<String, RabbitPublisherResources> resources;
     private final QueueDestinationRegistry destinations;
@@ -102,12 +101,8 @@ public final class NamedRabbitPublisher
 
     @Override
     public boolean waitForConfirms(String brokerName, Duration timeout) {
-        return require(brokerName).template().waitForConfirms(timeout.toMillis());
-    }
-
-    @Override
-    public void destroy() {
-        resources.values().forEach(value -> value.connectionFactory().destroy());
+        return require(brokerName).template().invoke(
+            operations -> operations.waitForConfirms(timeout.toMillis()));
     }
 
     private RabbitPublisherResources require(String broker) {

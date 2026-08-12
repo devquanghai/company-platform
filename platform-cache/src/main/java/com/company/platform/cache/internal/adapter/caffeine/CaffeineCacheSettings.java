@@ -14,11 +14,6 @@ import java.time.Duration;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public final class CaffeineCacheSettings {
-    long maximumSize;
+    String spec;
     Duration defaultTtl;
-    Duration expireAfterAccess;
-    boolean recordStats;
-    boolean weakKeys;
-    boolean weakValues;
-    boolean softValues;
 }

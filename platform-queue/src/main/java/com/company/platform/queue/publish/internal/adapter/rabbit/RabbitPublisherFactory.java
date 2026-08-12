@@ -4,8 +4,6 @@ import com.company.platform.core.time.TimeProvider;
 import com.company.platform.queue.configuration.internal.registry.QueueDestinationRegistry;
 import com.company.platform.queue.autoconfigure.properties.PlatformQueueProperties;
 import com.company.platform.queue.domain.model.QueueProviderType;
-import com.company.platform.queue.configuration.internal.adapter.rabbit.RabbitConnectionFactoryConfigurer;
-import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 import java.util.LinkedHashMap;
@@ -18,19 +16,13 @@ public final class RabbitPublisherFactory {
     public static NamedRabbitPublisher create(
         PlatformQueueProperties properties,
         QueueDestinationRegistry destinations,
-        TimeProvider time
+        TimeProvider time,
+        RabbitTemplate template
     ) {
         Map<String, RabbitPublisherResources> resources = new LinkedHashMap<>();
         properties.getBrokers().forEach((name, broker) -> {
             if (broker.isEnabled() && broker.getProvider() == QueueProviderType.RABBITMQ) {
-                var rabbit = broker.getRabbit();
-                CachingConnectionFactory factory =
-                    RabbitConnectionFactoryConfigurer.create(rabbit, true);
-                RabbitTemplate template = new RabbitTemplate(factory);
-                template.setMandatory(true);
-                template.setObservationEnabled(
-                    properties.getObservability().isTracingEnabled());
-                resources.put(name, new RabbitPublisherResources(factory, template));
+                resources.put(name, new RabbitPublisherResources(template));
             }
         });
         return new NamedRabbitPublisher(resources, destinations, time);

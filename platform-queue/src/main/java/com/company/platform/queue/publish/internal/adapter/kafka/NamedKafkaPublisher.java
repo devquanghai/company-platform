@@ -13,7 +13,6 @@ import com.company.platform.queue.domain.result.PublishStatus;
 import com.company.platform.queue.envelope.header.PlatformMessageHeaders;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.internals.RecordHeaders;
-import org.springframework.beans.factory.DisposableBean;
 import org.springframework.kafka.core.KafkaTemplate;
 import com.company.platform.queue.consume.internal.port.out.KafkaDeadLetterPublisher;
 
@@ -33,7 +32,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public final class NamedKafkaPublisher
     implements ProviderMessagePublisher, KafkaQueueOperations,
-    KafkaDeadLetterPublisher, DisposableBean {
+    KafkaDeadLetterPublisher {
 
     private final Map<String, KafkaPublisherResources> resources;
     private final QueueDestinationRegistry destinations;
@@ -159,11 +158,6 @@ public final class NamedKafkaPublisher
     @Override
     public int partitionCount(String brokerName, String topic, Duration timeout) {
         return require(brokerName).template().partitionsFor(topic).size();
-    }
-
-    @Override
-    public void destroy() {
-        resources.values().forEach(value -> value.producerFactory().destroy());
     }
 
     private KafkaPublisherResources require(String broker) {

@@ -16,20 +16,20 @@ import java.util.Objects;
 import java.util.UUID;
 
 public final class MessageEnvelopeFactory {
-    private final PlatformQueueProperties properties;
+    private final String applicationName;
     private final TimeProvider timeProvider;
     private final RequestContextProvider requestContext;
     private final TraceContextProvider traceContext;
     private final SafeHeaderPolicy headerPolicy;
 
     public MessageEnvelopeFactory(
-        PlatformQueueProperties properties,
+        String applicationName,
         TimeProvider timeProvider,
         RequestContextProvider requestContext,
         TraceContextProvider traceContext,
         SafeHeaderPolicy headerPolicy
     ) {
-        this.properties = properties;
+        this.applicationName = applicationName;
         this.timeProvider = timeProvider;
         this.requestContext = requestContext;
         this.traceContext = traceContext;
@@ -60,7 +60,7 @@ public final class MessageEnvelopeFactory {
             messageId, request.eventId(), correlationId, request.causationId(),
             trace == null ? null : trace.getTraceId(),
             trace == null ? null : trace.getSpanId(),
-            properties.getApplicationName(), request.destination(), eventType,
+            applicationName, request.destination(), eventType,
             version, now, now, QueueMessageDefaults.CONTENT_TYPE,
             headerPolicy.sanitize(request.headers()));
         return new MessageEnvelope<>(metadata, request.payload());

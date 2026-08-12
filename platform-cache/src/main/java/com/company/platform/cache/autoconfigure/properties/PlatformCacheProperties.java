@@ -19,8 +19,6 @@ import java.util.Map;
 public class PlatformCacheProperties {
     boolean enabled = true;
     boolean annotationsEnabled = true;
-    String application = "application";
-    String environment = "unknown";
     @Valid CacheDefaultsProperties defaults = new CacheDefaultsProperties();
     @Valid Map<String, CacheStoreProperties> stores = new LinkedHashMap<>();
     @Valid Map<String, NamedCacheProperties> caches = new LinkedHashMap<>();

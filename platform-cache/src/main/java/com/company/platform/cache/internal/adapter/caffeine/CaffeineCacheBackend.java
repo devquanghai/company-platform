@@ -31,7 +31,6 @@ public final class CaffeineCacheBackend implements CacheBackend {
     private final Cache<String, StoredValue> cache;
     private final Ticker ticker;
     private final Duration defaultTtl;
-    private final Duration expireAfterAccess;
     private final AtomicReference<String> namespaceToken;
     private final ReentrantReadWriteLock lifecycleLock = new ReentrantReadWriteLock();
 
@@ -44,7 +43,6 @@ public final class CaffeineCacheBackend implements CacheBackend {
         this.ticker = Objects.requireNonNull(ticker, "ticker");
         validateSettings(settings);
         this.defaultTtl = settings.getDefaultTtl();
-        this.expireAfterAccess = settings.getExpireAfterAccess();
         this.namespaceToken = new AtomicReference<>(newNamespaceToken());
         this.cache = buildCache(settings);
     }
@@ -272,20 +270,18 @@ public final class CaffeineCacheBackend implements CacheBackend {
     }
 
     private Cache<String, StoredValue> buildCache(CaffeineCacheSettings settings) {
-        Caffeine<String, StoredValue> builder =
-            Caffeine.<String, StoredValue>newBuilder()
-            .ticker(ticker)
-            .maximumSize(settings.getMaximumSize())
-            .expireAfter(new StoredValueExpiry(expireAfterAccess));
-        if (settings.isRecordStats()) {
-            builder.recordStats();
+        String spec = settings.getSpec();
+        if (spec == null || spec.isBlank()) {
+            throw new IllegalArgumentException(
+                "spring.cache.caffeine.spec must configure a bounded cache");
         }
-        if (settings.isWeakValues()) {
-            builder.weakValues();
-        } else if (settings.isSoftValues()) {
-            builder.softValues();
-        }
-        return builder.build();
+        rejectIncompatibleSpec(spec);
+        @SuppressWarnings("unchecked")
+        Caffeine<String, StoredValue> builder = (Caffeine<String, StoredValue>)
+            (Caffeine<?, ?>) Caffeine.from(spec);
+        return builder.ticker(ticker)
+            .expireAfter(new StoredValueExpiry())
+            .build();
     }
 
     private StoredValue newValue(
@@ -302,30 +298,32 @@ public final class CaffeineCacheBackend implements CacheBackend {
 
     private BackendCacheEntry toEntry(StoredValue value, long now) {
         long writeRemaining = Math.max(0L, value.expiresAtNanos() - now);
-        long reportedRemaining = expireAfterAccess == null
-            ? writeRemaining
-            : Math.min(writeRemaining, toNanosSaturated(expireAfterAccess));
         return new BackendCacheEntry(
             value.value(),
             value.version(),
-            Duration.ofNanos(reportedRemaining));
+            Duration.ofNanos(writeRemaining));
     }
 
     private static void validateSettings(CaffeineCacheSettings settings) {
-        if (settings.getMaximumSize() <= 0L) {
-            throw new IllegalArgumentException("maximumSize must be positive");
-        }
         requirePositive(settings.getDefaultTtl(), "defaultTtl");
-        if (settings.getExpireAfterAccess() != null) {
-            requirePositive(settings.getExpireAfterAccess(), "expireAfterAccess");
-        }
-        if (settings.isWeakKeys()) {
+    }
+
+    private static void rejectIncompatibleSpec(String spec) {
+        String normalized = spec.replace("-", "").replace("_", "").toLowerCase();
+        if (!normalized.contains("maximumsize=")
+            && !normalized.contains("maximumweight=")) {
             throw new IllegalArgumentException(
-                "weakKeys is incompatible with canonical String key equality");
+                "spring.cache.caffeine.spec must define maximumSize or maximumWeight");
         }
-        if (settings.isWeakValues() && settings.isSoftValues()) {
+        if (normalized.contains("expireafteraccess=")
+            || normalized.contains("expireafterwrite=")
+            || normalized.contains("refreshafterwrite=")) {
             throw new IllegalArgumentException(
-                "weakValues and softValues are mutually exclusive");
+                "Caffeine expiry belongs to platform cache TTL; remove expiry/refresh from spring.cache.caffeine.spec");
+        }
+        if (normalized.contains("weakkeys")) {
+            throw new IllegalArgumentException(
+                "weakKeys is incompatible with canonical platform cache keys");
         }
     }
 
@@ -394,14 +392,6 @@ public final class CaffeineCacheBackend implements CacheBackend {
     private static final class StoredValueExpiry
         implements Expiry<String, StoredValue> {
 
-        private final long accessTtlNanos;
-
-        private StoredValueExpiry(Duration expireAfterAccess) {
-            accessTtlNanos = expireAfterAccess == null
-                ? Long.MAX_VALUE
-                : toNanosSaturated(expireAfterAccess);
-        }
-
         @Override
         public long expireAfterCreate(
             String key, StoredValue value, long currentTime) {
@@ -419,7 +409,7 @@ public final class CaffeineCacheBackend implements CacheBackend {
         public long expireAfterRead(
             String key, StoredValue value, long currentTime,
             long currentDuration) {
-            return Math.min(remaining(value, currentTime), accessTtlNanos);
+            return remaining(value, currentTime);
         }
 
         private long remaining(StoredValue value, long currentTime) {

@@ -6,6 +6,7 @@ import lombok.Setter;
 import lombok.experimental.FieldDefaults;
 
 import java.time.Duration;
+import org.springframework.util.unit.DataSize;
 
 @Getter
 @Setter
@@ -14,6 +15,5 @@ public class CacheDefaultsProperties {
     Duration ttl = Duration.ofMinutes(10);
     String keyPrefix = "application:cache";
     boolean cacheNullValues;
-    boolean keyHashEnabled;
-    long maximumEntrySize = 1_048_576L;
+    DataSize maximumEntrySize = DataSize.ofMegabytes(1);
 }

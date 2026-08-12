@@ -8,35 +8,38 @@ import com.company.platform.queue.domain.exception.QueueConfigurationException;
 import com.company.platform.queue.domain.model.QueueProviderType;
 import com.company.platform.queue.domain.policy.KafkaRetryMode;
 import com.company.platform.queue.api.kafka.KafkaConsumerMode;
+import org.springframework.boot.amqp.autoconfigure.RabbitProperties;
+import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
+import org.springframework.boot.kafka.autoconfigure.KafkaProperties;
 
 import java.time.Duration;
 import java.util.Map;
-import java.util.Set;
 import java.util.regex.Pattern;
-import java.util.Locale;
 
 public final class PlatformQueuePropertiesValidator {
     private static final Pattern SAFE_NAME =
         Pattern.compile("[a-z0-9][a-z0-9._-]{0,126}");
-    private static final Set<String> SECURE_KAFKA =
-        Set.of("SSL", "SASL_SSL");
-    private static final Set<String> SUPPORTED_SASL =
-        Set.of("PLAIN", "SCRAM-SHA-256", "SCRAM-SHA-512");
     private final PlatformQueueProperties properties;
     private final boolean outboxStoreAvailable;
     private final boolean inboxStoreAvailable;
     private final boolean deferredKafkaStoreAvailable;
+    private final RabbitProperties rabbitProperties;
+    private final KafkaProperties kafkaProperties;
 
     public PlatformQueuePropertiesValidator(
         PlatformQueueProperties properties,
         boolean outboxStoreAvailable,
         boolean inboxStoreAvailable,
-        boolean deferredKafkaStoreAvailable
+        boolean deferredKafkaStoreAvailable,
+        RabbitProperties rabbitProperties,
+        KafkaProperties kafkaProperties
     ) {
         this.properties = properties;
         this.outboxStoreAvailable = outboxStoreAvailable;
         this.inboxStoreAvailable = inboxStoreAvailable;
         this.deferredKafkaStoreAvailable = deferredKafkaStoreAvailable;
+        this.rabbitProperties = rabbitProperties;
+        this.kafkaProperties = kafkaProperties;
     }
 
     public void validate() {
@@ -45,6 +48,9 @@ public final class PlatformQueuePropertiesValidator {
         }
         validateLimits();
         properties.getBrokers().forEach(this::validateBroker);
+        validateSingleNativeConnectionPerProvider();
+        validateRabbitDeliveryGuarantees();
+        validateKafkaDeliveryGuarantees();
         properties.getDestinations().forEach(this::validateDestination);
         properties.getSubscriptions().forEach(this::validateSubscription);
         if (properties.getDelivery().isOutboxEnabled() && !outboxStoreAvailable) {
@@ -55,9 +61,72 @@ public final class PlatformQueuePropertiesValidator {
         }
     }
 
+    private void validateKafkaDeliveryGuarantees() {
+        boolean kafkaEnabled = properties.getBrokers().values().stream()
+            .anyMatch(broker -> broker.isEnabled()
+                && broker.getProvider() == QueueProviderType.KAFKA);
+        if (!kafkaEnabled) {
+            return;
+        }
+        if (kafkaProperties == null) {
+            fail("Kafka logical broker requires Spring Boot Kafka auto-configuration");
+        }
+        Map<String, Object> producer = kafkaProperties.getProducer().buildProperties();
+        Object acks = producer.get("acks");
+        Object idempotence = producer.get("enable.idempotence");
+        if (!("all".equals(String.valueOf(acks)) || "-1".equals(String.valueOf(acks)))
+            || !Boolean.parseBoolean(String.valueOf(idempotence))) {
+            fail("Kafka CONFIRMED semantics require native spring.kafka.producer.acks=all "
+                + "and spring.kafka.producer.properties[enable.idempotence]=true");
+        }
+        Map<String, Object> consumer = kafkaProperties.getConsumer().buildProperties();
+        if (Boolean.parseBoolean(String.valueOf(
+            consumer.getOrDefault("enable.auto.commit", false)))) {
+            fail("Kafka at-least-once consumption requires native "
+                + "spring.kafka.consumer.enable-auto-commit=false");
+        }
+        if (kafkaProperties.getListener().getType()
+            == KafkaProperties.Listener.Type.BATCH) {
+            fail("platform queue record listeners require spring.kafka.listener.type=single");
+        }
+    }
+
+    private void validateSingleNativeConnectionPerProvider() {
+        for (QueueProviderType provider : java.util.List.of(
+            QueueProviderType.KAFKA, QueueProviderType.RABBITMQ)) {
+            long count = properties.getBrokers().values().stream()
+                .filter(BrokerProperties::isEnabled)
+                .filter(broker -> broker.getProvider() == provider)
+                .count();
+            if (count > 1) {
+                fail("platform.queue supports one enabled logical broker per provider "
+                    + "when using Boot's single native connection: " + provider);
+            }
+        }
+    }
+
+    private void validateRabbitDeliveryGuarantees() {
+        boolean rabbitEnabled = properties.getBrokers().values().stream()
+            .anyMatch(broker -> broker.isEnabled()
+                && broker.getProvider() == QueueProviderType.RABBITMQ);
+        if (!rabbitEnabled) {
+            return;
+        }
+        if (rabbitProperties == null
+            || rabbitProperties.getPublisherConfirmType()
+                != CachingConnectionFactory.ConfirmType.CORRELATED
+            || !rabbitProperties.isPublisherReturns()
+            || !Boolean.TRUE.equals(rabbitProperties.getTemplate().getMandatory())) {
+            fail("Rabbit CONFIRMED semantics require native properties "
+                + "spring.rabbitmq.publisher-confirm-type=correlated, "
+                + "spring.rabbitmq.publisher-returns=true and "
+                + "spring.rabbitmq.template.mandatory=true");
+        }
+    }
+
     private void validateLimits() {
         com.company.platform.queue.configuration.internal.QueueMessageDefaults.limits(
-            properties.getMessage(), properties.getDefaults());
+            properties.getMessage());
         if (properties.getDelivery().getProcessingLockTimeout()
             .compareTo(Duration.ofSeconds(1)) < 0) {
             fail("platform.queue.delivery.processing-lock-timeout must be at least 1s");
@@ -78,40 +147,8 @@ public final class PlatformQueuePropertiesValidator {
             }
             return;
         }
-        if (broker.getProvider() == QueueProviderType.KAFKA) {
-            String protocol = broker.getKafka().getSecurityProtocol()
-                .toUpperCase(Locale.ROOT);
-            if (broker.getKafka().getBootstrapServers().isEmpty()) {
-                fail(path("brokers", name) + ".kafka.bootstrap-servers is required");
-            }
-            if (!properties.isInsecureTransportAllowed()
-                && !SECURE_KAFKA.contains(protocol)) {
-                fail(path("brokers", name) + ".kafka.security-protocol is insecure");
-            }
-            if (protocol.startsWith("SASL")
-                && (blank(broker.getKafka().getSaslMechanism())
-                    || !SUPPORTED_SASL.contains(
-                        broker.getKafka().getSaslMechanism().toUpperCase(Locale.ROOT))
-                    || blank(broker.getKafka().getUsername())
-                    || blank(broker.getKafka().getPassword()))) {
-                fail(path("brokers", name)
-                    + ".kafka SASL mechanism/credentials are required");
-            }
-            if (broker.getKafka().isTransactionsEnabled()
-                && (blank(broker.getKafka().getTransactionalIdPrefix())
-                    || blank(broker.getKafka().getTransactionalInstanceId()))) {
-                fail(path("brokers", name)
-                    + ".kafka transactional-id-prefix and unique transactional-instance-id are required");
-            }
-        } else {
-            if (broker.getRabbit().getAddresses().isEmpty()) {
-                fail(path("brokers", name) + ".rabbit.addresses is required");
-            }
-            if (!properties.isInsecureTransportAllowed()
-                && !broker.getRabbit().isTlsEnabled()) {
-                fail(path("brokers", name) + ".rabbit.tls-enabled must be true");
-            }
-        }
+        // Native broker connectivity, security and transactions are validated by
+        // Spring Boot's spring.kafka.* and spring.rabbitmq.* auto-configuration.
     }
 
     private void validateDestination(String name, DestinationProperties destination) {

@@ -5,10 +5,8 @@ import com.company.platform.cache.autoconfigure.properties.FallbackProperties;
 import com.company.platform.cache.autoconfigure.properties.MultiLevelProperties;
 import com.company.platform.cache.autoconfigure.properties.NamedCacheProperties;
 import com.company.platform.cache.autoconfigure.properties.PlatformCacheProperties;
-import com.company.platform.cache.autoconfigure.properties.RedisProperties;
 import com.company.platform.cache.domain.exception.PlatformCacheConfigurationException;
 import com.company.platform.cache.domain.model.CacheProviderType;
-import com.company.platform.cache.domain.model.RedisDeploymentMode;
 import com.company.platform.cache.domain.policy.CacheFailurePolicy;
 import com.company.platform.cache.domain.policy.CacheFallbackMode;
 
@@ -19,8 +17,6 @@ import java.util.regex.Pattern;
 public final class PlatformCachePropertiesValidator {
     private static final Pattern SAFE_NAME =
         Pattern.compile("[a-zA-Z0-9][a-zA-Z0-9._-]{0,126}");
-    private static final Pattern NODE =
-        Pattern.compile("[a-zA-Z0-9._-]+:[1-9][0-9]{0,4}");
 
     private final PlatformCacheProperties properties;
 
@@ -40,7 +36,8 @@ public final class PlatformCachePropertiesValidator {
         requireSafePrefix("platform.cache.defaults.key-prefix",
             properties.getDefaults().getKeyPrefix());
         requirePositive("platform.cache.defaults.ttl", properties.getDefaults().getTtl());
-        if (properties.getDefaults().getMaximumEntrySize() < 1) {
+        if (properties.getDefaults().getMaximumEntrySize() == null
+            || properties.getDefaults().getMaximumEntrySize().toBytes() < 1) {
             fail("platform.cache.defaults.maximum-entry-size must be at least 1");
         }
         properties.getStores().forEach(this::validateStore);
@@ -63,88 +60,20 @@ public final class PlatformCachePropertiesValidator {
                 + ".provider cannot be MULTI_LEVEL");
         }
         if (store.getProvider() == CacheProviderType.CAFFEINE) {
-            if (store.getCaffeine() == null) {
-                fail("platform.cache.stores." + name + ".caffeine must be configured");
-            }
-            if (store.getCaffeine().getMaximumSize() < 1) {
-                fail("platform.cache.stores." + name
-                    + ".caffeine.maximum-size must be at least 1");
-            }
-            requirePositive("platform.cache.stores." + name
-                + ".caffeine.expire-after-write",
-                store.getCaffeine().getExpireAfterWrite());
-            int valueStrengths = (store.getCaffeine().isWeakValues() ? 1 : 0)
-                + (store.getCaffeine().isSoftValues() ? 1 : 0);
-            if (valueStrengths > 1) {
-                fail("platform.cache.stores." + name
-                    + ".caffeine weak-values and soft-values are mutually exclusive");
-            }
+            // Caffeine capacity and native options belong to spring.cache.caffeine.spec.
         }
-        if (store.getProvider() == CacheProviderType.REDIS
-            && isBlank(store.getConnectionFactoryBean())) {
+        if (store.getProvider() == CacheProviderType.REDIS) {
             if (store.getRedis() == null) {
                 fail("platform.cache.stores." + name + ".redis must be configured");
             }
-            validateRedis(name, store.getRedis());
-        }
-    }
-
-    private void validateRedis(String name, RedisProperties redis) {
-        String path = "platform.cache.stores." + name + ".redis";
-        if (redis.getSsl() == null || redis.getPool() == null
-            || redis.getStandalone() == null || redis.getSentinel() == null
-            || redis.getCluster() == null || redis.getSerialization() == null
-            || redis.getResilience() == null) {
+            String path = "platform.cache.stores." + name + ".redis";
+            if (store.getRedis().getSerialization() == null) {
             fail(path + " contains a null configuration section");
-        }
-        if (redis.getMode() == null) {
-            fail(path + ".mode must not be null");
-        }
-        requirePositive(path + ".command-timeout", redis.getCommandTimeout());
-        requirePositive(path + ".connect-timeout", redis.getConnectTimeout());
-        requirePositive(path + ".shutdown-timeout", redis.getShutdownTimeout());
-        if (redis.getSsl().isEnabled() && !redis.getSsl().isVerifyPeer()) {
-            fail(path + ".ssl.verify-peer cannot be disabled");
-        }
-        if (redis.getPool().isEnabled()) {
-            if (redis.getPool().getMaxActive() < 1
-                || redis.getPool().getMaxIdle() < redis.getPool().getMinIdle()
-                || redis.getPool().getMaxIdle() > redis.getPool().getMaxActive()) {
-                fail(path + ".pool requires max-active >= max-idle >= min-idle");
             }
-            requirePositive(path + ".pool.max-wait", redis.getPool().getMaxWait());
-        }
-        if (!redis.getSerialization().isValueEnvelopeEnabled()
-            || !"JSON".equalsIgnoreCase(redis.getSerialization().getValue())) {
-            fail(path + ".serialization must use the JSON value envelope");
-        }
-        requireName(path + ".serialization.schema-id",
-            redis.getSerialization().getSchemaId());
-        if (redis.getSerialization().getSchemaVersion() < 1) {
+            requireName(path + ".serialization.schema-id",
+                store.getRedis().getSerialization().getSchemaId());
+            if (store.getRedis().getSerialization().getSchemaVersion() < 1) {
             fail(path + ".serialization.schema-version must be at least 1");
-        }
-        if (redis.getMode() == RedisDeploymentMode.STANDALONE) {
-            requireText(path + ".standalone.host",
-                redis.getStandalone().getHost());
-            requirePort(path + ".standalone.port",
-                redis.getStandalone().getPort());
-        } else if (redis.getMode() == RedisDeploymentMode.SENTINEL) {
-            requireText(path + ".sentinel.master",
-                redis.getSentinel().getMaster());
-            requireNodes(path + ".sentinel.nodes",
-                redis.getSentinel().getNodes());
-        } else {
-            requireNodes(path + ".cluster.nodes",
-                redis.getCluster().getNodes());
-            if (redis.getDatabase() != 0) {
-                fail(path + ".database must be 0 in CLUSTER mode");
-            }
-            if (redis.getCluster().getTopologyRefresh() == null) {
-                fail(path + ".cluster.topology-refresh must be configured");
-            }
-            if (redis.getCluster().getTopologyRefresh().isEnabled()) {
-                requirePositive(path + ".cluster.topology-refresh.period",
-                    redis.getCluster().getTopologyRefresh().getPeriod());
             }
         }
     }
@@ -192,6 +121,11 @@ public final class PlatformCachePropertiesValidator {
             fail("platform.cache.caches." + name
                 + " requires fallback.enabled for FALLBACK_LOCAL");
         }
+        if (cache.getFallback().isEnabled()
+            && cache.getFailurePolicy() != CacheFailurePolicy.FALLBACK_LOCAL) {
+            fail("platform.cache.caches." + name
+                + " fallback.enabled requires failure-policy=FALLBACK_LOCAL");
+        }
         if (cache.getNegativeCache().isEnabled()) {
             requirePositive("platform.cache.caches." + name
                 + ".negative-cache.ttl", cache.getNegativeCache().getTtl());
@@ -231,12 +165,6 @@ public final class PlatformCachePropertiesValidator {
         }
         requirePositive("platform.cache.caches." + cacheName
             + ".multi-level.l1-ttl", multi.getL1Ttl());
-        requirePositive("platform.cache.caches." + cacheName
-            + ".multi-level.l2-ttl", multi.getL2Ttl());
-        if (multi.getL1Ttl().compareTo(multi.getL2Ttl()) > 0) {
-            fail("platform.cache.caches." + cacheName
-                + ".multi-level.l1-ttl must not exceed l2-ttl");
-        }
     }
 
     private void validateFallback(
@@ -283,19 +211,6 @@ public final class PlatformCachePropertiesValidator {
         return store;
     }
 
-    private void requireNodes(String path, Iterable<String> nodes) {
-        boolean found = false;
-        for (String node : nodes) {
-            found = true;
-            if (node == null || !NODE.matcher(node).matches()) {
-                fail(path + " contains an invalid host:port");
-            }
-        }
-        if (!found) {
-            fail(path + " must contain at least one node");
-        }
-    }
-
     private void requireName(String path, String name) {
         if (name == null || !SAFE_NAME.matcher(name).matches()) {
             fail(path + " contains an invalid name");
@@ -318,12 +233,6 @@ public final class PlatformCachePropertiesValidator {
     private void requirePositive(String path, Duration value) {
         if (value == null || value.isZero() || value.isNegative()) {
             fail(path + " must be greater than zero");
-        }
-    }
-
-    private void requirePort(String path, int value) {
-        if (value < 1 || value > 65_535) {
-            fail(path + " must be between 1 and 65535");
         }
     }
 

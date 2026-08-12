@@ -25,8 +25,12 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
+import org.springframework.kafka.core.KafkaAdmin;
 
-@AutoConfiguration(after = PlatformQueueAutoConfiguration.class)
+@AutoConfiguration(
+    after = PlatformQueueAutoConfiguration.class,
+    afterName = "org.springframework.boot.kafka.autoconfigure.KafkaAutoConfiguration")
 @ConditionalOnClass(KafkaTemplate.class)
 @ConditionalOnProperty(
     prefix = "platform.queue", name = "enabled",
@@ -39,11 +43,12 @@ public class KafkaQueueAutoConfiguration {
         PlatformQueueProperties properties,
         QueueDestinationRegistry destinations,
         TimeProvider timeProvider,
-        ObjectProvider<KafkaPublishFailureHandler> failureHandlers
+        ObjectProvider<KafkaPublishFailureHandler> failureHandlers,
+        KafkaTemplate<String, byte[]> kafkaTemplate
     ) {
         return KafkaPublisherFactory.create(
             properties, destinations, timeProvider,
-            failureHandlers.orderedStream().toList());
+            failureHandlers.orderedStream().toList(), kafkaTemplate);
     }
 
     @Bean
@@ -53,19 +58,21 @@ public class KafkaQueueAutoConfiguration {
         QueueMessageProcessor processor,
         TimeProvider timeProvider,
         ObjectProvider<DeferredKafkaMessageStore> deferredStore,
-        ObjectProvider<KafkaDeadLetterPublisher> deadLetterPublisher
+        ObjectProvider<KafkaDeadLetterPublisher> deadLetterPublisher,
+        ConcurrentKafkaListenerContainerFactory<String, byte[]> containerFactory
     ) {
         return new NamedKafkaListenerContainerAdapter(
             properties, processor, timeProvider, deferredStore.getIfAvailable(),
-            deadLetterPublisher.getIfAvailable());
+            deadLetterPublisher.getIfAvailable(), containerFactory);
     }
 
     @Bean
     @ConditionalOnMissingBean(KafkaQueueTopologyManager.class)
     public KafkaQueueTopologyManager kafkaQueueTopologyManager(
-        PlatformQueueProperties properties
+        PlatformQueueProperties properties,
+        KafkaAdmin kafkaAdmin
     ) {
-        return new KafkaQueueTopologyManager(properties);
+        return new KafkaQueueTopologyManager(properties, kafkaAdmin);
     }
 
     @Bean

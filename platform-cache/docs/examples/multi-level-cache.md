@@ -1,33 +1,29 @@
 # Multi-level cache
 
 ```yaml
+spring:
+  cache:
+    caffeine:
+      spec: maximumSize=5000,recordStats
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
 platform:
   cache:
     stores:
-      local-default:
+      local:
         provider: CAFFEINE
-        caffeine:
-          maximum-size: 20000
-          expire-after-write: 5m
-      redis-primary:
+      distributed:
         provider: REDIS
-        redis:
-          mode: STANDALONE
-          standalone:
-            host: ${REDIS_HOST:localhost}
-            port: ${REDIS_PORT:6379}
     caches:
-      reference-data:
-        ttl: 1h
+      customer-profile:
+        store: distributed
+        ttl: 10m
         multi-level:
           enabled: true
-          l1-store: local-default
-          l2-store: redis-primary
-          l1-ttl: 5m
-          l2-ttl: 1h
-          populate-l1-on-l2-hit: true
-          write-policy: EVICT_L1_THEN_WRITE_L2
+          l1-store: local
+          l2-store: distributed
+          l1-ttl: 30s
 ```
-
-Multi-level cache route trực tiếp tới `l1-store` và `l2-store`; không cần một
-primary `store` mơ hồ. L1 TTL không được lớn hơn L2 TTL.

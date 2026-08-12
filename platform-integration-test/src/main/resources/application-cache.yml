@@ -1,51 +1,38 @@
+spring:
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=10000,recordStats
+  data:
+    redis:
+      database: 0
+      client-name: ${spring.application.name:application}-cache
+      password: aloaluale
+      sentinel:
+        master: mymaster
+        nodes: 127.0.0.1:26379
+        password: aloaluale
+
 platform:
   cache:
     enabled: true
     annotations-enabled: true
-    application: ${spring.application.name:application}
-    environment: ${APP_ENVIRONMENT:local}
     defaults:
       ttl: 10m
       key-prefix: ${spring.application.name:application}:cache
       cache-null-values: false
-      key-hash-enabled: false
-      maximum-entry-size: 1048576
+      maximum-entry-size: 1MB
 
     stores:
       caffeine-primary:
         provider: CAFFEINE
-        caffeine:
-          maximum-size: 10000
-          expire-after-write: 10m
-          expire-after-access: 10m
-          refresh-after-write: 5m
 
       redis-primary:
         provider: REDIS
         redis:
-          mode: SENTINEL
-          database: 0
-          client-name: ${spring.application.name:application}-cache
-          password: aloaluale
-          sentinel:
-            master: mymaster
-            nodes:
-              - 127.0.0.1:26379
-            password: aloaluale
           serialization:
-            key: STRING
-            value: JSON
-            value-envelope-enabled: true
             schema-id: ${spring.application.name:application}-cache
             schema-version: 1
-          resilience:
-            enabled: true
-            retry:
-              enabled: true
-              max-attempts: 2
-              wait-duration: 50ms
-          ssl:
-            enabled: false
     caches:
       test-cache:
         key:
