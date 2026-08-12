@@ -8,10 +8,12 @@ import com.company.platform.queue.consume.internal.application.QueueListenerEndp
 import com.company.platform.queue.configuration.internal.registry.QueueSubscriptionRegistry;
 import com.company.platform.queue.domain.model.QueueProviderType;
 import org.springframework.beans.factory.SmartInitializingSingleton;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 import java.util.Objects;
 
+@Slf4j
 public final class BaseKafkaConsumerRegistrar implements SmartInitializingSingleton {
     private final List<BaseKafkaConsumer<?>> consumers;
     private final PlatformQueueListenerRegistrar registrar;
@@ -45,6 +47,8 @@ public final class BaseKafkaConsumerRegistrar implements SmartInitializingSingle
                 "unknown subscription: " + consumer.subscription());
         }
         if (!subscription.isEnabled()) {
+            log.info("Kafka consumer registration skipped subscription={} handlerId={} reason=disabled",
+                consumer.subscription(), consumer.handlerId());
             return;
         }
         var destination = destinations.entries().get(subscription.getDestination());
@@ -63,5 +67,7 @@ public final class BaseKafkaConsumerRegistrar implements SmartInitializingSingle
         registrar.register(new QueueListenerEndpoint(
             consumer.handlerId(), consumer.subscription(), consumer,
             consumer.invocationMethod(), consumer.payloadType()));
+        log.info("Kafka consumer registered subscription={} handlerId={} destination={}",
+            consumer.subscription(), consumer.handlerId(), subscription.getDestination());
     }
 }

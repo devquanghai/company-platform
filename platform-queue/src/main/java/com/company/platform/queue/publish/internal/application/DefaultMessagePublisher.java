@@ -22,7 +22,9 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public final class DefaultMessagePublisher implements MessagePublisher {
     private final PlatformQueueProperties properties;
     private final QueueBrokerRegistry brokers;
@@ -106,8 +108,22 @@ public final class DefaultMessagePublisher implements MessagePublisher {
         PreparedMessage prepared = new PreparedMessage(
             destination.getBroker(), request.destination(), request.key(),
             request.partition(), request.routingKey(), envelope, body);
+        log.debug("Queue publish requested provider={} broker={} destination={} messageId={} mode={}",
+            broker.getProvider(), destination.getBroker(), request.destination(),
+            envelope.metadata().messageId(), mode);
         return publishers.require(broker.getProvider())
-            .publish(prepared, effectiveTimeout(request));
+            .publish(prepared, effectiveTimeout(request))
+            .whenComplete((result, failure) -> {
+                if (failure == null) {
+                    log.debug("Queue publish completed provider={} broker={} destination={} messageId={} status={} partition={} offset={}",
+                        result.provider(), result.broker(), result.destination(),
+                        result.messageId(), result.status(), result.partition(), result.offset());
+                } else {
+                    log.warn("Queue publish failed provider={} broker={} destination={} messageId={} failureType={}",
+                        broker.getProvider(), destination.getBroker(), request.destination(),
+                        envelope.metadata().messageId(), failure.getClass().getSimpleName());
+                }
+            });
     }
 
     @Override

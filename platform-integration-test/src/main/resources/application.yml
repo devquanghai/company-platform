@@ -3,7 +3,7 @@ spring:
     name: platform-integration-test
   profiles:
     group:
-      common: core, logging, client, cache
+      common: core, logging, client, cache, kafka
       local: common
     active: local
 

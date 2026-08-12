@@ -28,7 +28,9 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.function.Supplier;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public final class NamedKafkaPublisher
     implements ProviderMessagePublisher, KafkaQueueOperations,
     KafkaDeadLetterPublisher, DisposableBean {
@@ -185,6 +187,10 @@ public final class NamedKafkaPublisher
             message.envelope().metadata().messageId(),
             message.envelope().metadata().correlationId(),
             message.envelope().metadata().traceId(), failureCode,
+            cause.getClass().getSimpleName());
+        log.warn("Kafka publish failed broker={} destination={} topic={} messageId={} status={} failureCode={} failureType={}",
+            message.broker(), message.destination(), topic,
+            message.envelope().metadata().messageId(), status, failureCode,
             cause.getClass().getSimpleName());
         failureHandlers.forEach(handler -> {
             try {

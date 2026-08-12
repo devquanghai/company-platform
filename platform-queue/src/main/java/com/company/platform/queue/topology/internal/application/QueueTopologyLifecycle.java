@@ -4,10 +4,12 @@ import com.company.platform.queue.topology.internal.port.out.QueueTopologyManage
 import com.company.platform.queue.autoconfigure.properties.PlatformQueueProperties;
 import com.company.platform.queue.domain.policy.TopologyDeclarationMode;
 import org.springframework.context.SmartLifecycle;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+@Slf4j
 public final class QueueTopologyLifecycle implements SmartLifecycle {
     private final PlatformQueueProperties properties;
     private final List<QueueTopologyManager> managers;
@@ -27,6 +29,8 @@ public final class QueueTopologyLifecycle implements SmartLifecycle {
         }
         TopologyDeclarationMode mode =
             properties.getTopology().getMode();
+        log.info("Queue topology lifecycle starting mode={} managers={}",
+            mode, managers.size());
         if (mode == TopologyDeclarationMode.DISABLED) {
             return;
         }
@@ -35,9 +39,13 @@ public final class QueueTopologyLifecycle implements SmartLifecycle {
             managers.forEach(manager -> {
                 var result = manager.provision();
                 if (!result.errorCodes().isEmpty()) {
+                    log.error("Queue topology provisioning failed errorCodes={}",
+                        result.errorCodes());
                     throw new IllegalStateException(
                         "queue topology provisioning failed: " + result.errorCodes());
                 }
+                log.info("Queue topology provisioned created={} existing={}",
+                    result.created(), result.existing());
             });
         }
         if (mode == TopologyDeclarationMode.VALIDATE_ONLY
@@ -45,9 +53,12 @@ public final class QueueTopologyLifecycle implements SmartLifecycle {
             managers.forEach(manager -> {
                 var result = manager.validate();
                 if (!result.valid()) {
+                    log.error("Queue topology validation failed errorCodes={}",
+                        result.errorCodes());
                     throw new IllegalStateException(
                         "queue topology validation failed: " + result.errorCodes());
                 }
+                log.info("Queue topology validation succeeded");
             });
         }
     }
@@ -55,6 +66,7 @@ public final class QueueTopologyLifecycle implements SmartLifecycle {
     @Override
     public void stop() {
         running.set(false);
+        log.info("Queue topology lifecycle stopped");
     }
 
     @Override

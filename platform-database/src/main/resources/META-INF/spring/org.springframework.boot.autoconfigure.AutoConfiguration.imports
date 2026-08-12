@@ -1,0 +1,2 @@
+com.company.platform.database.datasource.internal.autoconfigure.PlatformDataSourceAutoConfiguration
+com.company.platform.database.jpa.internal.autoconfigure.PlatformJpaAutoConfiguration

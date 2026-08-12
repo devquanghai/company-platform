@@ -49,7 +49,9 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public final class NamedKafkaListenerContainerAdapter
     implements QueueListenerContainerAdapter, SmartLifecycle, DisposableBean {
 
@@ -131,6 +133,10 @@ public final class NamedKafkaListenerContainerAdapter
         container.setConcurrency(subscription.getKafka().getConcurrency());
         container.setAutoStartup(false);
         containers.add(container);
+        log.info("Kafka listener configured subscription={} handlerId={} broker={} topic={} mode={} groupId={} concurrency={}",
+            endpoint.subscription(), endpoint.handlerId(), brokerName,
+            destination.getKafka().getTopic(), subscription.getKafka().getMode(),
+            subscription.getKafka().getGroupId(), subscription.getKafka().getConcurrency());
         if (running.get()) {
             container.start();
         }
@@ -166,9 +172,12 @@ public final class NamedKafkaListenerContainerAdapter
                 "strict-ordering Kafka message requires a non-blank key");
         }
         int attempt = deliveryAttempt(record);
-        deferredStore.stage(new DeferredKafkaMessage(
+        var stageResult = deferredStore.stage(new DeferredKafkaMessage(
             endpoint.subscription(), record.key(), record.value(),
             context(endpoint, subscription, destination, brokerName, record, attempt)));
+        log.debug("Kafka message staged subscription={} topic={} partition={} offset={} result={}",
+            endpoint.subscription(), record.topic(), record.partition(), record.offset(),
+            stageResult);
         acknowledgment.acknowledge();
     }
 
@@ -285,6 +294,8 @@ public final class NamedKafkaListenerContainerAdapter
         if (running.compareAndSet(false, true)) {
             containers.forEach(AbstractMessageListenerContainer::start);
             startDeferredWorker();
+            log.info("Kafka listener adapter started containers={} deferredSubscriptions={}",
+                containers.size(), deferredRegistrations.size());
         }
     }
 
@@ -293,6 +304,7 @@ public final class NamedKafkaListenerContainerAdapter
         if (running.compareAndSet(true, false)) {
             containers.forEach(AbstractMessageListenerContainer::stop);
             shutdownDeferredWorkers();
+            log.info("Kafka listener adapter stopped containers={}", containers.size());
         }
     }
 
@@ -318,8 +330,13 @@ public final class NamedKafkaListenerContainerAdapter
         if (deferredRegistrations.isEmpty() || deferredWorker != null) {
             return;
         }
-        deferredWorker = Executors.newSingleThreadScheduledExecutor(runnable -> {
+        java.util.concurrent.atomic.AtomicInteger workerSequence =
+            new java.util.concurrent.atomic.AtomicInteger();
+        deferredWorker = Executors.newScheduledThreadPool(
+            deferredRegistrations.size(), runnable -> {
             Thread thread = new Thread(runnable, "platform-queue-kafka-deferred");
+            thread.setName("platform-queue-kafka-deferred-"
+                + workerSequence.incrementAndGet());
             thread.setDaemon(true);
             return thread;
         });
@@ -328,27 +345,25 @@ public final class NamedKafkaListenerContainerAdapter
             thread.setDaemon(true);
             return thread;
         });
-        long intervalMillis = deferredRegistrations.stream()
-            .map(registration -> registration.subscription().getKafka()
-                .getDeferredPollInterval())
-            .mapToLong(java.time.Duration::toMillis)
-            .min()
-            .orElse(1_000L);
-        deferredWorker.scheduleWithFixedDelay(
-            this::processDeferredSafely, 0, intervalMillis, TimeUnit.MILLISECONDS);
+        deferredRegistrations.forEach(registration ->
+            deferredWorker.scheduleWithFixedDelay(
+                () -> processDeferredSafely(registration), 0,
+                registration.subscription().getKafka().getDeferredPollInterval().toMillis(),
+                TimeUnit.MILLISECONDS));
     }
 
-    private void processDeferredSafely() {
+    private void processDeferredSafely(DeferredRegistration registration) {
         if (!running.get()) {
             return;
         }
-        deferredRegistrations.forEach(registration -> {
-            try {
-                processDeferred(registration);
-            } catch (RuntimeException ignored) {
-                // Durable claim expires; health/metrics adapters report store failures.
-            }
-        });
+        try {
+            processDeferred(registration);
+        } catch (RuntimeException failure) {
+            log.warn("Kafka deferred processing failed subscription={} failureType={}",
+                registration.endpoint().subscription(),
+                failure.getClass().getSimpleName());
+            // Durable claim expires and can be reclaimed safely.
+        }
     }
 
     private void processDeferred(DeferredRegistration registration) {
@@ -356,7 +371,12 @@ public final class NamedKafkaListenerContainerAdapter
         deferredStore.claimReady(
             registration.endpoint().subscription(), kafka.getMaxMessages(),
             kafka.getMaxWait(), properties.getDelivery().getProcessingLockTimeout(),
-            time.nowInstant()).ifPresent(batch -> processDeferredBatch(registration, batch));
+            time.nowInstant()).ifPresent(batch -> {
+                log.info("Kafka deferred batch claimed subscription={} claimId={} messages={} attempt={}",
+                    registration.endpoint().subscription(), batch.claimId(),
+                    batch.messages().size(), batch.attempt());
+                processDeferredBatch(registration, batch);
+            });
     }
 
     private void processDeferredBatch(
@@ -402,12 +422,16 @@ public final class NamedKafkaListenerContainerAdapter
         if (failureCode == null) {
             deferredStore.markCompleted(
                 batch.claimId(), batch.ownerId(), batch.fencingToken());
+            log.info("Kafka deferred batch completed subscription={} claimId={} messages={}",
+                registration.endpoint().subscription(), batch.claimId(), completed);
             return;
         }
         if (contentionRetryAt != null) {
             deferredStore.releaseContended(
                 batch.claimId(), batch.ownerId(), batch.fencingToken(),
                 contentionRetryAt);
+            log.debug("Kafka deferred batch contended subscription={} claimId={} retryAt={}",
+                registration.endpoint().subscription(), batch.claimId(), contentionRetryAt);
             return;
         }
         if (batch.attempt() >= registration.subscription().getRetry().getMaxAttempts()) {
@@ -416,11 +440,16 @@ public final class NamedKafkaListenerContainerAdapter
             deferredStore.markDeadLetter(
                 batch.claimId(), batch.ownerId(), batch.fencingToken(),
                 completed, failureCode);
+            log.warn("Kafka deferred batch exhausted subscription={} claimId={} completed={} failureCode={}",
+                registration.endpoint().subscription(), batch.claimId(), completed, failureCode);
             return;
         }
         deferredStore.release(
             batch.claimId(), batch.ownerId(), batch.fencingToken(),
             time.nowInstant().plus(backoff(registration.subscription(), batch.attempt())),
+            failureCode);
+        log.warn("Kafka deferred batch released subscription={} claimId={} attempt={} failureCode={}",
+            registration.endpoint().subscription(), batch.claimId(), batch.attempt(),
             failureCode);
     }
 

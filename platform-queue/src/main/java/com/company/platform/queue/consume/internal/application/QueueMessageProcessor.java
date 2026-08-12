@@ -25,7 +25,9 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import org.springframework.beans.factory.DisposableBean;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public final class QueueMessageProcessor implements DisposableBean {
     private final PlatformQueueProperties properties;
     private final MessageSerializerRegistry serializers;
@@ -105,6 +107,8 @@ public final class QueueMessageProcessor implements DisposableBean {
                     endpoint.handlerId(), messageId,
                     properties.getDelivery().getProcessingLockTimeout());
                 if (acquired.status() == InboxAcquireStatus.DUPLICATE_PROCESSED) {
+                    log.debug("Queue duplicate acknowledged subscription={} handlerId={} messageId={}",
+                        endpoint.subscription(), endpoint.handlerId(), messageId);
                     return ListenerInvocationResult.handled(MessageHandlingResult.ACK);
                 }
                 if (acquired.status() == InboxAcquireStatus.PROCESSING_BY_ANOTHER) {
@@ -130,6 +134,9 @@ public final class QueueMessageProcessor implements DisposableBean {
                 subscription.getDestination());
             MessageHandlingResult result = invoke(
                 endpoint, envelope.payload(), context);
+            log.debug("Queue handler completed subscription={} handlerId={} messageId={} result={} attempt={}",
+                endpoint.subscription(), endpoint.handlerId(), messageId, result,
+                transportContext.deliveryAttempt());
             if (renewalFailure.get() != null) {
                 throw renewalFailure.get();
             }
@@ -147,6 +154,9 @@ public final class QueueMessageProcessor implements DisposableBean {
             }
             return ListenerInvocationResult.handled(result);
         } catch (RuntimeException exception) {
+            log.warn("Queue handler failed subscription={} handlerId={} messageId={} attempt={} failureType={}",
+                endpoint.subscription(), endpoint.handlerId(), acquiredMessageId,
+                transportContext.deliveryAttempt(), exception.getClass().getSimpleName());
             if (acquired != null && acquiredMessageId != null) {
                 inbox.markFailed(
                     endpoint.handlerId(), acquiredMessageId,
