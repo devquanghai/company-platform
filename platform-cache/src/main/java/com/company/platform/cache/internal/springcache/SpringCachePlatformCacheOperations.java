@@ -1,7 +1,9 @@
 package com.company.platform.cache.internal.springcache;
 
 import com.company.platform.cache.api.model.CacheType;
+import com.company.platform.cache.api.observability.CacheOperationObservability;
 import com.company.platform.cache.api.operation.PlatformCacheOperations;
+import com.company.platform.cache.api.resilience.CacheResilienceExecutor;
 import com.company.platform.cache.autoconfigure.properties.PlatformCacheProperties;
 import com.company.platform.cache.domain.exception.PlatformCacheOperationException;
 import com.company.platform.cache.domain.model.CacheProviderType;
@@ -15,6 +17,10 @@ import org.springframework.cache.CacheManager;
 import java.lang.reflect.Type;
 import java.time.Duration;
 import java.util.Collection;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Semaphore;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -22,21 +28,34 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 public final class SpringCachePlatformCacheOperations implements PlatformCacheOperations {
+    private static final int MAX_IN_FLIGHT_LOADS = 1_024;
     private final CacheManager cacheManager;
     private final CacheProviderType provider;
+    private final CacheResilienceExecutor resilience;
+    private final CacheOperationObservability observability;
+    private final Map<LoadKey, CompletableFuture<Object>> inFlightLoads =
+        new ConcurrentHashMap<>();
+    private final Semaphore loadPermits = new Semaphore(MAX_IN_FLIGHT_LOADS);
 
     public SpringCachePlatformCacheOperations(
         CacheManager cacheManager,
-        PlatformCacheProperties properties
+        PlatformCacheProperties properties,
+        CacheResilienceExecutor resilience,
+        CacheOperationObservability observability
     ) {
         this.cacheManager = Objects.requireNonNull(cacheManager, "cacheManager");
         this.provider = CacheProviderType.valueOf(properties.getProvider().name());
+        this.resilience = Objects.requireNonNull(resilience, "resilience");
+        this.observability = Objects.requireNonNull(observability, "observability");
     }
 
     @Override
     public <K, V> Optional<V> get(String cacheName, K key, Class<V> valueType) {
         try {
-            return Optional.ofNullable(cache(cacheName).get(requireKey(key), valueType));
+            Cache cache = cache(cacheName);
+            Object cacheKey = requireKey(key);
+            return observe("get", () -> Optional.ofNullable(
+                resilience.executeRead(() -> cache.get(cacheKey, valueType))));
         } catch (RuntimeException exception) {
             throw operationFailure("get", exception);
         }
@@ -63,10 +82,98 @@ public final class SpringCachePlatformCacheOperations implements PlatformCacheOp
     ) {
         Objects.requireNonNull(valueType, "valueType");
         Objects.requireNonNull(loader, "loader");
+        Cache cache = cache(cacheName);
+        Object cacheKey = requireKey(key);
+
+        Cache.ValueWrapper cached;
         try {
-            return valueType.cast(cache(cacheName).get(requireKey(key), loader::get));
+            cached = observe("get", () -> resilience.executeRead(
+                () -> cache.get(cacheKey)));
         } catch (RuntimeException exception) {
-            throw operationFailure("get-or-load", exception);
+            if (!isCacheInfrastructureFailure(exception)) {
+                throw exception;
+            }
+            cached = null;
+        }
+        if (cached != null) {
+            return valueType.cast(cached.get());
+        }
+        return loadOnce(cache, cacheName, cacheKey, valueType, loader);
+    }
+
+    private <V> V loadOnce(
+        Cache cache,
+        String cacheName,
+        Object cacheKey,
+        Class<V> valueType,
+        Supplier<V> loader
+    ) {
+        LoadKey loadKey = new LoadKey(cacheName, cacheKey);
+        CompletableFuture<Object> existing = inFlightLoads.get(loadKey);
+        if (existing != null) {
+            return awaitLoad(existing, valueType);
+        }
+        if (!loadPermits.tryAcquire()) {
+            throw new PlatformCacheOperationException(
+                "CACHE.LOAD.CAPACITY.EXCEEDED",
+                "Too many cache source loads are already in flight",
+                null);
+        }
+        CompletableFuture<Object> created = new CompletableFuture<>();
+        existing = inFlightLoads.putIfAbsent(
+            loadKey, created);
+        if (existing != null) {
+            loadPermits.release();
+            return awaitLoad(existing, valueType);
+        }
+        try {
+            V loaded = loader.get();
+            V published = publishLoaded(cache, cacheKey, valueType, loaded);
+            created.complete(published);
+            return published;
+        } catch (RuntimeException | Error failure) {
+            created.completeExceptionally(failure);
+            throw failure;
+        } finally {
+            inFlightLoads.remove(loadKey, created);
+            loadPermits.release();
+        }
+    }
+
+    private <V> V publishLoaded(
+        Cache cache,
+        Object cacheKey,
+        Class<V> valueType,
+        V loaded
+    ) {
+        if (loaded == null) {
+            return null;
+        }
+        try {
+            Cache.ValueWrapper winner = observe("put_if_absent",
+                () -> resilience.executeWrite(
+                    () -> cache.putIfAbsent(cacheKey, loaded)));
+            return winner == null ? loaded : valueType.cast(winner.get());
+        } catch (RuntimeException exception) {
+            if (!isCacheInfrastructureFailure(exception)) {
+                throw exception;
+            }
+            return loaded;
+        }
+    }
+
+    private <V> V awaitLoad(
+        CompletableFuture<Object> inFlight,
+        Class<V> valueType
+    ) {
+        try {
+            return valueType.cast(inFlight.join());
+        } catch (CompletionException exception) {
+            Throwable cause = exception.getCause();
+            if (cause instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            throw exception;
         }
     }
 
@@ -109,7 +216,10 @@ public final class SpringCachePlatformCacheOperations implements PlatformCacheOp
     @Override
     public <K, V> void put(String cacheName, K key, V value) {
         try {
-            cache(cacheName).put(requireKey(key), value);
+            Cache cache = cache(cacheName);
+            Object cacheKey = requireKey(key);
+            observe("put", () -> resilience.executeWrite(
+                () -> cache.put(cacheKey, value)));
         } catch (RuntimeException exception) {
             throw operationFailure("put", exception);
         }
@@ -118,7 +228,10 @@ public final class SpringCachePlatformCacheOperations implements PlatformCacheOp
     @Override
     public <K, V> boolean putIfAbsent(String cacheName, K key, V value) {
         try {
-            return cache(cacheName).putIfAbsent(requireKey(key), value) == null;
+            Cache cache = cache(cacheName);
+            Object cacheKey = requireKey(key);
+            return observe("put_if_absent", () -> resilience.executeWrite(
+                () -> cache.putIfAbsent(cacheKey, value) == null));
         } catch (RuntimeException exception) {
             throw operationFailure("put-if-absent", exception);
         }
@@ -127,7 +240,10 @@ public final class SpringCachePlatformCacheOperations implements PlatformCacheOp
     @Override
     public <K> boolean exists(String cacheName, K key) {
         try {
-            return cache(cacheName).get(requireKey(key)) != null;
+            Cache cache = cache(cacheName);
+            Object cacheKey = requireKey(key);
+            return observe("exists", () -> resilience.executeRead(
+                () -> cache.get(cacheKey) != null));
         } catch (RuntimeException exception) {
             throw operationFailure("exists", exception);
         }
@@ -136,7 +252,10 @@ public final class SpringCachePlatformCacheOperations implements PlatformCacheOp
     @Override
     public <K> boolean evict(String cacheName, K key) {
         try {
-            return cache(cacheName).evictIfPresent(requireKey(key));
+            Cache cache = cache(cacheName);
+            Object cacheKey = requireKey(key);
+            return observe("evict", () -> resilience.executeWrite(
+                () -> cache.evictIfPresent(cacheKey)));
         } catch (RuntimeException exception) {
             throw operationFailure("evict", exception);
         }
@@ -145,13 +264,16 @@ public final class SpringCachePlatformCacheOperations implements PlatformCacheOp
     @Override
     public CacheClearResult clear(String cacheName) {
         try {
-            cache(cacheName).clear();
-            return CacheClearResult.builder()
-                .strategy(provider == CacheProviderType.REDIS
-                    ? "REDIS_SCAN_CLEAR_BEST_EFFORT"
-                    : "SPRING_CACHE_CLEAR")
-                .success(true)
-                .build();
+            Cache cache = cache(cacheName);
+            return observe("clear", () -> resilience.executeWrite(() -> {
+                cache.clear();
+                return CacheClearResult.builder()
+                    .strategy(provider == CacheProviderType.REDIS
+                        ? "REDIS_SCAN_CLEAR_BEST_EFFORT"
+                        : "SPRING_CACHE_CLEAR")
+                    .success(true)
+                    .build();
+            }));
         } catch (RuntimeException exception) {
             throw operationFailure("clear", exception);
         }
@@ -188,6 +310,21 @@ public final class SpringCachePlatformCacheOperations implements PlatformCacheOp
 
     private Object requireKey(Object key) {
         return Objects.requireNonNull(key, "key");
+    }
+
+    private <T> T observe(String operation, Supplier<T> invocation) {
+        return observability.observe(operation, provider.name(), invocation);
+    }
+
+    private void observe(String operation, Runnable invocation) {
+        observability.observe(operation, provider.name(), invocation);
+    }
+
+    private boolean isCacheInfrastructureFailure(Throwable failure) {
+        return resilience.shouldFailOpen(failure);
+    }
+
+    private record LoadKey(String cacheName, Object key) {
     }
 
     private PlatformCacheOperationException operationFailure(

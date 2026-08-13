@@ -1,5 +1,8 @@
 com.company.platform.cache.autoconfigure.SpringCacheInfrastructureAutoConfiguration
+com.company.platform.cache.autoconfigure.CacheResiliencePolicyAutoConfiguration
+com.company.platform.cache.autoconfigure.CacheResilienceAutoConfiguration
 com.company.platform.cache.autoconfigure.PlatformCacheAutoConfiguration
+com.company.platform.cache.autoconfigure.CacheObservabilityAutoConfiguration
 com.company.platform.cache.autoconfigure.RedisPlatformCacheAutoConfiguration
 com.company.platform.cache.autoconfigure.RedisPlatformCacheValidationAutoConfiguration
 com.company.platform.cache.autoconfigure.JasyptPlatformAutoConfiguration
