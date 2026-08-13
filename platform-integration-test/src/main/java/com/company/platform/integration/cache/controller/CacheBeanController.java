@@ -5,7 +5,6 @@ import com.company.platform.cache.api.lock.LockOptions;
 import com.company.platform.core.rest.response.ApiResponse;
 import com.company.platform.core.rest.response.ResponseMetadata;
 import com.company.platform.integration.cache.dto.request.CacheRequest;
-import com.company.platform.integration.cache.dto.response.OptimisticLockResponse;
 import com.company.platform.integration.cache.dto.response.VersionedCacheResponse;
 import com.company.platform.integration.cache.service.CacheBeanService;
 import lombok.RequiredArgsConstructor;
@@ -56,50 +55,6 @@ public class CacheBeanController {
             cacheService.distributedLockName(key), options,
             () -> cacheService.initializeVersioned(key, value)));
         return ApiResponse.success(requireCreated(created));
-    }
-
-    @PostMapping("/optimistic-lock")
-    public ApiResponse<VersionedCacheResponse> initializeOptimisticLock(
-        @RequestParam String key,
-        @RequestParam String value
-    ) {
-        requireKey(key);
-        return ApiResponse.success(requireCreated(cacheCall(
-            () -> cacheService.initializeVersioned(key, value))));
-    }
-
-    @GetMapping("/optimistic-lock")
-    public ApiResponse<VersionedCacheResponse> getOptimisticLock(
-        @RequestParam String key
-    ) {
-        requireKey(key);
-        VersionedCacheResponse value = cacheCall(() -> cacheService.getVersioned(key));
-        if (value == null) {
-            throw new ResponseStatusException(
-                HttpStatus.NOT_FOUND, "Versioned cache entry was not found");
-        }
-        return ApiResponse.success(value);
-    }
-
-    @PutMapping("/optimistic-lock")
-    public ApiResponse<OptimisticLockResponse> updateOptimisticLock(
-        @RequestParam String key,
-        @RequestParam long expectedVersion,
-        @RequestParam String value
-    ) {
-        requireKey(key);
-        if (expectedVersion < 0) {
-            throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST, "expectedVersion must be non-negative");
-        }
-        OptimisticLockResponse result = cacheCall(
-            () -> cacheService.updateIfVersion(key, expectedVersion, value));
-        if ("FAILED".equals(result.status())) {
-            throw new ResponseStatusException(
-                HttpStatus.SERVICE_UNAVAILABLE,
-                "Optimistic cache operation is unavailable");
-        }
-        return ApiResponse.success(result);
     }
 
     private VersionedCacheResponse requireCreated(VersionedCacheResponse value) {

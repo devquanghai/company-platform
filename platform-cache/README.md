@@ -1,86 +1,54 @@
-# platform-cache
+# Platform Cache
 
-`platform-cache` là thư viện cache dùng chung cho các Spring Boot service. Module
-cung cấp một API trung lập provider, named store/cache, Caffeine, Redis,
-multi-level L1/L2, Spring Cache bridge và các capability consistency,
-resilience, observability. Cache luôn là lớp tăng tốc có thể tái tạo, **không
-phải source of truth**.
+## 1. Overview
 
-## Bắt đầu nhanh
+`platform-cache` chọn một provider và bổ sung `PlatformCacheOperations` trên
+`CacheManager` do Spring Boot tạo. Module không tự dựng connection factory,
+client Redis, `CacheManager`, pool hoặc topology.
 
-Module kế thừa dependency management của repository; application chỉ cần thêm
-dependency `com.company.platform:platform-cache` và khai báo tối thiểu:
+Quy tắc ownership:
+
+- `platform.cache.*`: chỉ bật/tắt và chọn provider của platform.
+- `spring.cache.*`: cache names và cấu hình Redis/Caffeine của Spring Boot.
+- `spring.data.redis.*`: connection, authentication, timeout, SSL, standalone,
+  Sentinel, Cluster và Lettuce pool của Spring Boot.
+- `jasypt.encryptor.*`: cấu hình native của Jasypt.
+
+## 2. Enable/disable
 
 ```yaml
-spring:
-  cache:
-    type: caffeine
-    caffeine:
-      spec: maximumSize=10000,recordStats
-
 platform:
   cache:
-    stores:
-      local-default:
-        provider: CAFFEINE
-    caches:
-      customer-profile:
-        store: local-default
-        ttl: 10m
+    enabled: true
+    provider: caffeine
 ```
 
-Không tạo application entry point, không component scan và không chứa
-credential. Auto-configuration được đăng ký bằng `AutoConfiguration.imports`;
-mọi bean mặc định phải back off khi application cung cấp bean tương đương.
+`enabled=false` bridge sang `spring.cache.type=none`; platform không tạo facade.
+Không cấu hình thêm `spring.cache.type`. Nếu hai selector mâu thuẫn, startup fail-fast.
 
-## Kiến trúc
+## 3. Redis provider
 
-```text
-consumer
-  └─ api (facade, typed, atomic, optimistic, lock)
-       └─ application (resolver, policy, ports)
-            ├─ adapter/caffeine
-            ├─ adapter/redis
-            ├─ adapter/multilevel
-            ├─ adapter/noop
-            └─ adapter/springcache
-                 └─ resilience / consistency / observability
-                      └─ autoconfigure
+```yaml
+platform:
+  cache:
+    enabled: true
+    provider: redis
+spring:
+  cache:
+    cache-names: [customers, products]
+    redis:
+      time-to-live: 10m
+      cache-null-values: false
+      use-key-prefix: true
 ```
 
-Package `api` và `domain` không lộ type của Caffeine, Lettuce, Spring Data Redis
-hoặc Redisson. `autoconfigure` chỉ validate và wiring; hành vi nằm trong
-application service/adapter. Thiết kế chi tiết ở
-[platform-cache-design.md](docs/platform-cache-design.md).
+Spring Boot tạo `RedisCacheManager`; platform chỉ cung cấp JSON value serialization
+an toàn thay cho Java serialization mặc định. Type metadata chỉ chấp nhận các
+package `com.company`, `java.lang`, `java.time`, `java.util` và array; ứng dụng có
+model ngoài allow-list phải cung cấp `RedisCacheConfiguration` riêng. Bean custom
+của application luôn được ưu tiên.
 
-## Named store và named cache
-
-- **Store** sở hữu tài nguyên hạ tầng: `local-default`, `redis-primary`.
-- **Cache** sở hữu policy kỹ thuật và tham chiếu store: `customers`,
-  `permissions`.
-- Store sai tên, disabled store, route provider không tương thích hoặc cấu hình
-  mơ hồ làm ứng dụng fail fast trước khi mở connection.
-- `NOOP` luôn miss và không lưu dữ liệu; hữu ích để tắt cache có chủ đích.
-- `MULTI_LEVEL` là route cấp cache, không phải provider hạ tầng của store.
-
-## Caffeine
-
-Caffeine là local cache riêng từng JVM. Capacity và native options được cấu hình
-trực tiếp bằng `spring.cache.caffeine.spec`; TTL theo logical cache vẫn nằm ở
-`platform.cache.caches.*.ttl`. Local atomic operation chỉ bảo đảm atomic trong một JVM.
-Không dùng Caffeine cho quota, idempotency, security state, balance hoặc
-distributed coordination.
-
-Xem [caffeine-only.md](docs/examples/caffeine-only.md).
-
-## Redis
-
-Redis connection, standalone/sentinel/cluster, credential, SSL, timeout và
-Lettuce pool dùng trực tiếp `spring.data.redis.*`. Module không tạo connection
-factory mặc định; nó sử dụng `redisConnectionFactory` do Spring Boot quản lý.
-Platform chỉ bổ sung JSON envelope, named cache, resilience và orchestration.
-
-Ví dụ:
+## 4. Redis standalone
 
 ```yaml
 spring:
@@ -88,244 +56,193 @@ spring:
     redis:
       host: localhost
       port: 6379
+      username: ${REDIS_USERNAME:}
+      password: ENC(...)
+      connect-timeout: 2s
       timeout: 2s
       lettuce:
         pool:
-          max-active: 16
+          max-active: 32
+          max-idle: 16
+          min-idle: 4
+          max-wait: 2s
 ```
 
-Spring Boot tự nhận topology từ native configuration:
+## 5. Redis Sentinel
 
-- `STANDALONE`: một endpoint.
-- `SENTINEL`: master group và danh sách Sentinel node.
-- `CLUSTER`: seed nodes, redirect và topology refresh; database bắt buộc bằng
-  `0`.
+```yaml
+spring:
+  data:
+    redis:
+      username: ${REDIS_USERNAME:}
+      password: ENC(...)
+      sentinel:
+        master: mymaster
+        nodes:
+          - redis-sentinel-01:26379
+          - redis-sentinel-02:26379
+          - redis-sentinel-03:26379
+```
 
-Một native connection mặc định có thể được alias bởi nhiều logical store. Khi
-cần nhiều Redis connection thật sự, application khai báo thêm
-`RedisConnectionFactory` bean và logical store tham chiếu bằng
-`connection-factory-bean`. Chi tiết ở
-[redis-deployment-modes.md](docs/redis-deployment-modes.md).
+## 6. Redis Cluster
 
-## Multi-level L1 + L2
+```yaml
+spring:
+  data:
+    redis:
+      username: ${REDIS_USERNAME:}
+      password: ENC(...)
+      cluster:
+        nodes:
+          - redis-01:6379
+          - redis-02:6379
+          - redis-03:6379
+        max-redirects: 3
+```
 
-L1 phải là Caffeine và L2 phải là Redis. Read đi L1 rồi L2; L2 hit chỉ populate
-L1 nếu namespace token và entry invalidation epoch không đổi. Mutation
-invalidate L1 trước, mutate L2 rồi mới phát invalidation. Nếu L2 mutation lỗi,
-key chuyển sang trạng thái `DIRTY_DO_NOT_POPULATE` tại instance hiện tại để
-không nạp lại value cũ.
+## 7. Caffeine provider
 
-L1 TTL không vượt quá freshness còn lại của L2. Invalidation đa instance là
-eventual và vẫn bị chặn bởi L1 TTL. Xem
-[cache-consistency-model.md](docs/cache-consistency-model.md).
+```yaml
+platform:
+  cache:
+    enabled: true
+    provider: caffeine
+spring:
+  cache:
+    cache-names: [customers, products]
+    caffeine:
+      spec: maximumSize=10000,expireAfterWrite=10m
+```
 
-## Facade API
+Luôn đặt `maximumSize`/`maximumWeight`; cấu hình unbounded bị từ chối. Khi không
+khai báo spec, platform thêm native low-precedence default `maximumSize=10000`.
+
+## 8. Spring Cache annotations
+
+Module kích hoạt Spring Cache annotation infrastructure. Dùng native annotations:
 
 ```java
-@Service
-@RequiredArgsConstructor
-public class CustomerQueryService {
-    private final PlatformCacheOperations cache;
-    private final CustomerRepository repository;
-
-    public CustomerResponse find(String customerId) {
-        return cache.getOrLoad(
-            "customer-profile",
-            customerId,
-            CustomerResponse.class,
-            () -> repository.findById(customerId)
-                .map(CustomerResponse::from)
-                .orElseThrow(CustomerNotFoundException::new)
-        );
-    }
-}
+@Cacheable(cacheNames = "customers", key = "#customerId")
+public Customer findCustomer(String customerId) { ... }
 ```
 
-`getResult` trả trạng thái chi tiết như hit/miss/stale/degraded mà không làm
-`Optional#get` âm thầm trả stale.
+Application có thể cung cấp `CacheManager` hoặc `PlatformCacheOperations` riêng;
+auto-configuration sẽ back off.
 
-## Typed cache
+`getOrLoad`, bulk operations và Redis `clear` giữ semantics native của provider;
+Redis clear dùng `SCAN` theo batch và là best-effort, không phải linearizable
+barrier. Atomic/CAS/optimistic contracts cũ đã bị loại bỏ. Distributed lock vẫn
+là extension API nhưng không có default adapter; consumer phải cung cấp một
+implementation phân tán fail-closed nếu sử dụng.
+
+## 9. Native properties rule
+
+Không thêm alias dưới `platform.cache` cho TTL, cache names, null values,
+Caffeine spec, Redis host/port/password, timeout, pool, SSL, Sentinel hoặc Cluster.
+Tra cứu metadata của Spring Boot/Caffeine cho các tùy chọn này.
+
+## 10. Jasypt encryption
+
+Starter Jasypt xử lý `ENC(...)` ở Environment/PropertySource trước khi Boot bind
+properties. Cơ chế áp dụng cho Redis, datasource, Kafka, mail và mọi property khác;
+platform không tự decrypt Redis password.
+
+```yaml
+jasypt:
+  encryptor:
+    password: ${JASYPT_ENCRYPTOR_PASSWORD}
+```
+
+Chỉ khai báo master password khi sử dụng Jasypt. Thiếu/sai key làm resolution/bind
+của property `ENC(...)` thất bại; cấu hình secret được Boot bind khi startup vì thế
+fail-fast. Property mã hóa chưa từng được resolve vẫn giữ semantics lazy của Jasypt.
+Không có fallback về ciphertext thô.
+
+## 11. Encrypt value
+
+Java API:
 
 ```java
-@Bean
-TypedCacheOperations<String, CustomerResponse> customerCache(
-        TypedCacheFactory factory) {
-    return factory.getCache(
-        "customer-profile", String.class, CustomerResponse.class);
-}
+String encrypted = propertyCryptoService.encryptAndWrap("redis-password");
 ```
 
-Typed facade cố định tên cache và type, giảm lặp chuỗi/type ở business service.
+Maven plugin của Jasypt:
 
-## Spring Cache annotation
-
-Khi `annotations-enabled=true`, named cache được expose qua Spring Cache:
-
-```java
-@Cacheable(cacheNames = "customer-profile", key = "#customerId", sync = true)
-public CustomerResponse find(String customerId) {
-    return loadFromDatabase(customerId);
-}
+```bash
+mvn jasypt:encrypt-value \
+  -Djasypt.encryptor.password="${JASYPT_ENCRYPTOR_PASSWORD}" \
+  -Djasypt.plugin.value="my-secret"
 ```
 
-Spring Cache API không biểu diễn đầy đủ stale/degraded status; dùng
-`PlatformCacheOperations#getResult` khi caller cần phân biệt các trạng thái đó.
+`encryptAndWrap` trả nguyên input đã bọc `ENC(...)`, tránh double encryption.
 
-## TTL, negative cache và jitter
+## 12. Decrypt value
 
-- Named cache kế thừa `defaults.ttl` nếu không khai báo TTL riêng.
-- Negative cache dùng marker có schema và TTL ngắn hơn TTL bình thường; không
-  biến mọi lỗi loader thành “không tồn tại”.
-- TTL jitter phân tán thời điểm hết hạn, validator giới hạn `0..50%`.
-- Logical clear thay `cacheNamespaceToken` 128-bit thay vì dùng Redis `KEYS`.
-  Kết quả clear không bịa số entry đã xóa.
+`PropertyCryptoService.decrypt` nhận cả ciphertext thuần và `ENC(ciphertext)`.
+Cho tác vụ operator cục bộ:
 
-## Stampede protection
-
-`SINGLE_FLIGHT` gộp loader cùng identity trong một JVM. Identity gồm store,
-cache, namespace token, entry invalidation epoch và encoded key. Follower
-timeout không hủy leader, không xóa future của leader và không khởi chạy loader
-thứ hai. Loader failure được chia sẻ nhưng không được cache.
-
-## Resilience
-
-Connection/command/pool timeout và retry ở tầng Redis client được cấu hình bằng
-`spring.data.redis.*` cùng native Lettuce options. Module không mirror hoặc tự
-build Resilience4j retry/circuit-breaker/bulkhead; failure policy, local fallback
-và degraded behavior là capability riêng của named cache.
-
-`FAIL_OPEN` cho phép tải source of truth, `FAIL_CLOSED` trả lỗi và
-`FALLBACK_LOCAL` áp dụng policy local đã xác thực. Xem
-[cache-fallback-policy.md](docs/cache-fallback-policy.md).
-
-## Fallback, degraded mode và stale data
-
-Fallback Caffeine hỗ trợ `NONE`, `READ_ONLY`, `READ_THROUGH`,
-`STALE_IF_ERROR`, `LOCAL_READ_WRITE`. `STALE_IF_ERROR` chỉ mở khi primary lỗi
-hạ tầng, theo `freshUntil/staleUntil`, và chỉ được công bố qua `CacheResult`
-với `stale=true`. Coordination cache, distributed lock, exact counter và
-security state không được fallback local.
-
-`LOCAL_READ_WRITE` có nguy cơ split-brain nên cần opt-in
-`allow-local-write-fallback=true` và không phù hợp cho dữ liệu cần consistency
-đa instance.
-
-## Atomic operation
-
-```java
-long current = atomicCacheOperations.increment(
-    "request-counter", customerId, 1);
-
-boolean changed = atomicCacheOperations.compareAndSet(
-    "customer-preference", customerId, expected, replacement);
+```bash
+mvn jasypt:decrypt-value \
+  -Djasypt.encryptor.password="${JASYPT_ENCRYPTOR_PASSWORD}" \
+  -Djasypt.plugin.value="<encrypted-value>"
 ```
 
-Redis increment dùng numeric representation riêng. CAS so sánh canonical
-payload/schema marker, không so sánh timestamp envelope mới tạo. Lua script
-nhận toàn bộ key qua `KEYS` và phải giữ cùng Redis Cluster slot.
+Không expose encrypt/decrypt qua REST endpoint.
 
-## Optimistic locking
+## 13. ENC(...) usage
 
-```java
-VersionedValue<CustomerPreference> current =
-    optimisticCacheOperations.getVersioned(
-        "customer-preference", customerId, CustomerPreference.class);
-
-OptimisticUpdateResult<CustomerPreference> result =
-    optimisticCacheOperations.updateIfVersion(
-        "customer-preference", customerId,
-        current.getVersion(), updatedPreference);
+```yaml
+spring:
+  data:
+    redis:
+      password: ENC(ciphertext)
 ```
 
-`entryVersion` tách khỏi namespace token/invalidation epoch. Updater trong
-`computeWithRetry` phải side-effect-free vì có thể chạy nhiều lần. Optimistic
-cache không thay thế database transaction hoặc JPA `@Version`.
+Không log ciphertext, plaintext, decrypted value hoặc input khi crypto thất bại.
 
-## Distributed locking
+## 14. Environment variable master key
 
-```java
-PaymentResult result = distributedLockOperations.executeWithLock(
-    "payment:" + paymentId,
-    LockOptions.builder()
-        .waitTime(Duration.ofSeconds(2))
-        .leaseTime(Duration.ofSeconds(30))
-        .build(),
-    () -> paymentProcessor.process(paymentId)
-);
+Inject `JASYPT_ENCRYPTOR_PASSWORD` từ environment, Kubernetes Secret, Vault,
+Secret Manager hoặc CI/CD secret. Không commit giá trị thật vào YAML/script/source.
+
+## 15. Security recommendations
+
+- Giới hạn quyền đọc master key và rotate định kỳ.
+- Không expose key/decrypted secret qua actuator hoặc exception.
+- Không dùng cache cho credential/source-of-truth/coordination chính xác.
+- Không dùng insecure TLS hoặc raw sensitive data làm cache key.
+
+## 16. Migration from old platform.cache.redis.* properties
+
+```yaml
+# Old (removed)
+platform:
+  cache:
+    stores:
+      primary:
+        provider: redis
+    caches:
+      customers:
+        ttl: 10m
 ```
 
-Lock SPI luôn fail-closed: timeout, lease loss, owner loss hoặc circuit open đều
-không chạy protected action. Không có custom Redlock và không fallback sang
-JVM lock. Fencing mode chỉ an toàn nếu tài nguyên được bảo vệ xác minh fencing
-token. Database transaction và idempotency vẫn bắt buộc. Xem
-[distributed-locking.md](docs/distributed-locking.md).
+```yaml
+# New
+platform:
+  cache:
+    enabled: true
+    provider: redis
+spring:
+  cache:
+    cache-names: [customers]
+    redis:
+      time-to-live: 10m
+  data:
+    redis:
+      host: localhost
+      port: 6379
+```
 
-## Serialization
-
-Redis value dùng shared `JsonMapperHelper` của `platform-core` và versioned JSON
-envelope. Java native serialization, default typing không allowlist và raw
-`Object#toString` bị cấm. Khi thay schema, tăng `schema-version`/`schema-id`
-hoặc key version và triển khai migration có kiểm soát. Xem
-[cache-serialization.md](docs/cache-serialization.md).
-
-## Key design và Redis Cluster hash slot
-
-Key vật lý chứa cache prefix/version, namespace token
-và encoded user key. Sensitive key dùng SHA-256; không dùng `hashCode()`. Không
-đưa raw key/value vào log, metric hoặc exception. Hash tag phải cố định từ
-configuration, không cho user input chèn `{}`. Mọi key của một Lua script phải
-cùng slot. Xem [cache-key-design.md](docs/cache-key-design.md).
-
-## Metrics, tracing, events và health
-
-Observability dùng tag cardinality thấp như store/cache/provider/outcome; không
-dùng raw key. Metric cần theo dõi gồm hit/miss/load, operation latency, eviction,
-fallback/stale, circuit state, lock acquisition và serialization failure.
-Structured event chỉ chứa metadata đã sanitize và trace/request context nếu có.
-
-Health contributor kiểm tra store đang bật, không tạo
-connection cho disabled store và không làm lộ endpoint/credential. Cache health
-không đồng nghĩa source of truth bị lỗi.
-
-## Security checklist
-
-- Credential chỉ đến từ secret/environment; không commit hoặc log.
-- TLS peer verification bật mặc định.
-- Không Java serialization, `KEYS *`, raw PII key/value hoặc `hashCode()`.
-- Caffeine luôn bounded; payload bị giới hạn bởi `maximum-entry-size`.
-- Distributed coordination/lock luôn fail-closed.
-- Retry chỉ dành cho lỗi transient và không retry toàn critical section.
-
-## Troubleshooting
-
-| Triệu chứng | Kiểm tra |
-|---|---|
-| Startup fail vì unknown store | `caches.<name>.store` phải trỏ enabled store |
-| Cluster báo cross-slot | Dùng hash tag cố định và bảo đảm mọi Lua key cùng slot |
-| Hit ratio L1 thấp | Kiểm tra L1 TTL, invalidation epoch và entry size |
-| Redis recovery nhưng vẫn local | Kiểm tra circuit state và `clear-on-primary-recovery` |
-| Không thấy metric/health | Kiểm tra classpath, bean back-off và observability flags |
-| Deserialize lỗi sau deploy | Kiểm tra schema ID/version và compatibility |
-| `clear()` không trả số xóa | Đây là logical namespace clear; số chính xác không tồn tại |
-
-## Migration guide
-
-1. Inventory cache hiện tại, xác định source of truth và consistency class.
-2. Tách hạ tầng thành named store, policy thành named cache.
-3. Thay raw Redis/Caffeine access bằng facade hoặc typed cache.
-4. Chọn key prefix/version; không tái sử dụng key Java serialization cũ.
-5. Với Redis, rollout namespace/schema mới trước rồi mới dừng writer cũ.
-6. Chỉ bật fallback sau khi chứng minh dữ liệu không dùng cho coordination.
-7. Chuyển annotation Spring Cache sau khi cache name/TTL đã được validation.
-8. Theo dõi hit/miss/error/stale và rollback bằng cách disable named cache hoặc
-   chuyển sang NOOP có chủ đích.
-
-## Tài liệu và cấu hình mẫu
-
-- [Consistency model](docs/cache-consistency-model.md)
-- [Redis deployment modes](docs/redis-deployment-modes.md)
-- [Fallback policy](docs/cache-fallback-policy.md)
-- [Key design](docs/cache-key-design.md)
-- [Serialization](docs/cache-serialization.md)
-- [Distributed locking](docs/distributed-locking.md)
-- [Cấu hình đầy đủ](docs/examples/application-cache.yml)
+Các cấu hình cũ `platform.cache.defaults`, `stores`, `caches`, `locking`,
+`observability`, serialization, fallback và multi-level đã bị xóa. Chuyển chúng
+sang native Spring properties hoặc bean/customizer chính thức của Spring Boot.

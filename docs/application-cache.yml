@@ -1,0 +1,22 @@
+spring:
+  cache:
+    type: caffeine
+    cache-names: users,permissions
+    caffeine:
+      spec: maximumSize=10000,expireAfterWrite=10m,recordStats
+
+# Redis deployment alternative:
+# spring:
+#   cache:
+#     type: redis
+#     cache-names: users,permissions
+#     redis:
+#       time-to-live: 10m
+#       cache-null-values: false
+#       use-key-prefix: true
+#       key-prefix: "${spring.application.name}:cache:"
+#   data:
+#     redis:
+#       url: ${REDIS_URL}
+#       connect-timeout: 2s
+#       timeout: 1s
