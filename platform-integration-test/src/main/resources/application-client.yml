@@ -1,44 +1,69 @@
 platform:
   service-exchange:
     enabled: true
+
     clients:
       echo:
         type: restclient
         base-url: ${INTEGRATION_ECHO_BASE_URL:http://localhost:8080}
-        resilience-instance: echo
+
         resilience-enabled: true
+        resilience-instance: echo
+
         observability-enabled: true
+
         audit:
           enabled: true
+
         logging:
           enabled: true
           curl-enabled: false
 
+
 spring:
   http:
     clients:
+      connect-timeout: 2s
+      read-timeout: 5s
       redirects: dont-follow
 
+
 resilience4j:
+
   circuitbreaker:
     instances:
       echo:
+        sliding-window-type: count_based
         sliding-window-size: 20
+
         minimum-number-of-calls: 10
+
         failure-rate-threshold: 50
+
+        slow-call-duration-threshold: 3s
+        slow-call-rate-threshold: 50
+
+        permitted-number-of-calls-in-half-open-state: 5
+
         wait-duration-in-open-state: 30s
-        record-exception-predicate: com.company.platform.exchange.api.resilience.OutboundCircuitBreakerPredicate
+
+        record-failure-predicate: >
+          com.company.platform.exchange.api.resilience.OutboundCircuitBreakerPredicate
   retry:
     instances:
       echo:
         max-attempts: 2
         wait-duration: 200ms
-        retry-exception-predicate: com.company.platform.exchange.api.resilience.OutboundRetryPredicate
+
+        retry-exception-predicate: >
+          com.company.platform.exchange.api.resilience.OutboundRetryPredicate
+
   bulkhead:
     instances:
       echo:
         max-concurrent-calls: 50
         max-wait-duration: 0
+
   ratelimiter:
     instances:
       echo:
@@ -46,11 +71,8 @@ resilience4j:
         limit-refresh-period: 1s
         timeout-duration: 0
 
+
 management:
   tracing:
     sampling:
-      probability: 1.0
-  observations:
-    enable:
-      http.client.requests: true
-      platform.service.exchange: true
+      probability: ${TRACING_SAMPLING_PROBABILITY:1.0}

@@ -11,7 +11,6 @@ import com.company.platform.core.trace.TraceContextProvider;
 import org.springframework.core.env.Environment;
 import com.company.platform.exchange.api.customize.ServiceExchangeClientCustomizer;
 import com.company.platform.exchange.autoconfigure.PlatformServiceExchangeAutoConfiguration;
-import com.company.platform.exchange.autoconfigure.resilience.ExchangeResilienceAutoConfiguration;
 import com.company.platform.exchange.autoconfigure.audit.ExchangeAuditAutoConfiguration;
 import com.company.platform.exchange.client.internal.application.ClientConfigurationResolver;
 import com.company.platform.exchange.client.internal.adapter.DefaultServiceExchangeClientRegistry;
@@ -34,7 +33,6 @@ import org.springframework.web.reactive.function.client.WebClient;
 @AutoConfiguration(
     after = {
         PlatformServiceExchangeAutoConfiguration.class,
-        ExchangeResilienceAutoConfiguration.class,
         ExchangeAuditAutoConfiguration.class
     },
     afterName = {

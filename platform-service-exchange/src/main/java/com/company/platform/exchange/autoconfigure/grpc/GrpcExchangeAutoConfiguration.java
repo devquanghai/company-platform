@@ -8,7 +8,6 @@ import com.company.platform.exchange.api.grpc.GrpcClientFactory;
 import com.company.platform.exchange.client.internal.application.ClientConfigurationResolver;
 import com.company.platform.exchange.grpc.internal.application.DefaultGrpcCallOperations;
 import com.company.platform.exchange.autoconfigure.PlatformServiceExchangeAutoConfiguration;
-import com.company.platform.exchange.autoconfigure.resilience.ExchangeResilienceAutoConfiguration;
 import com.company.platform.exchange.domain.policy.RetryDecisionPolicy;
 import com.company.platform.exchange.resilience.executor.ResilienceExecutor;
 import com.company.platform.exchange.resilience.fallback.OutboundFallbackRegistry;
@@ -34,7 +33,6 @@ import org.springframework.core.env.Environment;
 
 @AutoConfiguration(after = {
     PlatformServiceExchangeAutoConfiguration.class,
-    ExchangeResilienceAutoConfiguration.class,
     ExchangeAuditAutoConfiguration.class,
     ExchangeObservabilityAutoConfiguration.class
 })
