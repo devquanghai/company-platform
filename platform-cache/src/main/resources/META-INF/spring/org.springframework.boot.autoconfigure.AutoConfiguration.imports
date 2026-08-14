@@ -6,3 +6,4 @@ com.company.platform.cache.autoconfigure.CacheObservabilityAutoConfiguration
 com.company.platform.cache.autoconfigure.RedisPlatformCacheAutoConfiguration
 com.company.platform.cache.autoconfigure.RedisPlatformCacheValidationAutoConfiguration
 com.company.platform.cache.autoconfigure.JasyptPlatformAutoConfiguration
+com.company.platform.cache.autoconfigure.PlatformRedisCacheCustomizeAutoConfiguration
