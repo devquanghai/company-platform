@@ -33,7 +33,7 @@ resilience4j:
         minimum-number-of-calls: 20
         failure-rate-threshold: 50
         wait-duration-in-open-state: 30s
-        record-exception-predicate: com.company.platform.exchange.api.resilience.OutboundCircuitBreakerPredicate
+        record-failure-predicate: com.company.platform.exchange.api.resilience.OutboundCircuitBreakerPredicate
     instances:
       inventory:
         base-config: outbound-default

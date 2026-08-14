@@ -447,6 +447,7 @@ public final class DefaultHttpExchangeOperations implements HttpExchangeOperatio
     ) {
         return ExchangeRequest.builder().clientName(client).method(method).path(path)
             .body(body).idempotent(method == HttpMethod.GET || method == HttpMethod.HEAD
-                || method == HttpMethod.OPTIONS).build();
+                || method == HttpMethod.OPTIONS || method == HttpMethod.PUT
+                || method == HttpMethod.DELETE).build();
     }
 }

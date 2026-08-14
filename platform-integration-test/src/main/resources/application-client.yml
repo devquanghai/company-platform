@@ -17,8 +17,13 @@ platform:
 
         logging:
           enabled: true
-          curl-enabled: false
+          curl-enabled: true
+          request-body-enabled: true
+          response-body-enabled: true
 
+integration:
+  service-exchange:
+    client-name: echo
 
 spring:
   http:

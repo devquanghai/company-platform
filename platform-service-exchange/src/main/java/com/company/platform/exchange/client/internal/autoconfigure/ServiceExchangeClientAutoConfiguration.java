@@ -15,6 +15,7 @@ import com.company.platform.exchange.autoconfigure.audit.ExchangeAuditAutoConfig
 import com.company.platform.exchange.client.internal.application.ClientConfigurationResolver;
 import com.company.platform.exchange.client.internal.adapter.DefaultServiceExchangeClientRegistry;
 import com.company.platform.exchange.resilience.executor.ReactiveResilienceExecutor;
+import com.company.platform.exchange.resilience.internal.autoconfigure.ExchangeResilienceAutoConfiguration;
 import com.company.platform.exchange.resilience.internal.application.UnavailableReactiveResilienceExecutor;
 import com.company.platform.exchange.resilience.internal.application.UnavailableResilienceExecutor;
 import com.company.platform.exchange.resilience.executor.ResilienceExecutor;
@@ -33,6 +34,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 @AutoConfiguration(
     after = {
         PlatformServiceExchangeAutoConfiguration.class,
+        ExchangeResilienceAutoConfiguration.class,
         ExchangeAuditAutoConfiguration.class
     },
     afterName = {

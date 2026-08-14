@@ -286,7 +286,7 @@ resilience4j:
         minimum-number-of-calls: 10
         failure-rate-threshold: 50
         wait-duration-in-open-state: 30s
-        record-exception-predicate: com.company.platform.exchange.api.resilience.OutboundCircuitBreakerPredicate
+        record-failure-predicate: com.company.platform.exchange.api.resilience.OutboundCircuitBreakerPredicate
 ```
 
 Predicate bỏ qua lỗi programming và business 4xx; chỉ remote/server/transient

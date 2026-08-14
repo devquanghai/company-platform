@@ -4,7 +4,9 @@ import com.company.platform.exchange.api.http.ExchangeRequest;
 import com.company.platform.exchange.domain.exception.InvalidClientConfigurationException;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.lang.reflect.Array;
 import java.net.URI;
+import java.util.Collection;
 
 public final class SecureUriResolver {
 
@@ -23,7 +25,8 @@ public final class SecureUriResolver {
         }
         UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(baseUrl)
             .path(request.getPath());
-        request.getQueryParameters().forEach(builder::queryParam);
+        request.getQueryParameters().forEach((name, value) ->
+            appendQueryParameter(builder, name, value));
         URI result = builder.buildAndExpand(request.getPathVariables()).encode().toUri().normalize();
         if (result.getHost() == null || result.getRawUserInfo() != null
             || result.getRawFragment() != null) {
@@ -31,5 +34,21 @@ public final class SecureUriResolver {
                 request.getClientName(), "resolved URI is not a safe HTTP target");
         }
         return result;
+    }
+
+    private void appendQueryParameter(
+        UriComponentsBuilder builder, String name, Object value
+    ) {
+        if (value instanceof Collection<?> values) {
+            values.forEach(item -> builder.queryParam(name, item));
+            return;
+        }
+        if (value != null && value.getClass().isArray()) {
+            for (int index = 0; index < Array.getLength(value); index++) {
+                builder.queryParam(name, Array.get(value, index));
+            }
+            return;
+        }
+        builder.queryParam(name, value);
     }
 }
