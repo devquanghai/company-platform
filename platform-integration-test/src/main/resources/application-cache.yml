@@ -6,11 +6,12 @@ platform:
 spring:
   cache:
     redis:
+      time-to-live: 3600
       use-key-prefix: true
-      key-prefix: ${spring.application.name}
+      key-prefix: "${spring.application.name}:"
       customize:
-        cache:
-          ttl: 3600
+        cache-test:
+          ttl: 60
 
   data:
     redis:

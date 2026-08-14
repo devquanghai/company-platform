@@ -20,7 +20,7 @@ import java.util.List;
 public class CacheBeanService {
     private final PlatformCacheOperations cache;
 
-    private static final String CACHE_KEY = "test-cache";
+    private static final String CACHE_KEY = "cache-test";
     private static final String OPTIMISTIC_CACHE = "test-cache-optimistic";
     private static final String OPTIMISTIC_KEY_PREFIX = "optimistic:";
 
