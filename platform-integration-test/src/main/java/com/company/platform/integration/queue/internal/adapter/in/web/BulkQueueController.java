@@ -45,7 +45,7 @@ public class BulkQueueController {
     public ApiResponse<Map<String, Object>> status() {
         return ApiResponse.success(Map.of("mode", "BULK", "totalConsumed",
             probe.total(QueueMode.BULK), "processing",
-            "per partition: 100000 messages or oldest message waits 1 day"));
+            "native single-record Kafka listener smoke profile"));
     }
 
     @DeleteMapping public ApiResponse<Void> clear() {

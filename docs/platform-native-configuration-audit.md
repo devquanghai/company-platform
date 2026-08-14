@@ -75,10 +75,9 @@ mọi cấu hình được refactor thẳng sang namespace/API native.
 
 ## Remaining custom properties
 
-Không còn `platform.cache.*`, `platform.queue.*` hoặc
-`platform.service-exchange.*`. Vì tập remaining rỗng, không có field nào cần
-biện minh sáu mục. Đây là chủ ý: ba module không còn capability platform độc
-lập đủ mạnh để hợp thức hóa một configuration namespace riêng.
+`platform.cache` và `platform.queue` chỉ còn selector `enabled/provider` do
+platform sở hữu. Broker/cache infrastructure và tuning dùng namespace native.
+`platform.service-exchange.*` không còn custom transport properties.
 
 ## Enterprise configuration rationale
 

@@ -1,15 +1,12 @@
 package com.company.platform.queue.api.publish;
 
-import com.company.platform.queue.domain.model.PublishMode;
-import com.company.platform.queue.serialization.MessageSerializationFormat;
-
 import java.time.Duration;
-import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
 public final class PublishRequest<T> {
+    private static final int MAX_METADATA_LENGTH = 8 * 1024;
     private final String destination;
     private final Object key;
     private final T payload;
@@ -20,12 +17,7 @@ public final class PublishRequest<T> {
     private final String eventType;
     private final int schemaVersion;
     private final Map<String, String> headers;
-    private final Instant deliverAt;
-    private final Integer partition;
-    private final String routingKey;
     private final Duration timeout;
-    private final PublishMode mode;
-    private final MessageSerializationFormat serialization;
 
     private PublishRequest(Builder<T> builder) {
         destination = requireText(builder.destination, "destination");
@@ -37,13 +29,19 @@ public final class PublishRequest<T> {
         causationId = builder.causationId;
         eventType = builder.eventType;
         schemaVersion = builder.schemaVersion;
+        if (schemaVersion < 0) {
+            throw new IllegalArgumentException("schemaVersion must not be negative");
+        }
+        validateMetadata(messageId, "messageId");
+        validateMetadata(eventId, "eventId");
+        validateMetadata(correlationId, "correlationId");
+        validateMetadata(causationId, "causationId");
+        validateMetadata(eventType, "eventType");
         headers = Map.copyOf(builder.headers);
-        deliverAt = builder.deliverAt;
-        partition = builder.partition;
-        routingKey = builder.routingKey;
         timeout = builder.timeout;
-        mode = builder.mode;
-        serialization = builder.serialization;
+        if (timeout != null && (timeout.isZero() || timeout.isNegative())) {
+            throw new IllegalArgumentException("timeout must be positive");
+        }
     }
 
     public static <T> Builder<T> builder(T payload) {
@@ -60,18 +58,19 @@ public final class PublishRequest<T> {
     public String eventType() { return eventType; }
     public int schemaVersion() { return schemaVersion; }
     public Map<String, String> headers() { return headers; }
-    public Instant deliverAt() { return deliverAt; }
-    public Integer partition() { return partition; }
-    public String routingKey() { return routingKey; }
     public Duration timeout() { return timeout; }
-    public PublishMode mode() { return mode; }
-    public MessageSerializationFormat serialization() { return serialization; }
 
     private static String requireText(String value, String field) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(field + " must not be blank");
         }
         return value;
+    }
+
+    private static void validateMetadata(String value, String field) {
+        if (value != null && value.length() > MAX_METADATA_LENGTH) {
+            throw new IllegalArgumentException(field + " is too large");
+        }
     }
 
     public static final class Builder<T> {
@@ -85,12 +84,7 @@ public final class PublishRequest<T> {
         private String eventType;
         private int schemaVersion;
         private final Map<String, String> headers = new LinkedHashMap<>();
-        private Instant deliverAt;
-        private Integer partition;
-        private String routingKey;
         private Duration timeout;
-        private PublishMode mode;
-        private MessageSerializationFormat serialization;
 
         private Builder(T payload) { this.payload = payload; }
         public Builder<T> destination(String value) { destination = value; return this; }
@@ -106,14 +100,7 @@ public final class PublishRequest<T> {
             headers.putAll(Objects.requireNonNull(values, "values"));
             return this;
         }
-        public Builder<T> deliverAt(Instant value) { deliverAt = value; return this; }
-        public Builder<T> partition(Integer value) { partition = value; return this; }
-        public Builder<T> routingKey(String value) { routingKey = value; return this; }
         public Builder<T> timeout(Duration value) { timeout = value; return this; }
-        public Builder<T> mode(PublishMode value) { mode = value; return this; }
-        public Builder<T> serialization(MessageSerializationFormat value) {
-            serialization = value; return this;
-        }
         public PublishRequest<T> build() { return new PublishRequest<>(this); }
     }
 }

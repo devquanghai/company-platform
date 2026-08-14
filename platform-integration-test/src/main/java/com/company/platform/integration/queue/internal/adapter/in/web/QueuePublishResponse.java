@@ -8,17 +8,15 @@ public record QueuePublishResponse(
     String mode,
     String eventId,
     String status,
-    String topic,
-    Integer partition,
-    Long offset,
-    boolean confirmed,
+    String destination,
+    String messageId,
     Instant publishedAt
 ) {
     static QueuePublishResponse from(
         String mode, String eventId, PublishResult result
     ) {
         return new QueuePublishResponse(
-            mode, eventId, result.status().name(), result.physicalDestination(),
-            result.partition(), result.offset(), result.confirmed(), result.publishedAt());
+            mode, eventId, result.status().name(), result.destination(),
+            result.messageId(), result.publishedAt());
     }
 }

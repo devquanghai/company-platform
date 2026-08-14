@@ -1,56 +1,18 @@
-spring:
-  cache:
-    type: caffeine
-    caffeine:
-      spec: maximumSize=10000,recordStats
-  data:
-    redis:
-      database: 0
-      client-name: ${spring.application.name:application}-cache
-      password: aloaluale
-      sentinel:
-        master: mymaster
-        nodes: 127.0.0.1:26379
-        password: aloaluale
-
+# New
 platform:
   cache:
     enabled: true
-    annotations-enabled: true
-    defaults:
-      ttl: 10m
-      key-prefix: ${spring.application.name:application}:cache
-      cache-null-values: false
-      maximum-entry-size: 1MB
+    provider: redis
+spring:
+  cache:
+    redis:
+      use-key-prefix: true
+      key-prefix: ${spring.application.name}
+      customize:
+        cache:
+          ttl: 3600
 
-    stores:
-      caffeine-primary:
-        provider: CAFFEINE
-
-      redis-primary:
-        provider: REDIS
-        redis:
-          serialization:
-            schema-id: ${spring.application.name:application}-cache
-            schema-version: 1
-    caches:
-      test-cache:
-        key:
-          prefix: haipq1_test-cache
-        store: redis-primary
-        ttl: 1m
-        failure-policy: FAIL_OPEN
-
-      test-cache-caffeine:
-        key:
-          prefix: haipq1_test-cache-caffeine
-        store: caffeine-primary
-        ttl: 1m
-
-      test-cache-optimistic:
-        key:
-          prefix: haipq1_test-cache-optimistic
-        store: redis-primary
-        ttl: 1m
-        coordination: true
-        failure-policy: FAIL_CLOSED
+  data:
+    redis:
+      host: localhost
+      port: 6379

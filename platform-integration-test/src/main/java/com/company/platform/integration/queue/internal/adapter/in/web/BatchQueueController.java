@@ -45,7 +45,7 @@ public class BatchQueueController {
     public ApiResponse<Map<String, Object>> status() {
         return ApiResponse.success(Map.of("mode", "BATCH", "totalConsumed",
             probe.total(QueueMode.BATCH), "processing",
-            "per partition: 500 messages or oldest message waits 30 minutes"));
+            "native single-record Kafka listener smoke profile"));
     }
 
     @DeleteMapping public ApiResponse<Void> clear() {

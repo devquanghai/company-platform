@@ -1,137 +1,38 @@
+platform:
+  queue:
+    enabled: true
+    provider: kafka
+
 spring:
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:19092}
     client-id: platform-integration
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.apache.kafka.common.serialization.ByteArraySerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
       acks: all
+      retries: 10
       properties:
         enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
+        spring.json.add.type.headers: false
     consumer:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       enable-auto-commit: false
       auto-offset-reset: earliest
-
-platform:
-  queue:
-    enabled: true
-    allow-noop: false
-    topology:
-      mode: DECLARE_AND_VALIDATE
-    brokers:
-      integration-kafka:
-        enabled: true
-        provider: KAFKA
-    destinations:
-      queue-realtime:
-        broker: integration-kafka
-        kafka:
-          topic: ${KAFKA_REALTIME_TOPIC:platform.integration.realtime.v1}
-          partitions: ${KAFKA_TOPIC_PARTITIONS:3}
-          replication-factor: ${KAFKA_REPLICATION_FACTOR:1}
-          key-required: true
-        serialization:
-          format: JSON
-          event-type: QueueDemoEvent
-          schema-version: 1
-      queue-batch:
-        broker: integration-kafka
-        kafka:
-          topic: ${KAFKA_BATCH_TOPIC:platform.integration.batch.v1}
-          partitions: ${KAFKA_TOPIC_PARTITIONS:3}
-          replication-factor: ${KAFKA_REPLICATION_FACTOR:1}
-          key-required: true
-        serialization:
-          format: JSON
-          event-type: QueueDemoEvent
-          schema-version: 1
-      queue-bulk:
-        broker: integration-kafka
-        kafka:
-          topic: ${KAFKA_BULK_TOPIC:platform.integration.bulk.v1}
-          partitions: ${KAFKA_TOPIC_PARTITIONS:3}
-          replication-factor: ${KAFKA_REPLICATION_FACTOR:1}
-          key-required: true
-        serialization:
-          format: JSON
-          event-type: QueueDemoEvent
-          schema-version: 1
-      queue-dead-letter:
-        broker: integration-kafka
-        consumer-enabled: false
-        kafka:
-          topic: ${KAFKA_DLT_TOPIC:platform.integration.dlt.v1}
-          partitions: ${KAFKA_TOPIC_PARTITIONS:3}
-          replication-factor: ${KAFKA_REPLICATION_FACTOR:1}
-          key-required: true
-        serialization:
-          format: JSON
-          event-type: QueueDemoEvent
-          schema-version: 1
-    subscriptions:
-      queue-realtime-consumer:
-        destination: queue-realtime
-        idempotency-enabled: true
-        kafka:
-          group-id: ${KAFKA_REALTIME_GROUP:platform-integration-realtime}
-          concurrency: ${KAFKA_REALTIME_CONCURRENCY:3}
-          mode: REALTIME
-          strict-ordering: true
-        retry:
-          enabled: true
-          max-attempts: 3
-          kafka-mode: BLOCKING
-        dead-letter:
-          enabled: true
-          destination: queue-dead-letter
-      queue-batch-consumer:
-        destination: queue-batch
-        idempotency-enabled: true
-        kafka:
-          group-id: ${KAFKA_BATCH_GROUP:platform-integration-batch}
-          concurrency: ${KAFKA_BATCH_CONCURRENCY:1}
-          mode: BATCH
-          max-messages: ${KAFKA_BATCH_MAX_MESSAGES:50}
-          max-wait: ${KAFKA_BATCH_MAX_WAIT:30m}
-          deferred-poll-interval: ${KAFKA_BATCH_POLL_INTERVAL:1s}
-          strict-ordering: true
-        retry:
-          enabled: true
-          max-attempts: 3
-          kafka-mode: BLOCKING
-        dead-letter:
-          enabled: true
-          destination: queue-dead-letter
-      queue-bulk-consumer:
-        destination: queue-bulk
-        idempotency-enabled: true
-        kafka:
-          group-id: ${KAFKA_BULK_GROUP:platform-integration-bulk}
-          concurrency: ${KAFKA_BULK_CONCURRENCY:1}
-          mode: BULK
-          max-messages: ${KAFKA_BULK_MAX_MESSAGES:100000}
-          max-wait: ${KAFKA_BULK_MAX_WAIT:1d}
-          deferred-poll-interval: ${KAFKA_BULK_POLL_INTERVAL:5s}
-          strict-ordering: true
-        retry:
-          enabled: true
-          max-attempts: 3
-          kafka-mode: BLOCKING
-        dead-letter:
-          enabled: true
-          destination: queue-dead-letter
-    delivery:
-      inbox-enabled: true
-      processing-lock-timeout: 30s
-    observability:
-      metrics-enabled: true
-      tracing-enabled: true
-      health-enabled: true
-      audit-events-enabled: true
-      log-headers: false
-      log-payload: false
+      properties:
+        spring.json.trusted.packages: com.company.platform.integration.queue.internal.domain
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: com.company.platform.integration.queue.internal.domain.QueueDemoEvent
+    listener:
+      ack-mode: manual_immediate
+      missing-topics-fatal: true
+      observation-enabled: true
+    template:
+      observation-enabled: true
+    admin:
+      fail-fast: true
 
 logging:
   level:

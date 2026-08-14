@@ -1,33 +1,40 @@
 package com.company.platform.integration.queue.internal.adapter.in.kafka;
 
-import com.company.platform.integration.queue.internal.domain.ConsumedQueueMessage;
+import com.company.platform.core.time.TimeProvider;
 import com.company.platform.integration.queue.internal.application.QueueMessageProbe;
+import com.company.platform.integration.queue.internal.domain.ConsumedQueueMessage;
 import com.company.platform.integration.queue.internal.domain.QueueDemoEvent;
 import com.company.platform.integration.queue.internal.domain.QueueMode;
-import com.company.platform.queue.api.consume.MessageContext;
-import com.company.platform.queue.api.consume.MessageHandlingResult;
-import com.company.platform.queue.api.kafka.BaseKafkaConsumer;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.context.annotation.Profile;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.stereotype.Component;
 
-@Slf4j
 @Component
-public final class BatchQueueConsumer extends BaseKafkaConsumer<QueueDemoEvent> {
+@Profile("kafka")
+public final class BatchQueueConsumer {
     private final QueueMessageProbe probe;
+    private final KafkaMessageContextFactory contexts;
 
-    public BatchQueueConsumer(QueueMessageProbe probe) {
-        super("queue-batch-consumer", "integration-batch-handler", QueueDemoEvent.class);
+    public BatchQueueConsumer(QueueMessageProbe probe, TimeProvider timeProvider) {
         this.probe = probe;
+        this.contexts = new KafkaMessageContextFactory(timeProvider);
     }
 
-    @Override
-    protected MessageHandlingResult receive(QueueDemoEvent event, MessageContext context) {
+    @KafkaListener(
+        topics = "${KAFKA_BATCH_TOPIC:queue-batch}",
+        groupId = "${KAFKA_BATCH_GROUP:platform-integration-batch}",
+        concurrency = "${KAFKA_BATCH_CONCURRENCY:1}")
+    public void receive(
+        ConsumerRecord<String, QueueDemoEvent> record,
+        Acknowledgment acknowledgment
+    ) {
+        var context = contexts.create(record, "queue-batch-consumer");
         probe.record(QueueMode.BATCH, new ConsumedQueueMessage(
-            event, context.messageId(), context.subscription(), context.physicalDestination(),
-            context.partition(), context.offset(), context.deliveryAttempt(), context.receivedAt()));
-        log.info("Queue event consumed mode=BATCH messageId={} partition={} offset={}",
-            context.messageId(), context.partition(), context.offset());
-        return MessageHandlingResult.ACK;
+            record.value(), context.messageId(), context.subscription(),
+            context.physicalDestination(), context.partition(), context.offset(),
+            context.deliveryAttempt(), context.receivedAt()));
+        acknowledgment.acknowledge();
     }
 }

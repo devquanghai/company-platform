@@ -1,6 +1,5 @@
 package com.company.platform.queue.api.publish;
 
-import java.util.List;
 import java.util.concurrent.CompletionStage;
 
 public interface MessagePublisher {
@@ -8,5 +7,4 @@ public interface MessagePublisher {
     <K, T> PublishResult publish(String destination, K key, T payload);
     <T> PublishResult publish(PublishRequest<T> request);
     <T> CompletionStage<PublishResult> publishAsync(PublishRequest<T> request);
-    <T> List<PublishResult> publishBatch(List<PublishRequest<T>> requests);
 }

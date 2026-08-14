@@ -1,9 +1,5 @@
 package com.company.platform.integration.queue.internal.autoconfigure;
 
-import com.company.platform.integration.queue.internal.adapter.store.InMemoryDeferredKafkaMessageStore;
-import com.company.platform.integration.queue.internal.adapter.store.InMemoryInboxStore;
-import com.company.platform.queue.api.kafka.DeferredKafkaMessageStore;
-import com.company.platform.queue.reliability.inbox.InboxStore;
 import com.company.platform.core.time.TimeProvider;
 import com.company.platform.integration.queue.internal.application.QueueMessageProbe;
 import com.company.platform.integration.queue.internal.application.QueuePublishService;
@@ -11,9 +7,11 @@ import com.company.platform.integration.queue.internal.port.out.QueueEventPublis
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.beans.factory.annotation.Value;
+import org.apache.kafka.clients.admin.NewTopic;
+import org.springframework.kafka.config.TopicBuilder;
 
 import java.util.List;
-import java.nio.file.Path;
 
 /**
  * Local integration stores only. Production applications must replace these
@@ -32,15 +30,31 @@ public class IntegrationQueueStoreConfiguration {
     ) {
         return new QueuePublishService(publishers, time);
     }
+
     @Bean
-    InboxStore integrationQueueInboxStore() {
-        return new InMemoryInboxStore();
+    NewTopic integrationRealtimeTopic(
+        @Value("${KAFKA_REALTIME_TOPIC:queue-realtime}") String name,
+        @Value("${KAFKA_TOPIC_PARTITIONS:3}") int partitions,
+        @Value("${KAFKA_REPLICATION_FACTOR:1}") short replicas
+    ) {
+        return TopicBuilder.name(name).partitions(partitions).replicas(replicas).build();
     }
 
     @Bean
-    DeferredKafkaMessageStore integrationDeferredKafkaMessageStore() {
-        return new InMemoryDeferredKafkaMessageStore(Path.of(
-            System.getProperty("java.io.tmpdir"),
-            "platform-integration-queue", "deferred-wal-v1.bin"));
+    NewTopic integrationBatchTopic(
+        @Value("${KAFKA_BATCH_TOPIC:queue-batch}") String name,
+        @Value("${KAFKA_TOPIC_PARTITIONS:3}") int partitions,
+        @Value("${KAFKA_REPLICATION_FACTOR:1}") short replicas
+    ) {
+        return TopicBuilder.name(name).partitions(partitions).replicas(replicas).build();
+    }
+
+    @Bean
+    NewTopic integrationBulkTopic(
+        @Value("${KAFKA_BULK_TOPIC:queue-bulk}") String name,
+        @Value("${KAFKA_TOPIC_PARTITIONS:3}") int partitions,
+        @Value("${KAFKA_REPLICATION_FACTOR:1}") short replicas
+    ) {
+        return TopicBuilder.name(name).partitions(partitions).replicas(replicas).build();
     }
 }

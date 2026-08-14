@@ -1,49 +1,80 @@
+platform:
+  queue:
+    enabled: true
+    provider: kafka
+
 spring:
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
     client-id: ${spring.application.name}
     producer:
       acks: all
+      retries: 10
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
       properties:
         enable.idempotence: true
         max.in.flight.requests.per.connection: 5
+        max.request.size: 1048576
     consumer:
       group-id: ${KAFKA_GROUP_ID}
       enable-auto-commit: false
       auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.company.loan.messaging
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: com.company.loan.messaging.LoanEvent
+        isolation.level: read_committed
     listener:
-      ack-mode: record
-      missing-topics-fatal: true
-    admin:
-      fail-fast: true
-    retry:
-      topic:
-        enabled: true
-        attempts: 3
-        backoff:
-          delay: 500ms
-          multiplier: 2
-          max-delay: 5s
+      ack-mode: manual_immediate
+      concurrency: 3
+      observation-enabled: true
+    template:
+      observation-enabled: true
+    properties:
+      security.protocol: SASL_SSL
+      sasl.mechanism: SCRAM-SHA-512
+      sasl.jaas.config: ENC(...)
+
   rabbitmq:
-    addresses: ${RABBITMQ_ADDRESSES}
+    host: ${RABBITMQ_HOST:rabbitmq}
+    port: ${RABBITMQ_PORT:5671}
     username: ${RABBITMQ_USERNAME}
-    password: ${RABBITMQ_PASSWORD}
+    password: ENC(...)
+    virtual-host: /
+    connection-timeout: 3s
+    ssl:
+      enabled: true
+      trust-store: ${RABBITMQ_TRUSTSTORE_LOCATION}
+      trust-store-password: ENC(...)
     publisher-confirm-type: correlated
     publisher-returns: true
     template:
       mandatory: true
+      observation-enabled: true
     listener:
       simple:
-        acknowledge-mode: auto
+        observation-enabled: true
+        acknowledge-mode: manual
+        concurrency: 3
+        max-concurrency: 10
         prefetch: 50
+        default-requeue-rejected: false
         retry:
           enabled: true
-          max-retries: 2
+          max-attempts: 3
           initial-interval: 500ms
           multiplier: 2
           max-interval: 5s
 
+jasypt:
+  encryptor:
+    password: ${JASYPT_ENCRYPTOR_PASSWORD}
+
 management:
-  observations:
-    enable:
-      spring.kafka: true
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics
