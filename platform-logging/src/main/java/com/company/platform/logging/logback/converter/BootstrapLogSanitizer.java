@@ -6,6 +6,8 @@ import java.util.regex.Pattern;
 
 public final class BootstrapLogSanitizer {
     public static final String SAFE_FAILURE = "<sanitization-failed>";
+    public static final String OVERSIZED = "<oversized-not-logged>";
+    private static final int MAX_EVENT_CHARACTERS = 1_048_576;
     private static final Set<String> BOOTSTRAP_CREDENTIAL_KEYS = Set.of(
         "password", "passcode", "pin", "cvv", "authorization",
         "proxyauthorization", "cookie", "setcookie", "accesstoken",
@@ -16,7 +18,6 @@ public final class BootstrapLogSanitizer {
             + "api[-_]?key|client[-_]?secret|private[-_]?key)\\s*\"?\\s*[=:]\\s*"
             + "(?:\"[^\"]*\"|'[^']*'|[^\\s,;]+)");
     private static final Pattern CONTROLS = Pattern.compile("[\\p{Cntrl}]+");
-    private static final int MAX = 16_384;
 
     private BootstrapLogSanitizer() {
     }
@@ -25,11 +26,12 @@ public final class BootstrapLogSanitizer {
         if (value == null) {
             return "";
         }
+        if (value.length() > MAX_EVENT_CHARACTERS) {
+            return OVERSIZED;
+        }
         try {
             String configured = LogbackMaskingLifecycle.sanitizeMessage(value);
-            String bounded = configured.substring(
-                0, Math.min(MAX, configured.length()));
-            return CONTROLS.matcher(BOOTSTRAP_CREDENTIAL_ASSIGNMENT.matcher(bounded)
+            return CONTROLS.matcher(BOOTSTRAP_CREDENTIAL_ASSIGNMENT.matcher(configured)
                 .replaceAll("$1=***")).replaceAll(" ");
         } catch (RuntimeException exception) {
             return SAFE_FAILURE;

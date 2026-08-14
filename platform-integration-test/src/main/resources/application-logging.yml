@@ -39,3 +39,18 @@ platform:
         jasypt:
           enabled: true
           algorithm: PBEWithHmacSHA512AndAES_256
+
+jasypt:
+  encryptor:
+    password: ${JASYPT_ENCRYPTOR_PASSWORD}
+    algorithm: PBEWITHHMACSHA512ANDAES_256
+    key-obtention-iterations: 210000
+    salt-generator-classname: org.jasypt.salt.RandomSaltGenerator
+    iv-generator-classname: org.jasypt.iv.RandomIvGenerator
+
+logging:
+  level:
+    PLATFORM_CACHE: DEBUG
+    PLATFORM_QUEUE: DEBUG
+    PLATFORM_CRYPTO: DEBUG
+    OUTBOUND_CALL: DEBUG

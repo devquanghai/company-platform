@@ -60,30 +60,6 @@
       "defaultValue": true
     },
     {
-      "name": "platform.logging.masking.max-depth",
-      "type": "java.lang.Integer",
-      "description": "Độ sâu object graph tối đa được duyệt.",
-      "defaultValue": 10
-    },
-    {
-      "name": "platform.logging.masking.max-string-length",
-      "type": "java.lang.Integer",
-      "description": "Độ dài chuỗi tối đa sau masking.",
-      "defaultValue": 4096
-    },
-    {
-      "name": "platform.logging.masking.max-collection-size",
-      "type": "java.lang.Integer",
-      "description": "Số phần tử collection tối đa được sanitize.",
-      "defaultValue": 100
-    },
-    {
-      "name": "platform.logging.masking.max-map-size",
-      "type": "java.lang.Integer",
-      "description": "Số field/entry tối đa được sanitize.",
-      "defaultValue": 100
-    },
-    {
       "name": "platform.logging.masking.mandatory-fields",
       "type": "java.util.List<java.lang.String>",
       "description": "Các trường dữ liệu nhạy cảm bổ sung luôn bị che; baseline password/token/cookie của thư viện không thể xóa hoặc ghi đè.",

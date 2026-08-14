@@ -69,10 +69,6 @@ spring:
           multiplier: 2
           max-interval: 5s
 
-jasypt:
-  encryptor:
-    password: ${JASYPT_ENCRYPTOR_PASSWORD}
-
 management:
   endpoints:
     web:

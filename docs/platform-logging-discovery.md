@@ -26,8 +26,8 @@
   they are unsuitable for a strict versioned ciphertext envelope.
 - No top-level Logback config is packaged. This library must ship include
   fragments only.
-- Servlet, WebFlux, Micrometer and Jasypt remain optional integrations. Jasypt
-  has no repository-managed version.
+- Servlet, WebFlux and Micrometer remain optional integrations. Jasypt is
+  centrally version-managed and shipped only by `platform-logging`.
 - Core request logging currently performs bounded control-character cleanup but
   no PII masking. Platform-logging startup validation rejects
   `platform.core.web.request-logging-enabled=true` together with raw payload

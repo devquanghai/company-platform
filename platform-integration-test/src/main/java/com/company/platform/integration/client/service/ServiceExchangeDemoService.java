@@ -15,7 +15,7 @@ import java.util.Map;
 
 @Service
 public class ServiceExchangeDemoService {
-    private static final String RESOURCE_PATH = "/service-exchange/downstream/resources";
+    private static final String RESOURCE_PATH = "/service-exchange/downstream/resources/2";
 
     private static final ParameterizedTypeReference<ClientResourceResponse> RESOURCE_TYPE =
         new ParameterizedTypeReference<>() { };

@@ -11,6 +11,8 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.Header;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -26,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 public final class KafkaMessagePublisher implements MessagePublisher {
+    private static final Logger LOG = LoggerFactory.getLogger("PLATFORM_QUEUE");
     private static final int MAX_HEADERS = 64;
     private static final int MAX_HEADER_BYTES = 8 * 1024;
     private static final int MAX_TOTAL_HEADER_BYTES = 32 * 1024;
@@ -84,6 +87,9 @@ public final class KafkaMessagePublisher implements MessagePublisher {
         String messageId
     ) {
         validate(request);
+        long started = System.nanoTime();
+        LOG.trace("queue_publish_started provider=KAFKA destination={}",
+            request.destination());
         ProducerRecord<Object, Object> record = new ProducerRecord<>(
             request.destination(), null, request.key(), request.payload(),
             headers(request, messageId));
@@ -92,9 +98,15 @@ public final class KafkaMessagePublisher implements MessagePublisher {
             .orTimeout(timeout.toMillis(), TimeUnit.MILLISECONDS)
             .handle((result, failure) -> {
             if (failure != null) {
+                LOG.debug("queue_publish_finished provider=KAFKA destination={} outcome=FAILED duration_ns={} error_type={}",
+                    request.destination(), System.nanoTime() - started,
+                    unwrap(failure).getClass().getSimpleName());
                 throw new CompletionException(classifiedFailure(failure, messageId));
             }
-            return result(request, messageId);
+            PublishResult published = result(request, messageId);
+            LOG.debug("queue_publish_finished provider=KAFKA destination={} outcome={} duration_ns={}",
+                request.destination(), published.status(), System.nanoTime() - started);
+            return published;
         });
     }
 
@@ -231,5 +243,15 @@ public final class KafkaMessagePublisher implements MessagePublisher {
         return new QueuePublishException(
             "QUEUE.KAFKA.PUBLISH.UNKNOWN_OUTCOME", message, cause,
             messageId, true);
+    }
+
+    private Throwable unwrap(Throwable failure) {
+        Throwable current = failure;
+        while ((current instanceof CompletionException
+            || current instanceof java.util.concurrent.ExecutionException)
+            && current.getCause() != null) {
+            current = current.getCause();
+        }
+        return current;
     }
 }

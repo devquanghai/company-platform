@@ -241,7 +241,7 @@ vẫn do framework quản lý; customizer có thể áp company headers cho clie
 
 Logging/audit hiện hữu được giữ và delegate masking sang `platform-logging`
 `DataMaskingService`. Authorization, cookies, tokens, credentials và PII không
-được log plaintext. Body logging phải opt-in, bounded, mask trước truncate; binary,
+được log plaintext. Body logging phải opt-in và mask toàn bộ trước khi ghi; binary,
 multipart, resource và streaming body không được buffer để log.
 
 ## 19. cURL logging
@@ -255,7 +255,6 @@ platform:
       payment:
         logging:
           curl-enabled: false
-          max-body-length: 4096
 ```
 
 Output được shell-quote, mask header/query/body và không đọc file/stream.
@@ -364,14 +363,12 @@ tiếp để giữ streaming semantics.
 
 ## 28. Jasypt
 
-Service Exchange không decrypt secret. Application opt-in Jasypt starter; Jasypt
-wrap `Environment` trước khi Boot bind SSL, proxy, OAuth hay application secret.
+Service Exchange không decrypt secret và không chứa Jasypt dependency. Jasypt
+starter thuộc `platform-logging` và wrap `Environment` trước khi Boot bind SSL,
+proxy, OAuth hay application secret.
 
-```yaml
-jasypt:
-  encryptor:
-    password: ${JASYPT_ENCRYPTOR_PASSWORD}
-```
+Master password và operator API được cấu hình duy nhất theo tài liệu
+`platform-logging`.
 
 ## 29. `ENC(...)`
 

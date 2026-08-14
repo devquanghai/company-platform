@@ -9,6 +9,8 @@ import java.net.URI;
 import java.util.Map;
 
 public final class PlatformLoggingOutboundDataMasker implements OutboundDataMasker {
+    private static final int MAX_SAFE_LOG_BODY_CHARACTERS = 1_048_576;
+    private static final String OVERSIZED = "<oversized-not-logged>";
     private final DataMaskingService masking;
 
     public PlatformLoggingOutboundDataMasker(DataMaskingService masking) {
@@ -56,8 +58,7 @@ public final class PlatformLoggingOutboundDataMasker implements OutboundDataMask
         } else {
             sanitized = String.valueOf(masking.sanitize(body));
         }
-        return sanitized.length() <= maxLength
-            ? sanitized : sanitized.substring(0, maxLength) + "...[truncated]";
+        return sanitized.length() <= MAX_SAFE_LOG_BODY_CHARACTERS ? sanitized : OVERSIZED;
     }
 
     @Override

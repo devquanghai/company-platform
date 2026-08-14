@@ -80,7 +80,3 @@ management:
   tracing:
     sampling:
       probability: 0.1
-
-jasypt:
-  encryptor:
-    password: ${JASYPT_ENCRYPTOR_PASSWORD}

@@ -206,19 +206,15 @@ spring:
 
 Keep `ddl-auto: validate` so invalid mappings or missing migration changes fail startup. Multi-database migrations must have explicit datasource/lifecycle wiring and integration tests proving each changelog targets the intended database.
 
-## 11. Optional Jasypt
+## 11. Jasypt ownership
 
-Prefer Kubernetes Secrets, Vault, a secret manager, environment variables, or config trees. If encrypted values must be stored in a configuration source, the consuming application may explicitly add `com.github.ulisesbocchio:jasypt-spring-boot-starter` with an organization-approved version:
+Prefer Kubernetes Secrets, Vault, a secret manager, environment variables, or config trees. When encrypted configuration is required, the Jasypt starter and `ENC(...)` Environment integration are supplied centrally by `platform-logging`; database must not add its own decryptor or Jasypt dependency:
 
 ```yaml
 spring:
   datasource:
     username: ENC(...)
     password: ENC(...)
-
-jasypt:
-  encryptor:
-    password: ${JASYPT_ENCRYPTOR_PASSWORD}
 ```
 
 Externalize the master password. Never commit it, log decrypted values, expose them through Actuator, or add a custom decryptor in this module.

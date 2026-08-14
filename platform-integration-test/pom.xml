@@ -29,10 +29,6 @@
             <artifactId>platform-logging</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.jasypt</groupId>
-            <artifactId>jasypt</artifactId>
-        </dependency>
-        <dependency>
             <groupId>com.company.platform</groupId>
             <artifactId>platform-cache</artifactId>
         </dependency>

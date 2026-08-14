@@ -13,6 +13,8 @@ import com.company.platform.cache.domain.result.CacheClearResult;
 import com.company.platform.cache.domain.result.CacheResult;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Type;
 import java.time.Duration;
@@ -28,6 +30,7 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 public final class SpringCachePlatformCacheOperations implements PlatformCacheOperations {
+    private static final Logger LOG = LoggerFactory.getLogger("PLATFORM_CACHE");
     private static final int MAX_IN_FLIGHT_LOADS = 1_024;
     private final CacheManager cacheManager;
     private final CacheProviderType provider;
@@ -313,11 +316,27 @@ public final class SpringCachePlatformCacheOperations implements PlatformCacheOp
     }
 
     private <T> T observe(String operation, Supplier<T> invocation) {
-        return observability.observe(operation, provider.name(), invocation);
+        long started = System.nanoTime();
+        LOG.trace("cache_operation_started operation={} provider={}",
+            operation, provider);
+        try {
+            T result = observability.observe(operation, provider.name(), invocation);
+            LOG.debug("cache_operation_finished operation={} provider={} outcome=SUCCESS duration_ns={}",
+                operation, provider, System.nanoTime() - started);
+            return result;
+        } catch (RuntimeException failure) {
+            LOG.debug("cache_operation_finished operation={} provider={} outcome=FAILED duration_ns={} error_type={}",
+                operation, provider, System.nanoTime() - started,
+                failure.getClass().getSimpleName());
+            throw failure;
+        }
     }
 
     private void observe(String operation, Runnable invocation) {
-        observability.observe(operation, provider.name(), invocation);
+        observe(operation, () -> {
+            invocation.run();
+            return null;
+        });
     }
 
     private boolean isCacheInfrastructureFailure(Throwable failure) {

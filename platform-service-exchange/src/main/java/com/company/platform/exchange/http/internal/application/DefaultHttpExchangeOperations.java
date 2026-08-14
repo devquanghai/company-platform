@@ -249,7 +249,7 @@ public final class DefaultHttpExchangeOperations implements HttpExchangeOperatio
             ? HttpHeaders.EMPTY : masker.maskHeaders(response.getResponseHeaders());
         String safeBody = response == null || !client.getLogging().isResponseBodyEnabled()
             ? null : masker.maskBody(response.getResponseBodyAsString(),
-                client.getLogging().getMaxBodyLength());
+                Integer.MAX_VALUE);
         return new OutboundHttpException(
             request.getClientName(), request.getMethod().name(), masker.maskUri(target),
             response == null ? null : response.getStatusCode().value(),
@@ -395,7 +395,7 @@ public final class DefaultHttpExchangeOperations implements HttpExchangeOperatio
             masker.maskUri(target));
         if (client.getLogging().isCurlEnabled() && curl != null) {
             CURL_LOG.info("outbound_curl client={} command={}", request.getClientName(),
-                curl.generate(request, target, client.getLogging().getMaxBodyLength(),
+                curl.generate(request, target, Integer.MAX_VALUE,
                     client.getLogging().isRequestHeadersEnabled(),
                     client.getLogging().isRequestBodyEnabled()));
         }

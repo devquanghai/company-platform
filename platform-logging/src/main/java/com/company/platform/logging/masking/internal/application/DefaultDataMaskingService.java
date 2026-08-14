@@ -47,6 +47,8 @@ public final class DefaultDataMaskingService implements DataMaskingService {
     private static final String BINARY = "<binary-or-stream-not-logged>";
     private static final String CYCLE = "<cycle>";
     private static final String INACCESSIBLE = "<inaccessible>";
+    private static final String OVERSIZED = "<oversized-not-logged>";
+    private static final int MAX_TEXT_CHARACTERS = 1_048_576;
     private static final Pattern CONTROL = Pattern.compile("[\\p{Cntrl}&&[^\\r\\n\\t]]");
     private static final Pattern NEW_LINES = Pattern.compile("[\\r\\n\\t]+");
     private static final Pattern MANDATORY_MESSAGE = Pattern.compile(
@@ -87,13 +89,22 @@ public final class DefaultDataMaskingService implements DataMaskingService {
 
     @Override
     public String maskValue(String fieldName, String value) {
+        if (value != null && value.length() > MAX_TEXT_CHARACTERS) {
+            return OVERSIZED;
+        }
         MaskingRule rule = ruleFor(fieldName, "$." + fieldName, null);
-        return apply(value, rule).getValue();
+        String masked = apply(value, rule).getValue();
+        return masked != null && masked.length() > MAX_TEXT_CHARACTERS ? OVERSIZED : masked;
     }
 
     @Override
     public Object sanitize(Object source) {
-        return sanitize(source, "$", 0, new IdentityHashMap<>(), null);
+        try {
+            return sanitize(source, "$", 0, new IdentityHashMap<>(), null,
+                new TraversalBudget(MAX_TEXT_CHARACTERS));
+        } catch (TraversalBudgetExceeded ignored) {
+            return OVERSIZED;
+        }
     }
 
     @Override
@@ -101,7 +112,12 @@ public final class DefaultDataMaskingService implements DataMaskingService {
         if (source == null || annotation == null) {
             return sanitize(source);
         }
-        return apply(scalar(source), annotation).getValue();
+        String value = scalar(source);
+        if (value != null && value.length() > MAX_TEXT_CHARACTERS) {
+            return OVERSIZED;
+        }
+        String masked = apply(value, annotation).getValue();
+        return masked != null && masked.length() > MAX_TEXT_CHARACTERS ? OVERSIZED : masked;
     }
 
     @Override
@@ -109,11 +125,15 @@ public final class DefaultDataMaskingService implements DataMaskingService {
         if (source == null) {
             return null;
         }
+        if (source.length() > MAX_TEXT_CHARACTERS) {
+            return OVERSIZED;
+        }
         try {
             Object tree = jsonMapperHelper.fromJson(source, Object.class);
             return jsonMapperHelper.toJson(sanitize(tree));
         } catch (RuntimeException exception) {
-            log.warn("Failed to parse JSON for sanitization: {}", exception.getMessage());
+            log.warn("json_sanitization_failed error_type={}",
+                exception.getClass().getSimpleName());
             return "<invalid-json>";
         }
     }
@@ -123,14 +143,19 @@ public final class DefaultDataMaskingService implements DataMaskingService {
         if (message == null) {
             return null;
         }
-        String bounded = truncate(message);
-        String masked = MANDATORY_MESSAGE.matcher(bounded)
+        if (message.length() > MAX_TEXT_CHARACTERS) {
+            return OVERSIZED;
+        }
+        String masked = MANDATORY_MESSAGE.matcher(message)
             .replaceAll("$1=***");
         for (CompiledRule rule : rules) {
             if (rule.rule.getMatchType() == MaskingMatchType.FIELD_NAME) {
                 masked = replaceConfiguredFields(masked, rule);
             } else if (rule.rule.getMatchType() == MaskingMatchType.REGEX) {
                 masked = rule.replace(masked);
+            }
+            if (OVERSIZED.equals(masked)) {
+                return OVERSIZED;
             }
         }
         return sanitizeControls(masked);
@@ -141,6 +166,7 @@ public final class DefaultDataMaskingService implements DataMaskingService {
         for (Pattern pattern : compiled.messagePatterns) {
             Matcher matcher = pattern.matcher(result);
             StringBuilder output = new StringBuilder();
+            int previousEnd = 0;
             while (matcher.find()) {
                 String doubleQuoted = matcher.group(2);
                 String singleQuoted = matcher.group(3);
@@ -153,10 +179,16 @@ public final class DefaultDataMaskingService implements DataMaskingService {
                     : maskingResult.getValue();
                 String quote = doubleQuoted != null ? "\""
                     : singleQuoted != null ? "'" : "";
-                matcher.appendReplacement(output, Matcher.quoteReplacement(
-                    matcher.group(1) + quote + safe + quote));
+                String replacement = matcher.group(1) + quote + safe + quote;
+                long projected = (long) output.length() + matcher.start() - previousEnd
+                    + replacement.length() + result.length() - matcher.end();
+                if (projected > MAX_TEXT_CHARACTERS) {
+                    return OVERSIZED;
+                }
+                output.append(result, previousEnd, matcher.start()).append(replacement);
+                previousEnd = matcher.end();
             }
-            matcher.appendTail(output);
+            output.append(result, previousEnd, result.length());
             result = output.toString();
         }
         return result;
@@ -178,20 +210,29 @@ public final class DefaultDataMaskingService implements DataMaskingService {
 
     @Override
     public SanitizedThrowable sanitizeThrowable(Throwable throwable) {
-        return throwable == null ? null : throwable(throwable, 0, new IdentityHashMap<>());
+        if (throwable == null) {
+            return null;
+        }
+        try {
+            return throwable(throwable, 0, new IdentityHashMap<>(),
+                new TraversalBudget(MAX_TEXT_CHARACTERS));
+        } catch (TraversalBudgetExceeded ignored) {
+            return SanitizedThrowable.builder().type(OVERSIZED).build();
+        }
     }
 
     private Object sanitize(
         Object source, String path, int depth,
-        IdentityHashMap<Object, Boolean> visited, Sensitive annotation
+        IdentityHashMap<Object, Boolean> visited, Sensitive annotation,
+        TraversalBudget budget
     ) {
         if (source == null) {
             return null;
         }
-        if (depth >= properties.getMaxDepth()) {
-            return "<max-depth>";
-        }
+        budget.consume(1);
+        requireDepth(depth);
         if (source instanceof CharSequence || source instanceof Character) {
+            budget.consume(source.toString().length());
             String value = sanitizeMessage(source.toString());
             return annotation == null ? value : apply(value, annotation).getValue();
         }
@@ -213,88 +254,86 @@ public final class DefaultDataMaskingService implements DataMaskingService {
         }
         try {
             if (source instanceof Map<?, ?> map) {
-                return sanitizeMap(map, path, depth, visited);
+                return sanitizeMap(map, path, depth, visited, budget);
             }
             if (source instanceof Iterable<?> iterable) {
-                return sanitizeIterable(iterable, path, depth, visited);
+                return sanitizeIterable(iterable, path, depth, visited, budget);
             }
             if (source.getClass().isArray()) {
-                return sanitizeArray(source, path, depth, visited);
+                return sanitizeArray(source, path, depth, visited, budget);
             }
-            return sanitizeObject(source, path, depth, visited);
+            return sanitizeObject(source, path, depth, visited, budget);
         } finally {
             visited.remove(source);
         }
     }
 
-    private Map<String, Object> sanitizeMap(
-        Map<?, ?> source, String path, int depth, IdentityHashMap<Object, Boolean> visited
+    private Object sanitizeMap(
+        Map<?, ?> source, String path, int depth, IdentityHashMap<Object, Boolean> visited,
+        TraversalBudget budget
     ) {
+        requireSize(source.size(), properties.getMaxMapSize());
         LinkedHashMap<String, Object> result = new LinkedHashMap<>();
-        int count = 0;
         for (Map.Entry<?, ?> entry : source.entrySet()) {
-            if (count++ >= properties.getMaxMapSize()) {
-                result.put("_truncated", true);
-                break;
-            }
             String key = safeKey(entry.getKey());
+            budget.consume(key.length());
             MaskingRule rule = ruleFor(key, path + "." + key, null);
             if (rule != null) {
-                MaskingResult masked = apply(scalar(entry.getValue()), rule);
+                MaskingResult masked = boundedApply(entry.getValue(), rule, budget);
                 if (masked.getOutcome() != MaskingOutcome.REMOVED) {
                     result.put(key, masked.getValue());
                 }
             } else {
                 result.put(key, sanitize(entry.getValue(), path + "." + key,
-                    depth + 1, visited, null));
+                    depth + 1, visited, null, budget));
             }
         }
         return Collections.unmodifiableMap(result);
     }
 
-    private List<Object> sanitizeIterable(
-        Iterable<?> source, String path, int depth, IdentityHashMap<Object, Boolean> visited
+    private Object sanitizeIterable(
+        Iterable<?> source, String path, int depth, IdentityHashMap<Object, Boolean> visited,
+        TraversalBudget budget
     ) {
+        if (source instanceof java.util.Collection<?> collection) {
+            requireSize(collection.size(), properties.getMaxCollectionSize());
+        }
         ArrayList<Object> result = new ArrayList<>();
         int index = 0;
         for (Object value : source) {
-            if (index >= properties.getMaxCollectionSize()) {
-                result.add("<truncated>");
-                break;
-            }
-            result.add(sanitize(value, path + "[" + index + "]", depth + 1, visited, null));
+            requireSize(index + 1, properties.getMaxCollectionSize());
+            result.add(sanitize(value, path + "[" + index + "]", depth + 1,
+                visited, null, budget));
             index++;
         }
         return Collections.unmodifiableList(result);
     }
 
-    private List<Object> sanitizeArray(
-        Object source, String path, int depth, IdentityHashMap<Object, Boolean> visited
+    private Object sanitizeArray(
+        Object source, String path, int depth, IdentityHashMap<Object, Boolean> visited,
+        TraversalBudget budget
     ) {
-        int size = Math.min(Array.getLength(source), properties.getMaxCollectionSize());
+        int size = Array.getLength(source);
+        requireSize(size, properties.getMaxCollectionSize());
         ArrayList<Object> result = new ArrayList<>(size);
         for (int index = 0; index < size; index++) {
             result.add(sanitize(Array.get(source, index), path + "[" + index + "]",
-                depth + 1, visited, null));
-        }
-        if (Array.getLength(source) > size) {
-            result.add("<truncated>");
+                depth + 1, visited, null, budget));
         }
         return Collections.unmodifiableList(result);
     }
 
-    private Map<String, Object> sanitizeObject(
-        Object source, String path, int depth, IdentityHashMap<Object, Boolean> visited
+    private Object sanitizeObject(
+        Object source, String path, int depth, IdentityHashMap<Object, Boolean> visited,
+        TraversalBudget budget
     ) {
         LinkedHashMap<String, Object> result = new LinkedHashMap<>();
         Class<?> type = source.getClass();
-        int count = 0;
-        for (Field field : fields(type)) {
-            if (count++ >= properties.getMaxMapSize()) {
-                result.put("_truncated", true);
-                break;
-            }
+        List<Field> fields = fields(type);
+        requireSize(fields.size(), properties.getMaxMapSize());
+        for (Field field : fields) {
             String name = field.getName();
+            budget.consume(name.length());
             Sensitive sensitive = sensitive(field);
             MaskingRule rule = ruleFor(name, path + "." + name, sensitive);
             if (!field.trySetAccessible()) {
@@ -304,13 +343,13 @@ public final class DefaultDataMaskingService implements DataMaskingService {
             try {
                 Object value = field.get(source);
                 if (rule != null) {
-                    MaskingResult masked = apply(scalar(value), rule);
+                    MaskingResult masked = boundedApply(value, rule, budget);
                     if (masked.getOutcome() != MaskingOutcome.REMOVED) {
                         result.put(name, masked.getValue());
                     }
                 } else {
                     result.put(name, sanitize(value, path + "." + name,
-                        depth + 1, visited, sensitive));
+                        depth + 1, visited, sensitive, budget));
                 }
             } catch (IllegalAccessException exception) {
                 result.put(name, INACCESSIBLE);
@@ -370,36 +409,36 @@ public final class DefaultDataMaskingService implements DataMaskingService {
     }
 
     private SanitizedThrowable throwable(
-        Throwable source, int depth, IdentityHashMap<Object, Boolean> visited
+        Throwable source, int depth, IdentityHashMap<Object, Boolean> visited,
+        TraversalBudget budget
     ) {
-        if (depth >= 5 || visited.put(source, Boolean.TRUE) != null) {
-            return SanitizedThrowable.builder().type("<truncated>").build();
+        budget.consume(1);
+        requireDepth(depth);
+        requireSize(source.getStackTrace().length, properties.getMaxCollectionSize());
+        requireSize(source.getSuppressed().length, properties.getMaxCollectionSize());
+        if (visited.put(source, Boolean.TRUE) != null) {
+            return SanitizedThrowable.builder().type("<cycle>").build();
         }
         try {
             List<String> stack = java.util.Arrays.stream(source.getStackTrace())
-                .limit(64)
-                .map(frame -> truncate(frame.getClassName() + "." + frame.getMethodName()
-                    + "(" + frame.getFileName() + ":" + frame.getLineNumber() + ")"))
+                .map(frame -> frame.getClassName() + "." + frame.getMethodName()
+                    + "(" + frame.getFileName() + ":" + frame.getLineNumber() + ")")
+                .peek(frame -> budget.consume(frame.length()))
                 .toList();
             List<SanitizedThrowable> suppressed = java.util.Arrays.stream(source.getSuppressed())
-                .limit(8).map(value -> throwable(value, depth + 1, visited)).toList();
+                .map(value -> throwable(value, depth + 1, visited, budget)).toList();
+            String message = source.getMessage();
+            budget.consume(message == null ? 0 : message.length());
             return SanitizedThrowable.builder()
                 .type(source.getClass().getName())
-                .message(sanitizeMessage(source.getMessage()))
+                .message(sanitizeMessage(message))
                 .stackTrace(stack).suppressed(suppressed)
                 .cause(source.getCause() == null ? null
-                    : throwable(source.getCause(), depth + 1, visited))
+                    : throwable(source.getCause(), depth + 1, visited, budget))
                 .build();
         } finally {
             visited.remove(source);
         }
-    }
-
-    private String truncate(String value) {
-        if (value.length() <= properties.getMaxStringLength()) {
-            return value;
-        }
-        return value.substring(0, properties.getMaxStringLength()) + "...<truncated>";
     }
 
     private String sanitizeControls(String value) {
@@ -407,6 +446,39 @@ public final class DefaultDataMaskingService implements DataMaskingService {
             return value;
         }
         return CONTROL.matcher(NEW_LINES.matcher(value).replaceAll(" ")).replaceAll("?");
+    }
+
+    private void requireDepth(int depth) {
+        if (depth > properties.getMaxDepth()) {
+            throw new TraversalBudgetExceeded();
+        }
+    }
+
+    private static void requireSize(int size, int maximum) {
+        if (size > maximum) {
+            throw new TraversalBudgetExceeded();
+        }
+    }
+
+    private static final class TraversalBudgetExceeded extends RuntimeException {
+        private TraversalBudgetExceeded() {
+            super(null, null, false, false);
+        }
+    }
+
+    private static final class TraversalBudget {
+        private int remaining;
+
+        private TraversalBudget(int maximum) {
+            this.remaining = maximum;
+        }
+
+        private void consume(int amount) {
+            if (amount < 0 || amount > remaining) {
+                throw new TraversalBudgetExceeded();
+            }
+            remaining -= amount;
+        }
     }
 
     private static List<Field> fields(Class<?> type) {
@@ -457,6 +529,18 @@ public final class DefaultDataMaskingService implements DataMaskingService {
             return String.valueOf(value);
         }
         return "<object-not-logged>";
+    }
+
+    private MaskingResult boundedApply(
+        Object value, MaskingRule rule, TraversalBudget budget
+    ) {
+        String scalar = scalar(value);
+        int inputLength = scalar == null ? 0 : scalar.length();
+        budget.consume(inputLength);
+        MaskingResult result = apply(scalar, rule);
+        int outputLength = result.getValue() == null ? 0 : result.getValue().length();
+        budget.consume(Math.max(0, outputLength - inputLength));
+        return result;
     }
 
     private static Sensitive sensitive(Field field) {
@@ -550,6 +634,17 @@ public final class DefaultDataMaskingService implements DataMaskingService {
             String result = value;
             for (Pattern pattern : patterns) {
                 Matcher matcher = pattern.matcher(result);
+                long outputLength = 0;
+                int previousEnd = 0;
+                while (matcher.find()) {
+                    outputLength += matcher.start() - previousEnd;
+                    outputLength += rule.getSubstitution().length();
+                    if (outputLength + result.length() - matcher.end()
+                        > MAX_TEXT_CHARACTERS) {
+                        return OVERSIZED;
+                    }
+                    previousEnd = matcher.end();
+                }
                 result = matcher.replaceAll(
                     Matcher.quoteReplacement(rule.getSubstitution()));
             }

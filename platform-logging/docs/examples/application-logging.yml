@@ -15,8 +15,6 @@ platform:
     masking:
       enabled: true
       fail-on-invalid-rule: true
-      max-depth: 10
-      max-string-length: 4096
       rules:
         - name: customer-email
           match-type: FIELD_NAME
@@ -38,3 +36,17 @@ platform:
       enabled: true
       fail-mode: FAIL_OPEN
 
+jasypt:
+  encryptor:
+    password: ${JASYPT_ENCRYPTOR_PASSWORD}
+    algorithm: PBEWITHHMACSHA512ANDAES_256
+    key-obtention-iterations: 210000
+    salt-generator-classname: org.jasypt.salt.RandomSaltGenerator
+    iv-generator-classname: org.jasypt.iv.RandomIvGenerator
+
+logging:
+  level:
+    PLATFORM_CACHE: INFO
+    PLATFORM_QUEUE: INFO
+    PLATFORM_CRYPTO: INFO
+    OUTBOUND_CALL: INFO

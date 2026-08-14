@@ -19,7 +19,7 @@
     { "name": "platform.service-exchange.clients.*.logging.curl-enabled", "type": "java.lang.Boolean", "defaultValue": false },
     { "name": "platform.service-exchange.clients.*.logging.request-headers-enabled", "type": "java.lang.Boolean", "defaultValue": true },
     { "name": "platform.service-exchange.clients.*.logging.request-body-enabled", "type": "java.lang.Boolean", "defaultValue": false },
-    { "name": "platform.service-exchange.clients.*.logging.max-body-length", "type": "java.lang.Integer", "defaultValue": 4096 },
+    { "name": "platform.service-exchange.clients.*.logging.max-body-length", "type": "java.lang.Integer", "defaultValue": 4096, "description": "Deprecated compatibility property; log bodies are never partially truncated.", "deprecation": { "level": "warning", "reason": "Body output now uses a hard whole-value safety omission policy." } },
     { "name": "platform.service-exchange.clients.*.audit.enabled", "type": "java.lang.Boolean", "defaultValue": true },
     { "name": "platform.service-exchange.clients.*.audit.publish-attempt-events", "type": "java.lang.Boolean", "defaultValue": false },
     { "name": "platform.service-exchange.clients.*.audit.failure-mode", "type": "com.company.platform.exchange.autoconfigure.properties.AuditFailureMode", "defaultValue": "FAIL_OPEN" }

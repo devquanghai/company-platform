@@ -36,10 +36,6 @@ spring:
         pool:
           enabled: true
 
-jasypt:
-  encryptor:
-    password: haicut12102001@
-
 resilience4j:
   circuitbreaker:
     instances:

@@ -214,9 +214,39 @@ wraps that key. Temporary data-key bytes are cleared in `finally`.
 
 ## 25. Jasypt compatibility
 
-Jasypt is an extension-only compatibility provider, disabled by default. A
-consumer must add and manage a compatible Jasypt dependency, enable the
-provider and supply its password through `KeyProvider`. No fallback occurs.
+`platform-logging` owns the managed Jasypt starter for the whole platform. The
+starter resolves `ENC(...)` through Spring `Environment`; cache, queue,
+database and service-exchange must not ship a Jasypt dependency or decryptor.
+The crypto provider remains opt-in for explicit payload PBE operations.
+
+```yaml
+jasypt:
+  encryptor:
+    password: ${JASYPT_ENCRYPTOR_PASSWORD}
+    algorithm: PBEWITHHMACSHA512ANDAES_256
+    key-obtention-iterations: 210000
+    salt-generator-classname: org.jasypt.salt.RandomSaltGenerator
+    iv-generator-classname: org.jasypt.iv.RandomIvGenerator
+```
+
+The platform supplies these algorithm/KDF/salt/IV defaults and fails startup
+when an application weakens them. Existing ciphertext created with a weaker
+policy must be decrypted in a controlled migration and re-encrypted; never
+commit the old master password or ciphertext.
+An application-supplied custom `StringEncryptor` is an explicit security
+extension outside this property-based guarantee and must be independently
+reviewed for equivalent algorithm, KDF, random salt and random IV policy.
+
+`PropertyCryptoService` is the supported operator API for `ENC(...)` values.
+Neither plaintext, ciphertext nor the master password is written to logs.
+
+Platform operation categories are `PLATFORM_CACHE`, `PLATFORM_QUEUE`,
+`PLATFORM_CRYPTO` and `OUTBOUND_CALL`. Use `DEBUG` during diagnosis and keep
+`INFO` in production; trace/debug events contain operation metadata and duration,
+never cache keys, message payloads, credentials or decrypted values. Valid
+sanitized values are emitted without partial truncation. A graph/body beyond the
+hard safety budget is omitted as `<oversized-not-logged>` to prevent heap, disk
+and recursive log-amplification failures.
 
 ## 26. Key provider and cache
 

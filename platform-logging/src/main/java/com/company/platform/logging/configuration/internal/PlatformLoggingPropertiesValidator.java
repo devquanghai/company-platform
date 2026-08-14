@@ -67,6 +67,10 @@ public final class PlatformLoggingPropertiesValidator
                 && !StringUtils.hasText(rule.getSubstitution())) {
                 fail("masking substitution must not be blank");
             }
+            if (rule.getSubstitution() != null
+                && rule.getSubstitution().length() > 4096) {
+                fail("masking substitution exceeds the safe length");
+            }
             validateExpressions(rule);
             if (StringUtils.hasText(rule.getStrategyBean())
                 && !beans.containsBean(rule.getStrategyBean())) {

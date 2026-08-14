@@ -11,6 +11,8 @@ import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.rabbit.connection.CorrelationData;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -25,6 +27,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.TimeUnit;
 
 public final class RabbitMqMessagePublisher implements MessagePublisher {
+    private static final Logger LOG = LoggerFactory.getLogger("PLATFORM_QUEUE");
     private static final int MAX_HEADERS = 64;
     private static final int MAX_HEADER_BYTES = 8 * 1024;
     private static final int MAX_TOTAL_HEADER_BYTES = 32 * 1024;
@@ -92,6 +95,9 @@ public final class RabbitMqMessagePublisher implements MessagePublisher {
         String messageId
     ) {
         validate(request);
+        long started = System.nanoTime();
+        LOG.trace("queue_publish_started provider=RABBITMQ destination={}",
+            request.destination());
         CorrelationData correlation = new CorrelationData(messageId);
         try {
             Message message = template.getMessageConverter().toMessage(
@@ -108,6 +114,9 @@ public final class RabbitMqMessagePublisher implements MessagePublisher {
                     message, correlation);
             }
         } catch (RuntimeException failure) {
+            LOG.debug("queue_publish_finished provider=RABBITMQ destination={} outcome=FAILED duration_ns={} error_type={}",
+                request.destination(), System.nanoTime() - started,
+                failure.getClass().getSimpleName());
             return CompletableFuture.failedFuture(failed(failure, messageId));
         }
         Duration timeout = publishTimeout(request);
@@ -116,6 +125,9 @@ public final class RabbitMqMessagePublisher implements MessagePublisher {
             .handle((confirm, failure) -> {
                 if (failure != null) {
                     Throwable cause = unwrap(failure);
+                    LOG.debug("queue_publish_finished provider=RABBITMQ destination={} outcome=FAILED duration_ns={} error_type={}",
+                        request.destination(), System.nanoTime() - started,
+                        cause.getClass().getSimpleName());
                     QueuePublishException mapped = cause instanceof TimeoutException
                         ? new QueuePublishException(
                             "QUEUE.RABBITMQ.PUBLISH.UNKNOWN_OUTCOME",
@@ -128,11 +140,14 @@ public final class RabbitMqMessagePublisher implements MessagePublisher {
                 boolean returned = correlation.getReturned() != null;
                 PublishStatus status = returned ? PublishStatus.RETURNED
                     : confirm.ack() ? PublishStatus.CONFIRMED : PublishStatus.REJECTED;
-                return new PublishResult(
+                PublishResult result = new PublishResult(
                     status, QueueProviderType.RABBITMQ,
                     request.destination(), messageId, completed,
                     returned ? "QUEUE.RABBITMQ.PUBLISH.RETURNED"
                         : confirm.ack() ? null : "QUEUE.RABBITMQ.PUBLISH.NACK");
+                LOG.debug("queue_publish_finished provider=RABBITMQ destination={} outcome={} duration_ns={}",
+                    request.destination(), status, System.nanoTime() - started);
+                return result;
             });
     }
 

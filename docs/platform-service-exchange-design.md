@@ -75,8 +75,9 @@ Boot builder instrumentation preserves trace propagation. Platform observation
 adds only `client.name` and `http.method`; URL, payload, request ID and trace ID
 are not meter tags. Active trace IDs are never generated or overwritten.
 
-Logging delegates to platform-logging masking, masks before truncating, and does
-not buffer binary/multipart/resource/stream bodies. cURL is disabled by default.
+Logging delegates to platform-logging masking and never emits a partial/truncated
+value. Oversized values are omitted as one safe sentinel; binary, multipart,
+resource and stream bodies are not buffered. cURL is disabled by default.
 Only relative request URIs are accepted. Exception messages contain no body,
 credential, header value or full dynamic target.
 

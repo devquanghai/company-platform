@@ -261,7 +261,7 @@ public final class DefaultPlatformLogger implements PlatformLogger {
         }
         String safe = value.toUpperCase(java.util.Locale.ROOT)
             .replaceAll("[^A-Z0-9_.-]", "_");
-        return safe.substring(0, Math.min(128, safe.length()));
+        return safe.length() <= 128 ? safe : "OVERSIZED_EVENT_NAME";
     }
 
     private String hashUserId(String value) {

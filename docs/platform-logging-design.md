@@ -18,9 +18,9 @@ contain no Logback or business-domain types. Defaults are final, thread-safe and
 replaceable. Properties live under `autoconfigure.properties`.
 
 The root reactor adds `platform-logging` as a module and managed artifact.
-The child contains no hard-coded dependency version. Jasypt remains an
-extension-only provider until a compatible version is deliberately pinned in
-the root dependency management.
+The child contains no hard-coded dependency version. Jasypt starter and property
+crypto are centrally owned here; the compatible version is pinned only in root
+dependency management.
 
 ## Masking pipeline
 

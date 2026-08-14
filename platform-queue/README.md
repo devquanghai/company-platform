@@ -236,24 +236,13 @@ publisher kiểm tra message sau conversion và reject body lớn hơn 1 MiB.
 
 ## 17. Jasypt encryption
 
-Jasypt là opt-in để provider dependency vẫn isolated:
-
-```xml
-<dependency>
-  <groupId>com.github.ulisesbocchio</groupId>
-  <artifactId>jasypt-spring-boot-starter</artifactId>
-</dependency>
-```
-
-Starter decrypt ở Environment/PropertySource trước khi Boot bind
-`spring.kafka.*` hoặc `spring.rabbitmq.*`; queue không có crypto implementation.
+Jasypt starter và property crypto thuộc `platform-logging`. Queue không chứa
+dependency hoặc decryptor Jasypt. Logging-owned Environment integration resolve
+`ENC(...)` trước khi Boot bind `spring.kafka.*` hoặc `spring.rabbitmq.*`.
 
 ## 18. ENC(...) examples
 
 ```yaml
-jasypt:
-  encryptor:
-    password: ${JASYPT_ENCRYPTOR_PASSWORD}
 spring:
   rabbitmq:
     password: ENC(...)
@@ -262,24 +251,8 @@ spring:
       sasl.jaas.config: ENC(...)
 ```
 
-Master password phải đến từ Vault, Kubernetes Secret, CI/CD secret,
-environment hoặc secret manager; không commit vào repository.
-
-## 19. Maven encrypt / decrypt
-
-```bash
-# Chỉ chạy local trong shell tin cậy; không đặt command này trong CI log.
-mvn jasypt:encrypt-value \
-  -Djasypt.encryptor.password="${JASYPT_ENCRYPTOR_PASSWORD}" \
-  -Djasypt.plugin.value="secret-value"
-
-mvn jasypt:decrypt-value \
-  -Djasypt.encryptor.password="${JASYPT_ENCRYPTOR_PASSWORD}" \
-  -Djasypt.plugin.value="<encrypted-value>"
-```
-
-Maven `-D` có thể lộ giá trị qua process argv. Với automation, ưu tiên secret
-provider/tooling đọc password từ protected file hoặc stdin thay vì command line.
+Master password và operator workflow được cấu hình duy nhất theo tài liệu
+`platform-logging`; không commit hoặc log secret.
 
 ## 20. Migration from old platform.queue.kafka.*
 

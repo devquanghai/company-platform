@@ -1,11 +1,9 @@
 package com.company.platform.integration.encrypt.controller;
 
-import com.company.platform.cache.api.crypto.PropertyCryptoService;
-import com.company.platform.cache.internal.crypto.JasyptPropertyCryptoService;
+import com.company.platform.logging.api.crypto.PropertyCryptoService;
 import com.company.platform.core.rest.response.ApiResponse;
 import com.company.platform.integration.encrypt.dto.request.CryptoValueRequest;
 import com.company.platform.integration.encrypt.dto.response.CryptoValueResponse;
-import com.company.platform.integration.encrypt.service.JasyptService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;

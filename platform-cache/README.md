@@ -250,55 +250,14 @@ Không thêm alias dưới `platform.cache` cho TTL, cache names, null values,
 Caffeine spec, Redis host/port/password, timeout, pool, SSL, Sentinel hoặc Cluster.
 Tra cứu metadata của Spring Boot/Caffeine cho các tùy chọn này.
 
-## 12. Jasypt encryption
+## 12. Jasypt ownership
 
-Starter Jasypt xử lý `ENC(...)` ở Environment/PropertySource trước khi Boot bind
-properties. Cơ chế áp dụng cho Redis, datasource, Kafka, mail và mọi property khác;
-platform không tự decrypt Redis password.
+Jasypt starter, supported `PropertyCryptoService` và Environment decryption thuộc
+`platform-logging`. Cache không chứa Jasypt dependency hay decryptor; Redis secret
+được Boot bind sau khi logging-owned Environment integration resolve `ENC(...)`.
+FQCN crypto cũ của cache chỉ còn deprecated compatibility stubs và không tạo bean.
 
-```yaml
-jasypt:
-  encryptor:
-    password: ${JASYPT_ENCRYPTOR_PASSWORD}
-```
-
-Chỉ khai báo master password khi sử dụng Jasypt. Thiếu/sai key làm resolution/bind
-của property `ENC(...)` thất bại; cấu hình secret được Boot bind khi startup vì thế
-fail-fast. Property mã hóa chưa từng được resolve vẫn giữ semantics lazy của Jasypt.
-Không có fallback về ciphertext thô.
-
-## 13. Encrypt value
-
-Java API:
-
-```java
-String encrypted = propertyCryptoService.encryptAndWrap("redis-password");
-```
-
-Maven plugin của Jasypt:
-
-```bash
-mvn jasypt:encrypt-value \
-  -Djasypt.encryptor.password="${JASYPT_ENCRYPTOR_PASSWORD}" \
-  -Djasypt.plugin.value="my-secret"
-```
-
-`encryptAndWrap` trả nguyên input đã bọc `ENC(...)`, tránh double encryption.
-
-## 14. Decrypt value
-
-`PropertyCryptoService.decrypt` nhận cả ciphertext thuần và `ENC(ciphertext)`.
-Cho tác vụ operator cục bộ:
-
-```bash
-mvn jasypt:decrypt-value \
-  -Djasypt.encryptor.password="${JASYPT_ENCRYPTOR_PASSWORD}" \
-  -Djasypt.plugin.value="<encrypted-value>"
-```
-
-Không expose encrypt/decrypt qua REST endpoint.
-
-## 15. ENC(...) usage
+## 13. ENC(...) usage
 
 ```yaml
 spring:
@@ -309,19 +268,19 @@ spring:
 
 Không log ciphertext, plaintext, decrypted value hoặc input khi crypto thất bại.
 
-## 16. Environment variable master key
+## 14. Environment variable master key
 
 Inject `JASYPT_ENCRYPTOR_PASSWORD` từ environment, Kubernetes Secret, Vault,
 Secret Manager hoặc CI/CD secret. Không commit giá trị thật vào YAML/script/source.
 
-## 17. Security recommendations
+## 15. Security recommendations
 
 - Giới hạn quyền đọc master key và rotate định kỳ.
 - Không expose key/decrypted secret qua actuator hoặc exception.
 - Không dùng cache cho credential/source-of-truth/coordination chính xác.
 - Không dùng insecure TLS hoặc raw sensitive data làm cache key.
 
-## 18. Migration from old platform.cache.redis.* properties
+## 16. Migration from old platform.cache.redis.* properties
 
 ```yaml
 # Old (removed)

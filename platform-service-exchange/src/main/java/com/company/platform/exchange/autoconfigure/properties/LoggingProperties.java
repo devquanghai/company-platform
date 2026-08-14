@@ -20,7 +20,6 @@ public class LoggingProperties {
     boolean responseHeadersEnabled = true;
     boolean requestBodyEnabled;
     boolean responseBodyEnabled;
-    int maxBodyLength = 4096;
     Set<String> sensitiveHeaders = new LinkedHashSet<>();
     Set<String> sensitiveFields = new LinkedHashSet<>();
     Set<String> sensitiveQueryParameters = new LinkedHashSet<>();
