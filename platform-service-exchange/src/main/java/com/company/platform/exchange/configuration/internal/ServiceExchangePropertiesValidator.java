@@ -1,34 +1,59 @@
 package com.company.platform.exchange.configuration.internal;
 
+import com.company.platform.exchange.api.client.ServiceExchangeClientType;
 import com.company.platform.exchange.autoconfigure.properties.ClientProperties;
 import com.company.platform.exchange.autoconfigure.properties.ServiceExchangeProperties;
 import com.company.platform.exchange.domain.exception.InvalidClientConfigurationException;
-import com.company.platform.exchange.domain.model.ExchangeProtocol;
+import org.springframework.boot.context.properties.bind.Bindable;
+import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.boot.ssl.NoSuchSslBundleException;
 import org.springframework.boot.ssl.SslBundles;
+import org.springframework.core.env.Environment;
 import org.springframework.util.StringUtils;
 
-import java.time.Duration;
+import java.net.URI;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 public final class ServiceExchangePropertiesValidator {
-
     private static final Pattern CLIENT_NAME = Pattern.compile("[a-z0-9][a-z0-9._-]*");
+    private static final Set<String> ROOT_KEYS = Set.of("enabled", "clients");
+    private static final Set<String> CLIENT_KEYS = Set.of(
+        "enabled", "type", "base-url", "grpc-channel", "resilience-instance",
+        "ssl-bundle", "resilience-enabled", "observability-enabled",
+        "logging", "audit");
+
     private final ServiceExchangeProperties properties;
     private final SslBundles sslBundles;
+    private final Environment environment;
 
     public ServiceExchangePropertiesValidator(
-        ServiceExchangeProperties properties, Optional<SslBundles> sslBundles
+        ServiceExchangeProperties properties,
+        Optional<SslBundles> sslBundles,
+        Environment environment
     ) {
         this.properties = properties;
         this.sslBundles = sslBundles.orElse(null);
+        this.environment = environment;
     }
 
     public void validate() {
-        for (Map.Entry<String, ClientProperties> entry : properties.getClients().entrySet()) {
-            validate(entry.getKey(), entry.getValue());
+        rejectLegacyProperties();
+        validateRedirectPolicy();
+        properties.getClients().forEach(this::validate);
+    }
+
+    private void validateRedirectPolicy() {
+        boolean hasHttpClient = properties.getClients().values().stream()
+            .anyMatch(client -> client.isEnabled()
+                && client.getType() != ServiceExchangeClientType.GRPC);
+        String redirects = environment.getProperty("spring.http.clients.redirects", "");
+        if (hasHttpClient && !"dont-follow".equalsIgnoreCase(redirects)
+            && !"DONT_FOLLOW".equalsIgnoreCase(redirects)) {
+            fail("<root>",
+                "spring.http.clients.redirects must be DONT_FOLLOW to preserve named-client origin");
         }
     }
 
@@ -36,78 +61,85 @@ public final class ServiceExchangePropertiesValidator {
         if (!StringUtils.hasText(name) || !CLIENT_NAME.matcher(name).matches()) {
             fail(name, "client name must match " + CLIENT_NAME);
         }
-        if (client.getProtocol() == null) {
-            fail(name, "protocol is required");
-        }
         if (!client.isEnabled()) {
             return;
         }
-        if (client.getProtocol() == ExchangeProtocol.HTTP
-            && !StringUtils.hasText(client.getHttp().getBaseUrl())) {
-            fail(name, "http.base-url is required");
+        if (client.getType() == null) {
+            fail(name, "type is required");
         }
-        if (client.getProtocol() == ExchangeProtocol.GRPC
-            && !StringUtils.hasText(client.getGrpc().getAddress())) {
-            fail(name, "grpc.address is required");
+        if (!client.getLogging().getSensitiveHeaders().isEmpty()
+            || !client.getLogging().getSensitiveFields().isEmpty()
+            || !client.getLogging().getSensitiveQueryParameters().isEmpty()) {
+            fail(name,
+                "per-client sensitive rules are unsupported; configure platform-logging masking");
         }
-        positive(name, "http.connect-timeout", client.getHttp().getConnectTimeout());
-        positive(name, "http.response-timeout", client.getHttp().getResponseTimeout());
-        positive(name, "grpc.default-deadline", client.getGrpc().getDefaultDeadline());
-        if (client.getProxy().isEnabled()
-            && (!StringUtils.hasText(client.getProxy().getHost())
-                || client.getProxy().getPort() < 1 || client.getProxy().getPort() > 65535)) {
-            fail(name, "proxy host and port 1..65535 are required");
-        }
-        if (client.getResilience().getRetry().getMaxAttempts() < 1) {
-            fail(name, "resilience.retry.max-attempts must be at least 1");
-        }
-        if (client.getResilience().getRateLimiter().getLimitForPeriod() < 1
-            || client.getResilience().getRateLimiter().getLimitRefreshPeriod().isZero()
-            || client.getResilience().getRateLimiter().getLimitRefreshPeriod().isNegative()) {
-            fail(name, "resilience.rate-limiter values must be positive");
-        }
-        validateSsl(name, client);
-    }
-
-    private void validateSsl(String name, ClientProperties client) {
-        if (client.getSsl().isTrustAll()
-            || !client.getSsl().isHostnameVerificationEnabled()) {
-            boolean production = properties.getEnvironment().equalsIgnoreCase("production")
-                || properties.getEnvironment().equalsIgnoreCase("prod");
-            if (!properties.isAllowInsecureSsl() || production) {
-                fail(name, "insecure SSL options require allow-insecure-ssl outside production");
+        if (client.getType() == ServiceExchangeClientType.GRPC) {
+            if (!StringUtils.hasText(client.getGrpcChannel())) {
+                fail(name, "grpc-channel is required for GRPC");
             }
-        }
-        if (!client.getSsl().isEnabled()) {
-            if (client.getSsl().isTrustAll()
-                || !client.getSsl().isHostnameVerificationEnabled()
-                || StringUtils.hasText(client.getSsl().getBundle())) {
-                fail(name, "ssl.enabled must be true when SSL options are configured");
+            if (StringUtils.hasText(client.getBaseUrl())
+                || StringUtils.hasText(client.getSslBundle())) {
+                fail(name, "GRPC transport is configured under native spring.grpc.client.*");
             }
             return;
         }
-        if (client.getProtocol() == ExchangeProtocol.GRPC
-            && client.getGrpc().getNegotiationType()
-                == com.company.platform.exchange.autoconfigure.properties.GrpcNegotiationType.MTLS
-            && !StringUtils.hasText(client.getSsl().getBundle())) {
-            fail(name, "gRPC mTLS requires ssl.bundle with key material");
+        validateBaseUrl(name, client.getBaseUrl());
+        validateSslBundle(name, client.getSslBundle());
+    }
+
+    private void validateBaseUrl(String name, String value) {
+        if (!StringUtils.hasText(value)) {
+            fail(name, "base-url is required");
         }
-        if (StringUtils.hasText(client.getSsl().getBundle())) {
-            if (sslBundles == null) {
-                fail(name, "SSL Bundle support is unavailable");
+        try {
+            URI uri = URI.create(value);
+            if (!("http".equalsIgnoreCase(uri.getScheme())
+                || "https".equalsIgnoreCase(uri.getScheme()))
+                || uri.getHost() == null || uri.getRawUserInfo() != null
+                || uri.getRawFragment() != null || uri.getRawQuery() != null
+                || (StringUtils.hasText(uri.getRawPath()) && !"/".equals(uri.getRawPath()))) {
+                fail(name, "base-url must be an HTTP(S) origin without user-info, query or fragment");
             }
-            try {
-                sslBundles.getBundle(client.getSsl().getBundle());
-            } catch (NoSuchSslBundleException exception) {
-                fail(name, "SSL Bundle does not exist");
-            }
+        } catch (IllegalArgumentException exception) {
+            fail(name, "base-url is invalid");
         }
     }
 
-    private static void positive(String client, String field, Duration duration) {
-        if (duration == null || duration.isNegative() || duration.isZero()) {
-            fail(client, field + " must be positive");
+    private void validateSslBundle(String name, String bundle) {
+        if (!StringUtils.hasText(bundle)) {
+            return;
         }
+        if (sslBundles == null) {
+            fail(name, "SSL Bundle support is unavailable");
+        }
+        try {
+            sslBundles.getBundle(bundle);
+        } catch (NoSuchSslBundleException exception) {
+            fail(name, "SSL Bundle '" + bundle + "' does not exist");
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void rejectLegacyProperties() {
+        Map<String, Object> root = Binder.get(environment)
+            .bind("platform.service-exchange", Bindable.mapOf(String.class, Object.class))
+            .orElse(Map.of());
+        root.keySet().stream().filter(key -> !ROOT_KEYS.contains(key)).findFirst()
+            .ifPresent(key -> fail("<root>",
+                "unsupported legacy property platform.service-exchange." + key));
+        Object clients = root.get("clients");
+        if (!(clients instanceof Map<?, ?> clientMap)) {
+            return;
+        }
+        clientMap.forEach((name, raw) -> {
+            if (!(raw instanceof Map<?, ?> values)) {
+                return;
+            }
+            values.keySet().stream().map(String::valueOf)
+                .filter(key -> !CLIENT_KEYS.contains(key)).findFirst()
+                .ifPresent(key -> fail(String.valueOf(name),
+                    "unsupported legacy client property '" + key + "'"));
+        });
     }
 
     private static void fail(String client, String detail) {

@@ -1,34 +1,25 @@
 package com.company.platform.exchange.autoconfigure.resilience;
 
-import com.company.platform.exchange.client.internal.application.ClientConfigurationResolver;
 import com.company.platform.exchange.autoconfigure.PlatformServiceExchangeAutoConfiguration;
-import com.company.platform.exchange.domain.policy.RetryDecisionPolicy;
-import com.company.platform.exchange.resilience.internal.application.DefaultResilienceExecutor;
-import com.company.platform.exchange.resilience.internal.application.DefaultRetryDecisionPolicy;
-import com.company.platform.exchange.resilience.executor.ResilienceExecutor;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.context.annotation.Bean;
 
-@AutoConfiguration(after = PlatformServiceExchangeAutoConfiguration.class)
+/** @deprecated Auto-configuration is registered from the resilience feature. */
+@Deprecated
+@AutoConfiguration(
+    after = PlatformServiceExchangeAutoConfiguration.class,
+    afterName = {
+        "io.github.resilience4j.springboot.bulkhead.autoconfigure.BulkheadAutoConfiguration",
+        "io.github.resilience4j.springboot.circuitbreaker.autoconfigure.CircuitBreakerAutoConfiguration",
+        "io.github.resilience4j.springboot.ratelimiter.autoconfigure.RateLimiterAutoConfiguration",
+        "io.github.resilience4j.springboot.retry.autoconfigure.RetryAutoConfiguration",
+        "io.github.resilience4j.springboot.timelimiter.autoconfigure.TimeLimiterAutoConfiguration"
+    })
 @ConditionalOnClass(CircuitBreaker.class)
 @ConditionalOnProperty(
     prefix = "platform.service-exchange", name = "enabled",
     havingValue = "true", matchIfMissing = true)
-public class ExchangeResilienceAutoConfiguration {
-
-    @Bean
-    @ConditionalOnMissingBean
-    public RetryDecisionPolicy retryDecisionPolicy(ClientConfigurationResolver resolver) {
-        return new DefaultRetryDecisionPolicy(resolver);
-    }
-
-    @Bean
-    @ConditionalOnMissingBean
-    public ResilienceExecutor resilienceExecutor(ClientConfigurationResolver resolver) {
-        return new DefaultResilienceExecutor(resolver);
-    }
-}
+public class ExchangeResilienceAutoConfiguration extends
+    com.company.platform.exchange.resilience.internal.autoconfigure.ExchangeResilienceAutoConfiguration { }

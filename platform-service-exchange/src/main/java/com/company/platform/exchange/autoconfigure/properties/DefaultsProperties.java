@@ -2,20 +2,15 @@ package com.company.platform.exchange.autoconfigure.properties;
 
 import lombok.Getter;
 import lombok.Setter;
-import lombok.experimental.FieldDefaults;
-
 import java.time.Duration;
 
-import static lombok.AccessLevel.PRIVATE;
-
-@Getter
-@Setter
-@FieldDefaults(level = PRIVATE)
+/** @deprecated Use native Boot and Resilience4j defaults. */
+@Deprecated
+@Getter @Setter
 public class DefaultsProperties {
-
-    Duration connectTimeout = Duration.ofSeconds(3);
-    Duration requestTimeout = Duration.ofSeconds(10);
-    LoggingProperties logging = new LoggingProperties();
-    AuditProperties audit = new AuditProperties();
-    ResilienceProperties resilience = new ResilienceProperties();
+    private Duration connectTimeout = Duration.ofSeconds(3);
+    private Duration requestTimeout = Duration.ofSeconds(10);
+    private LoggingProperties logging = new LoggingProperties();
+    private AuditProperties audit = new AuditProperties();
+    private ResilienceProperties resilience = new ResilienceProperties();
 }

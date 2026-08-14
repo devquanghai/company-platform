@@ -6,6 +6,7 @@ import com.company.platform.exchange.domain.exception.ClientDisabledException;
 import com.company.platform.exchange.domain.exception.ClientNotFoundException;
 import com.company.platform.exchange.domain.exception.InvalidClientConfigurationException;
 import com.company.platform.exchange.domain.model.ExchangeProtocol;
+import com.company.platform.exchange.api.client.ServiceExchangeClientType;
 
 import java.util.Map;
 import java.util.Objects;
@@ -32,7 +33,9 @@ public final class ClientConfigurationResolver {
 
     public ClientProperties resolve(String clientName, ExchangeProtocol expectedProtocol) {
         ClientProperties client = resolve(clientName);
-        if (client.getProtocol() != expectedProtocol) {
+        ExchangeProtocol actual = client.getType() == ServiceExchangeClientType.GRPC
+            ? ExchangeProtocol.GRPC : ExchangeProtocol.HTTP;
+        if (actual != expectedProtocol) {
             throw new InvalidClientConfigurationException(
                 clientName, "expected protocol " + expectedProtocol);
         }
@@ -41,5 +44,12 @@ public final class ClientConfigurationResolver {
 
     public Map<String, ClientProperties> clients() {
         return clients;
+    }
+
+    public String resilienceInstance(String clientName) {
+        ClientProperties client = resolve(clientName);
+        return client.getResilienceInstance() == null
+            || client.getResilienceInstance().isBlank()
+            ? clientName : client.getResilienceInstance();
     }
 }

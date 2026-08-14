@@ -18,11 +18,22 @@ public final class OutboundHttpException extends OutboundCallException {
     private final int retryCount;
     private final Duration duration;
     private final boolean retryable;
+    private final boolean recordable;
 
     public OutboundHttpException(
         String clientName, String method, URI uri, Integer status,
         Map<String, List<String>> headers, String responseBody, int retryCount,
         Duration duration, boolean retryable, Throwable cause
+    ) {
+        this(clientName, method, uri, status, headers, responseBody, retryCount,
+            duration, retryable,
+            status == null ? retryable : status == 408 || status >= 500, cause);
+    }
+
+    public OutboundHttpException(
+        String clientName, String method, URI uri, Integer status,
+        Map<String, List<String>> headers, String responseBody, int retryCount,
+        Duration duration, boolean retryable, boolean recordable, Throwable cause
     ) {
         super("EXCHANGE.HTTP_FAILED", clientName,
             "HTTP outbound call failed: client=" + clientName + ", method=" + method
@@ -35,5 +46,6 @@ public final class OutboundHttpException extends OutboundCallException {
         this.retryCount = retryCount;
         this.duration = duration;
         this.retryable = retryable;
+        this.recordable = recordable;
     }
 }

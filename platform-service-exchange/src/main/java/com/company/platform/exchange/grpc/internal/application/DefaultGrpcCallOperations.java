@@ -19,6 +19,7 @@ import com.company.platform.exchange.autoconfigure.properties.ClientProperties;
 import com.company.platform.exchange.domain.exception.OutboundCallException;
 import com.company.platform.exchange.domain.exception.OutboundFallbackException;
 import com.company.platform.exchange.domain.exception.OutboundGrpcException;
+import com.company.platform.exchange.domain.exception.SanitizedRemoteCauseException;
 import com.company.platform.exchange.domain.model.ExchangeProtocol;
 import com.company.platform.exchange.domain.policy.RetryContext;
 import com.company.platform.exchange.domain.policy.RetryDecisionPolicy;
@@ -100,18 +101,19 @@ public final class DefaultGrpcCallOperations implements GrpcCallOperations, Auto
         String clientName, String serviceName, String methodName, Supplier<T> invocation
     ) {
         return execute(GrpcCallRequest.builder().clientName(clientName)
-            .serviceName(serviceName).methodName(methodName).idempotent(false).build(),
-            invocation);
+            .serviceName(serviceName).methodName(methodName)
+            .deadline(Duration.ofSeconds(5)).idempotent(false).build(), invocation);
     }
 
     @Override
     public <T> T execute(GrpcCallRequest request, Supplier<T> invocation) {
         ClientProperties client = configurations.resolve(
             request.getClientName(), ExchangeProtocol.GRPC);
-        Duration configured = client.getGrpc().getDefaultDeadline();
-        Duration deadline = request.getDeadline() == null
-            ? configured : request.getDeadline().compareTo(configured) <= 0
-                ? request.getDeadline() : configured;
+        Duration deadline = request.getDeadline();
+        if (deadline == null || deadline.isZero() || deadline.isNegative()) {
+            throw new IllegalArgumentException(
+                "An explicit positive gRPC logical-call deadline is required");
+        }
         Instant started = nowInstant();
         AtomicInteger attempts = new AtomicInteger();
         publish(client, new OutboundCallStartedEvent(
@@ -122,7 +124,8 @@ public final class DefaultGrpcCallOperations implements GrpcCallOperations, Auto
         try {
             T result = context.call(() -> {
                 Supplier<T> call = () -> invoke(client, request, deadline, attempts, invocation);
-                if (Boolean.FALSE.equals(request.getResilienceEnabled())) {
+                if (!client.isResilienceEnabled()
+                    || Boolean.FALSE.equals(request.getResilienceEnabled())) {
                     return call.get();
                 }
                 return resilience.execute(ResilienceExecutionContext.builder()
@@ -141,7 +144,7 @@ public final class DefaultGrpcCallOperations implements GrpcCallOperations, Auto
             OutboundGrpcException normalized = new OutboundGrpcException(
                 request.getClientName(), request.getServiceName(), request.getMethodName(),
                 Status.Code.UNKNOWN, Map.of(), Math.max(0, attempts.get() - 1),
-                deadline, false, exception);
+                deadline, false, new SanitizedRemoteCauseException(exception));
             return fallbackOrThrow(request, client, started, attempts.get(), normalized);
         } finally {
             context.cancel(null);
@@ -152,6 +155,14 @@ public final class DefaultGrpcCallOperations implements GrpcCallOperations, Auto
         ClientProperties client, GrpcCallRequest request, Duration deadline,
         AtomicInteger attempts, Supplier<T> invocation
     ) {
+        if (logicalDeadlineExpired()) {
+            throw new OutboundGrpcException(
+                request.getClientName(), request.getServiceName(), request.getMethodName(),
+                Status.Code.DEADLINE_EXCEEDED, Map.of(),
+                Math.max(0, attempts.get() - 1), deadline, false,
+                new SanitizedRemoteCauseException(
+                    new java.util.concurrent.TimeoutException("logical deadline expired")));
+        }
         int attempt = attempts.incrementAndGet();
         if (client.getAudit().isPublishAttemptEvents()) {
             publish(client, new OutboundCallAttemptEvent(
@@ -164,12 +175,18 @@ public final class DefaultGrpcCallOperations implements GrpcCallOperations, Auto
             boolean retryable = retryPolicy.evaluate(RetryContext.builder()
                 .clientName(request.getClientName()).protocol(ExchangeProtocol.GRPC)
                 .grpcStatus(code).exception(exception).idempotent(request.isIdempotent())
-                .build()).retry();
+                .build()).retry() && !logicalDeadlineExpired();
             throw new OutboundGrpcException(
                 request.getClientName(), request.getServiceName(), request.getMethodName(),
                 code, safeTrailers(exception.getTrailers()),
-                Math.max(0, attempt - 1), deadline, retryable, exception);
+                Math.max(0, attempt - 1), deadline, retryable,
+                new SanitizedRemoteCauseException(exception));
         }
+    }
+
+    private boolean logicalDeadlineExpired() {
+        io.grpc.Deadline deadline = Context.current().getDeadline();
+        return deadline != null && deadline.isExpired();
     }
 
     @SuppressWarnings("unchecked")
@@ -260,7 +277,7 @@ public final class DefaultGrpcCallOperations implements GrpcCallOperations, Auto
     ) {
         if (metrics != null) {
             metrics.record(request.getClientName(), ExchangeProtocol.GRPC,
-                request.getMethodName(), failure == null ? "SUCCESS" : "FAILED",
+                "grpc", failure == null ? "SUCCESS" : "FAILED",
                 status == null ? "UNKNOWN" : status.name(),
                 failure == null ? "none" : failure.getClass().getSimpleName(),
                 fallback, duration, Math.max(0, attempts - 1));

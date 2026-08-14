@@ -1,344 +1,458 @@
 # Platform Service Exchange
 
-Thư viện dùng chung cho outbound REST qua HTTP/HTTPS và gRPC qua HTTP/2. Module
-quản lý named client, connection/channel lifecycle, resilience, fallback,
-masking, audit và observability trong một artifact; không chứa business `.proto`
-hoặc endpoint cụ thể.
+## 1. Overview
 
-## Kiến trúc
+`platform-service-exchange` cung cấp registry động cho nhiều outbound client có
+identity ổn định. Platform sở hữu tên client, mapping transport, behavior,
+logging/audit/fallback và integration conventions. Spring Boot sở hữu HTTP
+infrastructure, SSL Bundle, observations; Resilience4j sở hữu policy registry;
+Jasypt sở hữu giải mã property ở `Environment`.
 
-Public contract nằm trong `api`, orchestration nằm trong `application`, transport
-nằm trong `adapter.outbound`, policy nằm trong `resilience`, còn Spring Boot
-wiring chỉ nằm trong `autoconfigure`. Chi tiết quyết định thiết kế xem
-[`docs/platform-service-exchange-design.md`](../docs/platform-service-exchange-design.md).
+Module hỗ trợ `WEBCLIENT`, `RESTCLIENT` và compatibility bridge gRPC. Không tạo
+HTTP engine, pool, TLS context, OpenTelemetry SDK hay resilience registry riêng.
 
-REST dùng Spring `RestClient` và Apache HttpClient 5. gRPC dùng generated stub của
-service tiêu thụ, Spring gRPC `GrpcChannelFactory`, `ChannelBuilderOptions` và
-shaded Netty. HTTPS không phải gRPC: REST có thể dùng HTTP hoặc HTTPS; gRPC luôn
-dùng HTTP/2 và có thể plaintext, TLS hoặc mTLS.
+## 2. Architecture
 
-## Maven
-
-```xml
-<dependency>
-    <groupId>com.company.platform</groupId>
-    <artifactId>platform-service-exchange</artifactId>
-</dependency>
+```text
+platform.service-exchange.clients.* -> named registry -> Boot WebClient/RestClient builder
+resilience4j.*                       -> native named registries
+management.*                         -> Micrometer observation/tracing
+spring.ssl.bundle.*                  -> TLS/mTLS material
+jasypt.encryptor.*                   -> Environment property decryption
 ```
 
-Version được quản lý bởi platform parent. Không thêm version vào service con.
+Builder prototype do Boot quản lý được clone cho từng client, vì vậy codec,
+customizer, SSL và observation instrumentation của Boot vẫn được giữ nguyên.
+Registry validate và materialize các client enabled khi startup; thêm client chỉ
+cần thêm YAML.
 
-## Auto-configuration
+## 3. Native-properties philosophy
 
-Auto-configuration đăng ký bằng
-`META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`,
-không component scan. Tắt toàn bộ module:
+`platform.service-exchange.*` chỉ quản lý:
 
-```yaml
-platform:
-  service-exchange:
-    enabled: false
-```
+- `enabled`;
+- tên client, `enabled`, `type`, `base-url` hoặc native `grpc-channel` reference;
+- `resilience-instance`, `ssl-bundle` reference;
+- `resilience-enabled`, `observability-enabled`;
+- platform logging/audit behavior còn được compatibility API sử dụng.
 
-Mọi extension bean mặc định đều back off khi application cung cấp bean riêng.
+Timeout, pool, proxy và transport tuning dùng Boot/native global customizer hoặc
+application-provided registry.
+Policy dùng `resilience4j.*`; tracing dùng `management.*`; TLS dùng
+`spring.ssl.bundle.*`; crypto dùng `jasypt.encryptor.*`. Legacy key bị reject để
+không bị Binder bỏ qua âm thầm.
 
-## Named REST client
+## 4. Enable/disable
 
 ```yaml
 platform:
   service-exchange:
     enabled: true
-    source-application: payment-service
-    clients:
-      payment-rest:
-        enabled: true
-        protocol: HTTP
-        http:
-          base-url: https://payment.internal
-          connect-timeout: 2s
-          connection-request-timeout: 2s
-          response-timeout: 8s
-          allow-absolute-uri: false
-          pool:
-            max-total: 200
-            max-per-route: 50
-            validate-after-inactivity: 5s
-            time-to-live: 5m
-            evict-idle-connections-after: 60s
-        ssl:
-          enabled: true
-          bundle: payment-client
-          hostname-verification-enabled: true
-          trust-all: false
 ```
 
-Caller chỉ truyền relative path theo mặc định. Absolute URI, `//host`, user-info
-và fragment bị chặn để không bỏ qua named-client policy hoặc tạo SSRF.
+Khi `enabled=false`, module không tạo registry, platform wrappers, audit hay
+observability beans. Client riêng có thể đặt `enabled=false`; `find` trả empty và
+`get` ném lỗi rõ ràng.
 
-## REST usage
-
-```java
-@Service
-@RequiredArgsConstructor
-public class PaymentGateway {
-    private final HttpExchangeOperations http;
-
-    public PaymentResponse createPayment(PaymentRequest request) {
-        return http.post(
-            "payment-rest",
-            "/api/v1/payments",
-            request,
-            PaymentResponse.class
-        ).body();
-    }
-}
-```
-
-Generic response:
-
-```java
-ExchangeResponse<List<CustomerResponse>> response =
-    http.get(
-        "customer-rest",
-        "/api/v1/customers",
-        Map.of("status", "ACTIVE"),
-        HttpHeaders.EMPTY,
-        new ParameterizedTypeReference<>() {}
-    );
-```
-
-`ExchangeRequest` builder hỗ trợ headers, cookies, query/path variable, content
-type, accept, idempotency key, audit attributes và controlled overrides.
-
-## gRPC
+## 5. Multiple named clients
 
 ```yaml
 platform:
   service-exchange:
     clients:
-      customer-grpc:
-        protocol: GRPC
-        grpc:
-          address: dns:///customer-grpc.internal:9090
-          negotiation-type: TLS
-          default-deadline: 5s
-          max-inbound-message-size: 8MB
-          keep-alive-time: 30s
-          keep-alive-timeout: 10s
-        ssl:
-          enabled: true
-          bundle: customer-grpc-client
+      esb:
+        type: webclient
+        base-url: https://esb.company.vn
+        resilience-instance: esb
+        ssl-bundle: internal-ca
+      crm:
+        type: webclient
+        base-url: https://crm.company.vn
+        resilience-instance: crm
+      payment:
+        type: restclient
+        base-url: https://payment.company.vn
+        resilience-instance: payment
+        ssl-bundle: payment-ca
 ```
+
+Default `type` là `WEBCLIENT`; default resilience và observability đều bật.
+Client name phải low-cardinality và là identity được dùng trong errors,
+observations, resilience mapping, logs và audit.
+
+## 6. WebClient
 
 ```java
-CustomerServiceGrpc.CustomerServiceBlockingStub stub =
-    grpcClientFactory.createStub(
-        "customer-grpc",
-        CustomerServiceGrpc::newBlockingStub
-    );
-
-CustomerResponse response = grpcCalls.execute(
-    "customer-grpc",
-    "customer.CustomerService",
-    "GetCustomer",
-    () -> stub.getCustomer(request)
-);
+ReactiveServiceExchangeClient crm = registry.get("crm", ReactiveServiceExchangeClient.class);
+Mono<Customer> customer = crm.get("/v1/customers/42", Customer.class);
 ```
 
-`GrpcCallOperations` dành cho unary synchronous call. Generated streaming stub
-được dùng trực tiếp vì streaming có lifecycle và retry semantics khác.
+Reactive API không bị ép thành blocking API. `WebClient.Builder` là prototype
+được Boot quản lý; module không gọi `WebClient.builder()`.
 
-### Plaintext, TLS và mTLS
+## 7. RestClient
 
-- `PLAINTEXT`: chỉ dùng trong network tin cậy hoặc local test.
-- `TLS`: dùng platform trust hoặc trust material trong SSL Bundle.
-- `MTLS`: SSL Bundle phải có cả key manager và trust manager.
+```java
+BlockingServiceExchangeClient payment =
+    registry.get("payment", BlockingServiceExchangeClient.class);
+PaymentResponse result = payment.post("/v1/payments", request, PaymentResponse.class);
+```
 
-Deadline bao phủ toàn bộ logical call, bao gồm retry. Per-call override chỉ được
-giảm deadline đã cấu hình.
+`RestClient.Builder` được Boot clone theo named client. Compatibility API
+`HttpExchangeOperations` vẫn resolve cùng named infrastructure, không tạo stack
+thứ hai.
 
-## Spring SSL Bundle
+## 8. Client registry
+
+```java
+ServiceExchangeClient client = registry.get("esb");
+Optional<ServiceExchangeClient> optional = registry.find("legacy");
+boolean configured = registry.contains("payment");
+```
+
+Registry có thể được application thay hoàn toàn; default bean luôn back off.
+Absolute URI, network-path (`//host`), user-info và fragment bị chặn để tránh
+bypass base URL/SSRF policy. Base URL chỉ được là HTTP(S) origin an toàn.
+
+Redirect phải tắt bằng native Boot policy để không vượt named origin:
+
+```yaml
+spring:
+  http:
+    clients:
+      redirects: dont-follow
+```
+
+## 9. Client customizer
+
+Application có thể cung cấp nhiều bean ordered:
+
+```java
+@Bean
+@Order(100)
+ServiceExchangeClientCustomizer commonHeaders() {
+    return new ServiceExchangeClientCustomizer() {
+        public boolean supports(String name) { return true; }
+        public void customize(ServiceExchangeClientCustomization client) {
+            client.defaultHeader("X-Platform-Client", client::clientName);
+        }
+    };
+}
+```
+
+`supports(name)` cho cả global (`true`) và named customizer; `Ordered/@Order`
+quyết định thứ tự ổn định. SPI không expose WebClient/RestClient type.
+
+## 10. Authentication customizer
+
+OAuth2/API key header thuộc application customizer. Advanced request signing dùng
+application-provided registry hoặc native client customization. Không đặt
+secret header trong `platform.service-exchange.clients.*` và không hard-code
+partner authentication trong platform.
+
+```java
+@Bean
+ServiceExchangeClientCustomizer paymentAuthentication(PaymentTokenProvider tokens) {
+    return new ServiceExchangeClientCustomizer() {
+        public boolean supports(String name) { return "payment".equals(name); }
+        public void customize(ServiceExchangeClientCustomization client) {
+            client.defaultHeader("Authorization", tokens::authorizationHeader);
+        }
+    };
+}
+```
+
+## 11. SSL Bundle
 
 ```yaml
 spring:
   ssl:
     bundle:
       jks:
-        payment-client:
-          keystore:
-            location: classpath:tls/client.p12
-            password: ${CLIENT_KEYSTORE_PASSWORD}
-            type: PKCS12
+        internal-ca:
           truststore:
-            location: classpath:tls/truststore.p12
-            password: ${CLIENT_TRUSTSTORE_PASSWORD}
+            location: ${INTERNAL_TRUSTSTORE}
+            password: ${INTERNAL_TRUSTSTORE_PASSWORD}
+
+platform:
+  service-exchange:
+    clients:
+      esb:
+        base-url: https://esb.company.vn
+        ssl-bundle: internal-ca
 ```
 
-Không commit password. Bundle được kiểm tra tồn tại lúc startup.
+Client chỉ giữ bundle reference. Bundle không tồn tại làm startup fail; module
+không hỗ trợ trust-all hay tắt hostname verification.
 
-## Proxy per client
+## 12. Proxy
+
+Không có `platform.service-exchange.*.proxy`. Dùng Boot/native HTTP client
+builder customization. Với proxy khác nhau theo client, implement ordered named
+customizer và lấy credential từ secret provider; không đổi JVM system property.
+
+## 13. Timeout
+
+Không có platform timeout mirror. RestClient/WebClient transport timeout dùng
+Boot/native HTTP-client configuration/customizer. Reactive logical timeout dùng
+named `resilience4j.timelimiter.instances.*`; gRPC dùng native channel/deadline.
+Transport timeout và TimeLimiter là hai boundary khác nhau.
+
+## 14. Connection pool
+
+Pool do HTTP implementation mà Boot chọn sở hữu. Nếu cần pool riêng theo client,
+application cấu hình connector/request factory trong named customizer. Public API
+không expose Reactor Netty hoặc Apache HttpClient types.
+
+## 15. Observability
+
+Boot instrumentation của WebClient/RestClient được giữ. Platform bổ sung
+observation `platform.service.exchange` với low-cardinality keys
+`client.name` và `http.method`; không tag URL đầy đủ, trace ID, request ID hay
+payload. Có thể tắt wrapper theo client bằng `observability-enabled: false`.
 
 ```yaml
-proxy:
-  enabled: true
-  scheme: http
-  host: proxy.internal
-  port: 8080
-  username: ${PAYMENT_PROXY_USERNAME:}
-  password: ${PAYMENT_PROXY_PASSWORD:}
-  non-proxy-hosts:
-    - localhost
-    - "*.internal"
+management:
+  observations:
+    enable:
+      http.client.requests: true
+      platform.service.exchange: true
 ```
 
-Không thay đổi JVM system properties. REST dùng proxy của Apache transport; gRPC
-shaded Netty hỗ trợ HTTP CONNECT. Scheme/transport không hỗ trợ sẽ fail fast.
-`ClientProxyCustomizer` cho phép thay đổi endpoint proxy qua model trung lập,
-không expose Apache API.
+## 16. Distributed tracing
 
-## Resilience
+Micrometer Tracing/OpenTelemetry được application/Boot cấu hình. Module không
+tạo SDK hoặc trace ID và không overwrite `traceparent`, baggage hay active span.
 
-Pipeline logic:
+```yaml
+management:
+  tracing:
+    sampling:
+      probability: 0.1
+```
+
+## 17. Correlation ID
+
+Compatibility operations giữ `X-Correlation-Id`/`X-Request-Id` từ
+`RequestContextProvider` và trace context platform. Native propagation header
+vẫn do framework quản lý; customizer có thể áp company headers cho client API.
+
+## 18. Logging/masking
+
+Logging/audit hiện hữu được giữ và delegate masking sang `platform-logging`
+`DataMaskingService`. Authorization, cookies, tokens, credentials và PII không
+được log plaintext. Body logging phải opt-in, bounded, mask trước truncate; binary,
+multipart, resource và streaming body không được buffer để log.
+
+## 19. cURL logging
+
+cURL mặc định tắt. Compatibility setting:
+
+```yaml
+platform:
+  service-exchange:
+    clients:
+      payment:
+        logging:
+          curl-enabled: false
+          max-body-length: 4096
+```
+
+Output được shell-quote, mask header/query/body và không đọc file/stream.
+
+## 20. Resilience4j
+
+Thêm `resilience4j-spring-boot4` trong application khi client bật resilience.
+Module lookup named instances đã được Boot bind; không tự tạo registry/config.
+Instance thiếu hoặc predicate không an toàn làm startup fail.
+
+Order logical call:
 
 ```text
 RateLimiter -> Bulkhead -> CircuitBreaker -> Retry -> transport
 ```
 
-Circuit breaker ghi nhận kết quả logical call sau retry. Fallback nằm ngoài
-pipeline và không biến lỗi transport thành circuit-breaker success.
+Reactive WebClient còn có outer `TimeLimiter`. Admission dùng zero wait để tránh
+thread pile-up. Named clients không dùng chung state nếu tên instance khác nhau.
+
+## 21. Circuit Breaker
 
 ```yaml
-resilience:
-  enabled: true
+resilience4j:
+  circuitbreaker:
+    instances:
+      esb:
+        sliding-window-size: 20
+        minimum-number-of-calls: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        record-exception-predicate: com.company.platform.exchange.api.resilience.OutboundCircuitBreakerPredicate
+```
+
+Predicate bỏ qua lỗi programming và business 4xx; chỉ remote/server/transient
+failure được record.
+
+## 22. Retry
+
+```yaml
+resilience4j:
   retry:
-    enabled: true
-    max-attempts: 3
-    wait-duration: 300ms
-    retry-http-statuses: [408, 425, 429, 500, 502, 503, 504]
-    retry-grpc-statuses: [UNAVAILABLE, RESOURCE_EXHAUSTED, DEADLINE_EXCEEDED]
-    retry-methods: [GET, HEAD, OPTIONS]
-  circuit-breaker:
-    enabled: true
-    sliding-window-size: 20
-    minimum-number-of-calls: 10
-    failure-rate-threshold: 50
-    wait-duration-in-open-state: 30s
-  rate-limiter:
-    enabled: true
-    limit-for-period: 100
-    limit-refresh-period: 1s
+    instances:
+      esb:
+        max-attempts: 3
+        wait-duration: 500ms
+        retry-exception-predicate: com.company.platform.exchange.api.resilience.OutboundRetryPredicate
+```
+
+Platform cap `max-attempts` ở 3. Chỉ connection/timeout/408/502/503/504 được
+retry mặc định. HTTP 429 chỉ nên opt-in bằng application predicate có xử lý
+`Retry-After` bounded. Minimal `post` API luôn non-retryable; compatibility API chỉ retry
+POST/PATCH khi request có explicit idempotency guarantee.
+
+## 23. Rate Limiter
+
+```yaml
+resilience4j:
+  ratelimiter:
+    instances:
+      esb:
+        limit-for-period: 100
+        limit-refresh-period: 1s
+        timeout-duration: 0
+```
+
+Zero wait là bắt buộc để admission fail-fast.
+
+## 24. Bulkhead
+
+```yaml
+resilience4j:
   bulkhead:
-    enabled: false
-    max-concurrent-calls: 50
+    instances:
+      esb:
+        max-concurrent-calls: 50
+        max-wait-duration: 0
 ```
 
-POST/PATCH không retry mặc định. Chỉ retry khi có idempotency key, caller đánh
-dấu idempotent, hoặc client opt-in rõ ràng. Status nghiệp vụ 400/401/403/404/
-409/422 và gRPC `INVALID_ARGUMENT`, `UNAUTHENTICATED`, `PERMISSION_DENIED`,
-`NOT_FOUND` không retry mặc định.
+## 25. TimeLimiter
 
-## Custom fallback
-
-```java
-@Component
-@ExchangeFallback(client = "payment-rest")
-public class PaymentFallback
-        implements OutboundFallbackHandler<PaymentResponse> {
-
-    @Override
-    public Class<PaymentResponse> responseType() {
-        return PaymentResponse.class;
-    }
-
-    @Override
-    public boolean supports(FallbackContext context) {
-        return context.getClientName().equals("payment-rest");
-    }
-
-    @Override
-    public PaymentResponse fallback(FallbackContext context) {
-        return PaymentResponse.pending();
-    }
-}
+```yaml
+resilience4j:
+  timelimiter:
+    instances:
+      esb:
+        timeout-duration: 5s
+        cancel-running-future: true
 ```
 
-Registry fail startup khi registration trùng. Không có fallback thì rethrow
-exception đã normalize; fallback lỗi được wrap thành `OutboundFallbackException`.
+TimeLimiter được áp cho reactive client; blocking RestClient phải dùng native
+transport timeout/deadline thích hợp.
 
-## Logging, cURL và masking
+## 26. Fallback
 
-Ba logger logic là `OUTBOUND_CALL`, `OUTBOUND_CURL`, `OUTBOUND_AUDIT`. cURL dùng
-shell quoting, URL/header/body đã masking và truncation. Binary, stream và
-`Resource` không bị đọc để log. Regular cURL không đại diện đúng gRPC; chỉ tạo
-grpcurl khi application có đủ unary descriptor và JSON payload an toàn.
+`OutboundFallbackHandler<T>` hiện hữu là application extension. Platform không
+return `null`, `{}` hay business response mặc định. Fallback nằm ngoài transport
+pipeline, explicit trong logs/audit/metrics, và handler lỗi không bị nuốt.
 
-Header nhạy cảm mặc định gồm Authorization, Proxy-Authorization, Cookie,
-Set-Cookie và API/token headers. Field mặc định gồm password, secret, token,
-clientSecret, privateKey, cardNumber, cvv, pin và accountNumber. Có thể mở rộng
-danh sách theo client.
+## 27. Error handling
 
-## Outbound audit
+Client API normalize vendor failure thành `ServiceExchangeClientException`, giữ
+root cause và expose an toàn `clientName`, method, HTTP status, retryable. Message
+không chứa credential hoặc body. Compatibility API tiếp tục dùng exception
+hierarchy chi tiết cho HTTP/gRPC. Streaming/file lớn nên dùng native client trực
+tiếp để giữ streaming semantics.
 
-Event immutable:
+## 28. Jasypt
 
-- `OutboundCallStartedEvent`
-- `OutboundCallAttemptEvent` (opt-in)
-- `OutboundCallCompletedEvent`
-- `OutboundCallFailedEvent`
+Service Exchange không decrypt secret. Application opt-in Jasypt starter; Jasypt
+wrap `Environment` trước khi Boot bind SSL, proxy, OAuth hay application secret.
 
-Mỗi logical call chỉ có một final event. Event không chứa raw credential hoặc raw
-body mặc định. Default publisher dùng Spring `ApplicationEventPublisher`:
-
-```java
-@Component
-public class OutboundAuditListener {
-    @EventListener
-    public void handle(OutboundCallCompletedEvent event) {
-        // Persist, Kafka hoặc outbox.
-    }
-}
+```yaml
+jasypt:
+  encryptor:
+    password: ${JASYPT_ENCRYPTOR_PASSWORD}
 ```
 
-Override `OutboundCallEventPublisher` để dùng Kafka/database/outbox. `FAIL_OPEN`
-là mặc định. `FAIL_CLOSED` chỉ nên dùng khi synchronous audit là yêu cầu nghiệp
-vụ vì listener lỗi sẽ làm business call lỗi.
+## 29. `ENC(...)`
 
-## Metrics và tracing
+```yaml
+external:
+  esb:
+    api-key: ENC(...)
+```
 
-Khi có Micrometer, module đăng ký low-cardinality metrics:
+Customizer inject property đã decrypt. Không đặt master password trong source,
+command line hoặc log; dùng secret manager/protected environment.
 
-- `platform.exchange.calls`
-- `platform.exchange.call.duration`
-- `platform.exchange.errors`
-- `platform.exchange.retries`
-- `platform.exchange.fallbacks`
+## 30. Complete multi-client example
 
-Tags chỉ gồm client, protocol, method, outcome, status group, exception category
-và fallback. Không dùng URI đầy đủ, customer ID, request ID hoặc trace ID làm tag.
-Trace/request context từ `platform-core` được đưa vào response metadata và audit.
+```yaml
+platform:
+  service-exchange:
+    enabled: true
+    clients:
+      esb:
+        type: webclient
+        base-url: https://esb.company.vn
+        resilience-instance: esb
+        ssl-bundle: internal-ca
+      crm:
+        type: webclient
+        base-url: https://crm.company.vn
+        resilience-instance: crm
+      payment:
+        type: restclient
+        base-url: https://payment.company.vn
+        resilience-instance: payment
+        ssl-bundle: payment-ca
+      scoring:
+        base-url: https://scoring.company.vn
+        resilience-enabled: false
+      notification:
+        base-url: https://notification.company.vn
+        resilience-instance: notification
+```
 
-## Security warnings
+Mỗi enabled resilience client cần cùng named instance cho circuit breaker,
+retry, rate limiter và bulkhead; WebClient cần thêm time limiter. Nếu
+`resilience-instance` trống, convention dùng chính client name.
 
-- Không bật `allow-absolute-uri` nếu caller không được tin cậy.
-- Không bật `trust-all` hoặc tắt hostname verification ở production.
-- Trust-all cần thêm global `allow-insecure-ssl=true`, vẫn bị từ chối ở prod.
-- Không ghi token, cookie, private key, proxy password hoặc raw PII vào log/event.
-- Không retry non-idempotent request nếu không có idempotency contract.
-- Không serialize configuration hoặc gọi `toString()` trên secret properties.
+## 31. Migration old -> new
 
-## Troubleshooting
+| Old platform property | New native owner |
+|---|---|
+| `clients.*.protocol/http.base-url` | `clients.*.type/base-url` |
+| `clients.*.http.*timeout` | Boot HTTP client/customizer |
+| `clients.*.http.pool.*` | native connector/request factory |
+| `clients.*.proxy.*` | named application customizer |
+| `clients.*.ssl.*` | `spring.ssl.bundle.*` + `ssl-bundle` reference |
+| `clients.*.resilience.*` | `resilience4j.*.instances.*` |
+| exchange tracing/metrics properties | `management.*` |
+| exchange crypto properties | `jasypt.encryptor.*` |
+| `clients.*.grpc.*` | `spring.grpc.client.channels.*` + `grpc-channel` reference |
 
-- `CLIENT_NOT_FOUND`: kiểm tra đúng key dưới `clients`.
-- `CLIENT_DISABLED`: client tồn tại nhưng `enabled=false`.
-- `INVALID_CONFIGURATION`: kiểm tra protocol-specific `base-url`/`address`,
-  timeout, proxy và SSL Bundle.
-- TLS handshake: kiểm tra truststore, SAN/hostname và bundle key material.
-- gRPC TLS yêu cầu shaded Netty transport; proxy gRPC hiện là HTTP CONNECT.
-- Circuit open/rate limited: xem low-cardinality metrics và named policy.
+Không có compatibility binding cho property cũ: startup fail-fast giúp phát hiện
+YAML chưa migrate. Public compatibility operations/fallback/audit contracts vẫn
+được giữ và chạy trên named native infrastructure.
 
-## Migration
+## gRPC compatibility
 
-Thay `RestTemplate`, static HTTP helper hoặc client tự tạo connection bằng
-`HttpExchangeOperations`. Di chuyển URL/timeout/SSL/retry vào named-client config.
-Generated gRPC stub vẫn giữ nguyên; chỉ thay cách tạo channel bằng
-`GrpcClientFactory` và bọc unary invocation bằng `GrpcCallOperations`.
+```yaml
+platform:
+  service-exchange:
+    clients:
+      inventory-grpc:
+        type: grpc
+        grpc-channel: inventory
+
+spring:
+  grpc:
+    client:
+      channels:
+        inventory:
+          address: dns:///inventory.internal:9090
+```
+
+Spring gRPC sở hữu channel, TLS, negotiation, keepalive và lifecycle. Registry
+chỉ giữ reference; không đóng channel do Spring tạo. API mới phải truyền deadline
+dương rõ ràng; overload compatibility cũ dùng budget bounded 5 giây.

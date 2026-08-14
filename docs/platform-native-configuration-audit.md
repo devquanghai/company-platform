@@ -54,8 +54,9 @@ AMQP listener/template retry.
 | `SerializationProperties`, `MessageProperties` | Kafka/Rabbit serializers/converters | native serializers, deserializers, message converters | REMOVE | Native extension points |
 | `DeliveryProperties` inbox/outbox/locks | Application persistence | transaction/outbox implementation in owning service | REMOVE | Không thể production-ready nếu module không sở hữu durable store |
 | `ObservabilityProperties` (queue) | Boot/Micrometer | native Kafka/Rabbit observation + management config | REMOVE | Duplicate flags/timers/spans |
-| `ServiceExchangeProperties.enabled/defaults/clients` | Boot HTTP/gRPC | HTTP service groups, gRPC named channels | REMOVE | Named registry đã có native owner |
-| `HttpClientProperties.baseUrl/methods` | Boot HTTP service clients | `spring.http.serviceclient.<group>.*`, HTTP service interfaces | REMOVE | Native group/client model |
+| `ServiceExchangeProperties.enabled/clients` | Platform identity/behavior | minimal named registry | KEEP | Application cần map dynamic name -> WebClient/RestClient/gRPC reference |
+| `ClientProperties.type/baseUrl/resilienceInstance/sslBundle` | Platform mapping | Boot builder + native named registries/bundle | KEEP | Chỉ giữ identity và reference, không mirror tuning |
+| `HttpClientProperties.baseUrl/methods` | Boot HTTP infrastructure | minimal `clients.*.base-url`; method ở call API | REFACTOR | Xóa transport tree, giữ origin của named client |
 | `TimeoutProperties.connect/read` | Boot HTTP | `spring.http.clients.*`, group overrides | REMOVE | Mirror HTTP settings |
 | `TimeoutProperties.execution` | Resilience4j | `resilience4j.timelimiter.*` | REMOVE | Timeout thuộc policy owner |
 | `HttpPoolProperties` | HTTP implementation | Boot-selected request factory/client builder customizer | REMOVE | Native builder/configurer |
@@ -67,17 +68,19 @@ AMQP listener/template retry.
 | `RateLimiterProperties` | Resilience4j | `resilience4j.ratelimiter.configs/instances` | REMOVE | Native binding/registry |
 | `BulkheadProperties` | Resilience4j | `resilience4j.bulkhead.configs/instances` | REMOVE | Native binding/registry |
 | `ResilienceProperties` | Resilience4j | named registries/annotations | REMOVE | Wrapper aggregate gây copy ba lớp |
-| `LoggingProperties`, `AuditProperties` | Application/logging platform | HTTP interceptors + platform logging/audit contract | REMOVE | Không phải transport configuration chung |
+| `LoggingProperties`, `AuditProperties` | Platform behavior | platform-logging masking + outbound events | KEEP | Existing safe logging/audit capability, không phải engine config |
 | observability settings (exchange) | Boot/Micrometer | native HTTP observations + `management.observations.*` | REMOVE | Tránh duplicate timer/span |
 
-Action `KEEP`: không có. Action `REFACTOR`: không có custom property DTO nào;
-mọi cấu hình được refactor thẳng sang namespace/API native.
+Service Exchange chỉ `KEEP` client identity/reference và platform-specific
+logging/audit switches. Mọi transport, SSL material, resilience tuning và tracing
+được refactor thẳng sang namespace/API native.
 
 ## Remaining custom properties
 
 `platform.cache` và `platform.queue` chỉ còn selector `enabled/provider` do
 platform sở hữu. Broker/cache infrastructure và tuning dùng namespace native.
-`platform.service-exchange.*` không còn custom transport properties.
+`platform.service-exchange.*` chỉ còn named client identity/mapping và platform
+behavior; không còn custom transport/resilience/SSL properties.
 
 ## Enterprise configuration rationale
 

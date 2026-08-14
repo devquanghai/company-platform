@@ -1,13 +1,13 @@
 package com.company.platform.exchange.autoconfigure;
 
-import com.company.platform.core.json.JsonMapperHelper;
 import com.company.platform.exchange.client.internal.application.ClientConfigurationResolver;
+import com.company.platform.exchange.domain.policy.RetryDecisionPolicy;
+import com.company.platform.exchange.resilience.internal.application.DefaultRetryDecisionPolicy;
 import com.company.platform.exchange.autoconfigure.properties.ServiceExchangeProperties;
-import com.company.platform.exchange.domain.model.ProxyEndpoint;
-import com.company.platform.exchange.domain.policy.ClientProxyCustomizer;
 import com.company.platform.exchange.observability.logging.CurlGenerator;
 import com.company.platform.exchange.observability.internal.adapter.logging.DefaultCurlGenerator;
-import com.company.platform.exchange.observability.internal.adapter.logging.DefaultOutboundDataMasker;
+import com.company.platform.exchange.observability.internal.adapter.logging.PlatformLoggingOutboundDataMasker;
+import com.company.platform.logging.api.masking.DataMaskingService;
 import com.company.platform.exchange.observability.logging.OutboundDataMasker;
 import com.company.platform.exchange.resilience.internal.adapter.DefaultOutboundFallbackRegistry;
 import com.company.platform.exchange.resilience.fallback.OutboundFallbackHandler;
@@ -20,8 +20,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.ssl.SslBundles;
 import org.springframework.context.annotation.Bean;
+import org.springframework.core.env.Environment;
 
-import java.util.HashSet;
 import java.util.Optional;
 
 @AutoConfiguration
@@ -30,6 +30,11 @@ import java.util.Optional;
     prefix = "platform.service-exchange", name = "enabled",
     havingValue = "true", matchIfMissing = true)
 public class PlatformServiceExchangeAutoConfiguration {
+    @Bean
+    @ConditionalOnMissingBean
+    RetryDecisionPolicy retryDecisionPolicy() {
+        return new DefaultRetryDecisionPolicy();
+    }
 
     @Bean
     @ConditionalOnMissingBean
@@ -42,25 +47,18 @@ public class PlatformServiceExchangeAutoConfiguration {
     @Bean(initMethod = "validate")
     @ConditionalOnMissingBean
     public ServiceExchangePropertiesValidator serviceExchangePropertiesValidator(
-        ServiceExchangeProperties properties, ObjectProvider<SslBundles> sslBundles
+        ServiceExchangeProperties properties, ObjectProvider<SslBundles> sslBundles,
+        Environment environment
     ) {
         return new ServiceExchangePropertiesValidator(
-            properties, Optional.ofNullable(sslBundles.getIfAvailable()));
+            properties, Optional.ofNullable(sslBundles.getIfAvailable()), environment);
     }
 
     @Bean
     @ConditionalOnMissingBean
-    public OutboundDataMasker outboundDataMasker(ServiceExchangeProperties properties,
-                                                 JsonMapperHelper jsonMapperHelper
+    public OutboundDataMasker outboundDataMasker(DataMaskingService masking
     ) {
-        HashSet<String> headers = new HashSet<>();
-        HashSet<String> fields = new HashSet<>();
-        properties.getClients().values().forEach(client -> {
-            headers.addAll(client.getLogging().getSensitiveHeaders());
-            fields.addAll(client.getLogging().getSensitiveFields());
-            fields.addAll(client.getLogging().getSensitiveQueryParameters());
-        });
-        return new DefaultOutboundDataMasker(jsonMapperHelper, headers, fields);
+        return new PlatformLoggingOutboundDataMasker(masking);
     }
 
     @Bean
@@ -77,9 +75,4 @@ public class PlatformServiceExchangeAutoConfiguration {
         return new DefaultOutboundFallbackRegistry(handlers.orderedStream().toList());
     }
 
-    @Bean
-    @ConditionalOnMissingBean
-    public ClientProxyCustomizer clientProxyCustomizer() {
-        return (context, configured) -> configured;
-    }
 }

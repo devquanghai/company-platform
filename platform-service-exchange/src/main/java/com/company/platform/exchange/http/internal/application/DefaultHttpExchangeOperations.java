@@ -22,6 +22,7 @@ import com.company.platform.exchange.autoconfigure.properties.ClientProperties;
 import com.company.platform.exchange.domain.exception.OutboundCallException;
 import com.company.platform.exchange.domain.exception.OutboundFallbackException;
 import com.company.platform.exchange.domain.exception.OutboundHttpException;
+import com.company.platform.exchange.domain.exception.SanitizedRemoteCauseException;
 import com.company.platform.exchange.domain.model.ExchangeProtocol;
 import com.company.platform.exchange.domain.policy.RetryContext;
 import com.company.platform.exchange.domain.policy.RetryDecision;
@@ -158,18 +159,21 @@ public final class DefaultHttpExchangeOperations implements HttpExchangeOperatio
     ) {
         ClientProperties configuration = configurations.resolve(
             request.getClientName(), ExchangeProtocol.HTTP);
-        URI target = uriResolver.resolve(request, configuration.getHttp());
+        URI target = uriResolver.resolve(request, configuration.getBaseUrl());
         Instant started = time.nowInstant();
         AtomicInteger attempts = new AtomicInteger();
         logRequest(configuration, request, target);
         publish(configuration, new OutboundCallStartedEvent(
             eventData(request, target, started, null, attempts.get(), false, null)));
         try {
-            ResponseEntity<T> entity = resilience.execute(
+            ResponseEntity<T> entity = configuration.isResilienceEnabled()
+                && !Boolean.FALSE.equals(request.getResilienceEnabled())
+                ? resilience.execute(
                 ResilienceExecutionContext.builder()
                     .clientName(request.getClientName())
                     .operation(request.getMethod() + " " + request.getPath()).build(),
-                () -> invoke(request, responseType, configuration, target, started, attempts));
+                () -> invoke(request, responseType, configuration, target, started, attempts))
+                : invoke(request, responseType, configuration, target, started, attempts);
             Duration duration = Duration.between(started, time.nowInstant());
             ExchangeResponse<T> response = response(request, entity, duration, attempts.get(), false);
             publish(configuration, new OutboundCallCompletedEvent(
@@ -252,7 +256,23 @@ public final class DefaultHttpExchangeOperations implements HttpExchangeOperatio
             copyHeaders(safeHeaders),
             safeBody, Math.max(0, attempts - 1),
             Duration.between(started, time.nowInstant()), retryable,
-            response == null ? exception : null);
+            response == null ? transportFailure(exception)
+                : response.getStatusCode().value() == 408
+                    || response.getStatusCode().is5xxServerError(),
+            response == null ? new SanitizedRemoteCauseException(exception) : null);
+    }
+
+    private boolean transportFailure(Throwable failure) {
+        Throwable current = failure;
+        while (current != null) {
+            if (current instanceof java.io.IOException
+                || current instanceof java.util.concurrent.TimeoutException
+                || current instanceof org.springframework.web.client.ResourceAccessException) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 
     private <T> ExchangeResponse<T> fallbackOrThrow(
@@ -327,7 +347,7 @@ public final class DefaultHttpExchangeOperations implements HttpExchangeOperatio
         CurrentTraceContext trace = trace();
         return OutboundCallEventData.builder()
             .clientName(request.getClientName()).protocol(ExchangeProtocol.HTTP)
-            .operation(request.getMethod() + " " + safePath(target))
+            .operation(request.getMethod() + " " + safePath(request.getPath()))
             .httpMethod(request.getMethod().name()).target(masker.maskUri(target).toString())
             .startedAt(started.atOffset(java.time.ZoneOffset.UTC))
             .completedAt(time.now()).duration(Duration.between(started, time.nowInstant()))
@@ -371,11 +391,13 @@ public final class DefaultHttpExchangeOperations implements HttpExchangeOperatio
             return;
         }
         CALL_LOG.info("outbound_started client={} protocol=HTTP operation={} target={}",
-            request.getClientName(), request.getMethod() + " " + safePath(target),
+            request.getClientName(), request.getMethod() + " " + safePath(request.getPath()),
             masker.maskUri(target));
         if (client.getLogging().isCurlEnabled() && curl != null) {
             CURL_LOG.info("outbound_curl client={} command={}", request.getClientName(),
-                curl.generate(request, target, client.getLogging().getMaxBodyLength()));
+                curl.generate(request, target, client.getLogging().getMaxBodyLength(),
+                    client.getLogging().isRequestHeadersEnabled(),
+                    client.getLogging().isRequestBodyEnabled()));
         }
     }
 
@@ -401,9 +423,12 @@ public final class DefaultHttpExchangeOperations implements HttpExchangeOperatio
         }
     }
 
-    private static String safePath(URI target) {
-        String path = target.getRawPath();
-        return path == null || path.isBlank() ? "/" : path;
+    private static String safePath(String configuredPath) {
+        if (configuredPath == null || configuredPath.isBlank()
+            || "/".equals(configuredPath)) {
+            return "/";
+        }
+        return "/[redacted]";
     }
 
     private static Map<String, List<String>> copyHeaders(HttpHeaders headers) {

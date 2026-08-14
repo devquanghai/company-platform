@@ -1,22 +1,56 @@
 platform:
   service-exchange:
     enabled: true
-    source-application: platform-integration-test
     clients:
       echo:
-        protocol: HTTP
-        http:
-          base-url: ${INTEGRATION_ECHO_BASE_URL:http://localhost:8080}
-        resilience:
-          enabled: true
+        type: restclient
+        base-url: ${INTEGRATION_ECHO_BASE_URL:http://localhost:8080}
+        resilience-instance: echo
+        resilience-enabled: true
+        observability-enabled: true
         audit:
           enabled: true
         logging:
           enabled: true
-          curl-enabled: true
-          sensitive-fields:
-            - email
-            - password
-            - token
-          sensitive-headers:
-            - Authorization
+          curl-enabled: false
+
+spring:
+  http:
+    clients:
+      redirects: dont-follow
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      echo:
+        sliding-window-size: 20
+        minimum-number-of-calls: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        record-exception-predicate: com.company.platform.exchange.api.resilience.OutboundCircuitBreakerPredicate
+  retry:
+    instances:
+      echo:
+        max-attempts: 2
+        wait-duration: 200ms
+        retry-exception-predicate: com.company.platform.exchange.api.resilience.OutboundRetryPredicate
+  bulkhead:
+    instances:
+      echo:
+        max-concurrent-calls: 50
+        max-wait-duration: 0
+  ratelimiter:
+    instances:
+      echo:
+        limit-for-period: 100
+        limit-refresh-period: 1s
+        timeout-duration: 0
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+  observations:
+    enable:
+      http.client.requests: true
+      platform.service.exchange: true

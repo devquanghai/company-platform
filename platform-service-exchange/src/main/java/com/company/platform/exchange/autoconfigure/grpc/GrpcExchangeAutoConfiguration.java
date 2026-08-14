@@ -15,11 +15,9 @@ import com.company.platform.exchange.resilience.fallback.OutboundFallbackRegistr
 import com.company.platform.exchange.audit.publisher.OutboundCallEventPublisher;
 import com.company.platform.exchange.observability.logging.OutboundDataMasker;
 import com.company.platform.exchange.observability.metrics.ExchangeMetrics;
-import com.company.platform.exchange.autoconfigure.properties.ServiceExchangeProperties;
 import com.company.platform.core.context.RequestContextProvider;
 import com.company.platform.core.time.TimeProvider;
 import com.company.platform.core.trace.TraceContextProvider;
-import com.company.platform.exchange.domain.policy.ClientProxyCustomizer;
 import com.company.platform.exchange.autoconfigure.audit.ExchangeAuditAutoConfiguration;
 import com.company.platform.exchange.autoconfigure.observability.ExchangeObservabilityAutoConfiguration;
 import io.grpc.Channel;
@@ -29,11 +27,10 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.ssl.SslBundles;
 import org.springframework.context.annotation.Bean;
 import org.springframework.grpc.client.GrpcChannelFactory;
 
-import java.util.Optional;
+import org.springframework.core.env.Environment;
 
 @AutoConfiguration(after = {
     PlatformServiceExchangeAutoConfiguration.class,
@@ -51,14 +48,9 @@ public class GrpcExchangeAutoConfiguration {
     @ConditionalOnBean(GrpcChannelFactory.class)
     @ConditionalOnMissingBean
     public GrpcChannelRegistry grpcChannelRegistry(
-        ClientConfigurationResolver resolver, GrpcChannelFactory factory,
-        ObjectProvider<SslBundles> sslBundles,
-        ClientProxyCustomizer proxyCustomizer,
-        ServiceExchangeProperties properties
+        ClientConfigurationResolver resolver, GrpcChannelFactory factory
     ) {
-        return new DefaultGrpcChannelRegistry(
-            resolver, factory, Optional.ofNullable(sslBundles.getIfAvailable()),
-            proxyCustomizer, properties.getShutdownTimeout());
+        return new DefaultGrpcChannelRegistry(resolver, factory);
     }
 
     @Bean
@@ -77,11 +69,11 @@ public class GrpcExchangeAutoConfiguration {
         OutboundCallEventPublisher events, OutboundDataMasker masker,
         ObjectProvider<ExchangeMetrics> metrics, TimeProvider time,
         RequestContextProvider requestContext, TraceContextProvider traceContext,
-        ServiceExchangeProperties properties
+        Environment environment
     ) {
         return new DefaultGrpcCallOperations(
             resolver, retryPolicy, resilience, fallbacks, events, masker,
             metrics.getIfAvailable(), time, requestContext, traceContext,
-            properties.getSourceApplication());
+            environment.getProperty("spring.application.name", "unknown"));
     }
 }

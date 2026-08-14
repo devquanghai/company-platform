@@ -2,24 +2,19 @@ package com.company.platform.exchange.autoconfigure.properties;
 
 import lombok.Getter;
 import lombok.Setter;
-import lombok.experimental.FieldDefaults;
-
 import java.time.Duration;
 
-import static lombok.AccessLevel.PRIVATE;
-
-@Getter
-@Setter
-@FieldDefaults(level = PRIVATE)
+/** @deprecated Configure {@code resilience4j.circuitbreaker.*}. */
+@Deprecated
+@Getter @Setter
 public class CircuitBreakerProperties {
-
-    boolean enabled = true;
-    String slidingWindowType = "COUNT_BASED";
-    int slidingWindowSize = 20;
-    int minimumNumberOfCalls = 10;
-    float failureRateThreshold = 50;
-    float slowCallRateThreshold = 60;
-    Duration slowCallDurationThreshold = Duration.ofSeconds(3);
-    int permittedCallsInHalfOpenState = 5;
-    Duration waitDurationInOpenState = Duration.ofSeconds(30);
+    private boolean enabled = true;
+    private String slidingWindowType = "COUNT_BASED";
+    private int slidingWindowSize = 20;
+    private int minimumNumberOfCalls = 10;
+    private float failureRateThreshold = 50;
+    private float slowCallRateThreshold = 60;
+    private Duration slowCallDurationThreshold = Duration.ofSeconds(3);
+    private int permittedCallsInHalfOpenState = 5;
+    private Duration waitDurationInOpenState = Duration.ofSeconds(30);
 }

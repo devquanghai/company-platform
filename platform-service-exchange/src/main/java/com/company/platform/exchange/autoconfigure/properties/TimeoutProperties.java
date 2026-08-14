@@ -2,17 +2,12 @@ package com.company.platform.exchange.autoconfigure.properties;
 
 import lombok.Getter;
 import lombok.Setter;
-import lombok.experimental.FieldDefaults;
-
 import java.time.Duration;
 
-import static lombok.AccessLevel.PRIVATE;
-
-@Getter
-@Setter
-@FieldDefaults(level = PRIVATE)
+/** @deprecated Configure native transport timeout or Resilience4j TimeLimiter. */
+@Deprecated
+@Getter @Setter
 public class TimeoutProperties {
-
-    boolean enabled = true;
-    Duration duration = Duration.ofSeconds(10);
+    private boolean enabled = true;
+    private Duration duration = Duration.ofSeconds(10);
 }

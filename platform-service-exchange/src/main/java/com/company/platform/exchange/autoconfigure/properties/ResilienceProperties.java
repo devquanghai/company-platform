@@ -2,19 +2,15 @@ package com.company.platform.exchange.autoconfigure.properties;
 
 import lombok.Getter;
 import lombok.Setter;
-import lombok.experimental.FieldDefaults;
 
-import static lombok.AccessLevel.PRIVATE;
-
-@Getter
-@Setter
-@FieldDefaults(level = PRIVATE)
+/** @deprecated Configure native {@code resilience4j.*} instances. */
+@Deprecated
+@Getter @Setter
 public class ResilienceProperties {
-
-    boolean enabled = true;
-    RetryProperties retry = new RetryProperties();
-    CircuitBreakerProperties circuitBreaker = new CircuitBreakerProperties();
-    RateLimiterProperties rateLimiter = new RateLimiterProperties();
-    BulkheadProperties bulkhead = new BulkheadProperties();
-    TimeoutProperties timeout = new TimeoutProperties();
+    private boolean enabled = true;
+    private RetryProperties retry = new RetryProperties();
+    private CircuitBreakerProperties circuitBreaker = new CircuitBreakerProperties();
+    private RateLimiterProperties rateLimiter = new RateLimiterProperties();
+    private BulkheadProperties bulkhead = new BulkheadProperties();
+    private TimeoutProperties timeout = new TimeoutProperties();
 }

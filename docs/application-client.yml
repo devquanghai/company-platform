@@ -1,16 +1,22 @@
+platform:
+  service-exchange:
+    enabled: true
+    clients:
+      inventory:
+        type: webclient
+        base-url: ${INVENTORY_BASE_URL}
+        resilience-instance: inventory
+        ssl-bundle: outbound
+      payment:
+        type: restclient
+        base-url: ${PAYMENT_BASE_URL}
+        resilience-instance: payment
+        ssl-bundle: outbound
+
 spring:
   http:
     clients:
-      connect-timeout: 2s
-      read-timeout: 5s
       redirects: dont-follow
-    serviceclient:
-      inventory:
-        base-url: ${INVENTORY_BASE_URL}
-        connect-timeout: 1s
-        read-timeout: 2s
-        ssl:
-          bundle: outbound
   ssl:
     bundle:
       jks:
@@ -18,13 +24,6 @@ spring:
           truststore:
             location: ${OUTBOUND_TRUSTSTORE}
             password: ${OUTBOUND_TRUSTSTORE_PASSWORD}
-  grpc:
-    client:
-      channels:
-        inventory:
-          address: ${INVENTORY_GRPC_ADDRESS}
-          ssl:
-            bundle: outbound
 
 resilience4j:
   circuitbreaker:
@@ -34,19 +33,22 @@ resilience4j:
         minimum-number-of-calls: 20
         failure-rate-threshold: 50
         wait-duration-in-open-state: 30s
+        record-exception-predicate: com.company.platform.exchange.api.resilience.OutboundCircuitBreakerPredicate
     instances:
       inventory:
+        base-config: outbound-default
+      payment:
         base-config: outbound-default
   retry:
     configs:
       outbound-idempotent:
         max-attempts: 3
         wait-duration: 200ms
-        retry-exceptions:
-          - java.io.IOException
-          - java.util.concurrent.TimeoutException
+        retry-exception-predicate: com.company.platform.exchange.api.resilience.OutboundRetryPredicate
     instances:
       inventory:
+        base-config: outbound-idempotent
+      payment:
         base-config: outbound-idempotent
   bulkhead:
     configs:
@@ -56,10 +58,29 @@ resilience4j:
     instances:
       inventory:
         base-config: outbound-default
-  timelimiter:
+      payment:
+        base-config: outbound-default
+  ratelimiter:
     configs:
       outbound-default:
-        timeout-duration: 3s
+        limit-for-period: 100
+        limit-refresh-period: 1s
+        timeout-duration: 0
     instances:
       inventory:
         base-config: outbound-default
+      payment:
+        base-config: outbound-default
+  timelimiter:
+    instances:
+      inventory:
+        timeout-duration: 3s
+
+management:
+  tracing:
+    sampling:
+      probability: 0.1
+
+jasypt:
+  encryptor:
+    password: ${JASYPT_ENCRYPTOR_PASSWORD}

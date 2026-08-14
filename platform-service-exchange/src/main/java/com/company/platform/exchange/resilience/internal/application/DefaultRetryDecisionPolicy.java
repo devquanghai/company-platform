@@ -1,83 +1,74 @@
 package com.company.platform.exchange.resilience.internal.application;
 
-import com.company.platform.exchange.client.internal.application.ClientConfigurationResolver;
-import com.company.platform.exchange.autoconfigure.properties.RetryProperties;
 import com.company.platform.exchange.domain.model.ExchangeProtocol;
 import com.company.platform.exchange.domain.policy.RetryContext;
 import com.company.platform.exchange.domain.policy.RetryDecision;
 import com.company.platform.exchange.domain.policy.RetryDecisionPolicy;
+import io.grpc.Status;
 import org.springframework.http.HttpMethod;
 import org.springframework.util.StringUtils;
 
+import java.io.IOException;
+import java.time.Duration;
+import java.util.Set;
+import java.util.concurrent.TimeoutException;
+
 public final class DefaultRetryDecisionPolicy implements RetryDecisionPolicy {
-
-    private final ClientConfigurationResolver resolver;
-
-    public DefaultRetryDecisionPolicy(ClientConfigurationResolver resolver) {
-        this.resolver = resolver;
-    }
+    private static final Set<Integer> RETRYABLE_HTTP =
+        Set.of(408, 502, 503, 504);
+    private static final Set<Status.Code> RETRYABLE_GRPC = Set.of(
+        Status.Code.UNAVAILABLE,
+        Status.Code.RESOURCE_EXHAUSTED,
+        Status.Code.DEADLINE_EXCEEDED);
 
     @Override
     public RetryDecision evaluate(RetryContext context) {
-        RetryProperties retry = resolver.resolve(context.getClientName())
-            .getResilience().getRetry();
-        if (!retry.isEnabled()) {
-            return RetryDecision.doNotRetry("retry disabled");
+        if (!isSafeInvocation(context)) {
+            return RetryDecision.doNotRetry("request is not safely idempotent");
         }
-        if (context.getProtocol() == ExchangeProtocol.HTTP) {
-            return evaluateHttp(context, retry);
+        if (context.getProtocol() == ExchangeProtocol.HTTP
+            && context.getHttpStatus() != null) {
+            return RETRYABLE_HTTP.contains(context.getHttpStatus())
+                ? retry("transient HTTP status")
+                : RetryDecision.doNotRetry("non-retryable HTTP status");
         }
-        if (context.getGrpcStatus() != null
-            && retry.getIgnoreGrpcStatuses().contains(context.getGrpcStatus())) {
-            return RetryDecision.doNotRetry("ignored gRPC status");
+        if (context.getProtocol() == ExchangeProtocol.GRPC
+            && context.getGrpcStatus() != null) {
+            return RETRYABLE_GRPC.contains(context.getGrpcStatus())
+                ? retry("transient gRPC status")
+                : RetryDecision.doNotRetry("non-retryable gRPC status");
         }
-        if (context.getGrpcStatus() != null
-            && retry.getRetryGrpcStatuses().contains(context.getGrpcStatus())
-            && context.isIdempotent()) {
-            return RetryDecision.retry(retry.getWaitDuration(), "configured gRPC status");
-        }
-        return retryException(context, retry);
+        return isConnectionFailure(context.getException())
+            ? retry("connection or timeout failure")
+            : RetryDecision.doNotRetry("non-retryable exception");
     }
 
-    private static RetryDecision evaluateHttp(RetryContext context, RetryProperties retry) {
-        if (context.getHttpStatus() != null
-            && retry.getIgnoreHttpStatuses().contains(context.getHttpStatus())) {
-            return RetryDecision.doNotRetry("ignored HTTP status");
+    private boolean isSafeInvocation(RetryContext context) {
+        if (context.getProtocol() == ExchangeProtocol.GRPC) {
+            return context.isIdempotent();
         }
-        if (!methodRetryable(context, retry)) {
-            return RetryDecision.doNotRetry("HTTP method is not safely retryable");
-        }
-        if (context.getHttpStatus() != null
-            && retry.getRetryHttpStatuses().contains(context.getHttpStatus())) {
-            return RetryDecision.retry(retry.getWaitDuration(), "configured HTTP status");
-        }
-        return retryException(context, retry);
-    }
-
-    private static boolean methodRetryable(RetryContext context, RetryProperties retry) {
         HttpMethod method = context.getHttpMethod();
-        if (method == null) {
-            return false;
+        if (method == HttpMethod.GET || method == HttpMethod.HEAD
+            || method == HttpMethod.OPTIONS) {
+            return true;
         }
-        boolean explicitlyIdempotent = context.isIdempotent()
-            || StringUtils.hasText(context.getIdempotencyKey());
-        if (method == HttpMethod.POST || method == HttpMethod.PATCH) {
-            return explicitlyIdempotent || retry.isRetryNonIdempotentMethods();
-        }
-        return retry.getRetryMethods().contains(method)
-            || (explicitlyIdempotent && (method == HttpMethod.PUT || method == HttpMethod.DELETE));
+        return context.isIdempotent() || StringUtils.hasText(context.getIdempotencyKey());
     }
 
-    private static RetryDecision retryException(
-        RetryContext context, RetryProperties retry
-    ) {
-        Throwable exception = context.getException();
-        while (exception != null) {
-            if (retry.getRetryExceptions().contains(exception.getClass().getName())) {
-                return RetryDecision.retry(retry.getWaitDuration(), "configured exception");
+    private boolean isConnectionFailure(Throwable failure) {
+        Throwable current = failure;
+        while (current != null) {
+            if (current instanceof IOException || current instanceof TimeoutException
+                || current instanceof org.springframework.web.client.ResourceAccessException
+                || current instanceof org.springframework.web.reactive.function.client.WebClientRequestException) {
+                return true;
             }
-            exception = exception.getCause();
+            current = current.getCause();
         }
-        return RetryDecision.doNotRetry("non-retryable failure");
+        return false;
+    }
+
+    private RetryDecision retry(String reason) {
+        return RetryDecision.retry(Duration.ZERO, reason);
     }
 }

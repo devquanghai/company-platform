@@ -2,19 +2,14 @@ package com.company.platform.exchange.autoconfigure.properties;
 
 import lombok.Getter;
 import lombok.Setter;
-import lombok.experimental.FieldDefaults;
-
 import java.time.Duration;
 
-import static lombok.AccessLevel.PRIVATE;
-
-@Getter
-@Setter
-@FieldDefaults(level = PRIVATE)
+/** @deprecated Configure {@code resilience4j.ratelimiter.*}. */
+@Deprecated
+@Getter @Setter
 public class RateLimiterProperties {
-
-    boolean enabled;
-    int limitForPeriod = 100;
-    Duration limitRefreshPeriod = Duration.ofSeconds(1);
-    Duration timeoutDuration = Duration.ZERO;
+    private boolean enabled;
+    private int limitForPeriod = 100;
+    private Duration limitRefreshPeriod = Duration.ofSeconds(1);
+    private Duration timeoutDuration = Duration.ZERO;
 }
