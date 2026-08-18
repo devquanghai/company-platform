@@ -54,13 +54,13 @@ public class PlatformLoggingProperties {
     public static class MaskingProperties {
         boolean sanitizeControlCharacters = true;
         /** @deprecated retained as a traversal-safety budget, never used to truncate text. */
-        @Deprecated @Min(1) int maxDepth = 10;
+        @Min(1) int maxDepth = 10;
         /** @deprecated retained for binary configuration compatibility; text is not truncated. */
-        @Deprecated @Min(1) int maxStringLength = 4096;
+        @Min(1) int maxStringLength = 4096;
         /** @deprecated retained as a traversal-safety budget, never used for partial output. */
-        @Deprecated @Min(1) int maxCollectionSize = 100;
+        @Min(1) int maxCollectionSize = 100;
         /** @deprecated retained as a traversal-safety budget, never used for partial output. */
-        @Deprecated @Min(1) int maxMapSize = 100;
+        @Min(1) int maxMapSize = 100;
         List<String> mandatoryFields = new ArrayList<>(List.of(
             "password", "passcode", "pin", "cvv", "authorization",
             "proxy-authorization", "cookie", "set-cookie", "access-token",

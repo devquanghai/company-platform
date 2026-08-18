@@ -19,6 +19,7 @@
         <module>platform-service-exchange</module>
         <module>platform-logging</module>
         <module>platform-database</module>
+        <module>platform-schedule-jobrunr</module>
         <module>platform-integration-test</module>
     </modules>
 
