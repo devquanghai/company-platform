@@ -1,3 +1,14 @@
+server:
+  port: 18086
+
+platform:
+  core:
+    openapi:
+      enabled: true
+      title: Platform Integration Test
+      version: 1.0.0
+      description: Platform Integration Test API
+      authentication-type: JWT
 spring:
   application:
     name: platform-tool-demo
