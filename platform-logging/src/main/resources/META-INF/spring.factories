@@ -1,2 +1,0 @@
-org.springframework.boot.EnvironmentPostProcessor=\
-com.company.platform.logging.crypto.internal.autoconfigure.JasyptSecurityPolicyEnvironmentPostProcessor

@@ -236,8 +236,8 @@ publisher kiểm tra message sau conversion và reject body lớn hơn 1 MiB.
 
 ## 17. Jasypt encryption
 
-Jasypt starter và property crypto thuộc `platform-logging`. Queue không chứa
-dependency hoặc decryptor Jasypt. Logging-owned Environment integration resolve
+Jasypt starter và property crypto thuộc `platform-core`. Queue không chứa
+dependency hoặc decryptor Jasypt. Core-owned Environment integration resolve
 `ENC(...)` trước khi Boot bind `spring.kafka.*` hoặc `spring.rabbitmq.*`.
 
 ## 18. ENC(...) examples

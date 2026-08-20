@@ -1,6 +1,6 @@
 package com.company.platform.integration.encrypt.controller;
 
-import com.company.platform.logging.api.crypto.PropertyCryptoService;
+import com.company.platform.core.crypto.api.PropertyCryptoService;
 import com.company.platform.core.rest.response.ApiResponse;
 import com.company.platform.integration.encrypt.dto.request.CryptoValueRequest;
 import com.company.platform.integration.encrypt.dto.response.CryptoValueResponse;

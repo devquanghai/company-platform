@@ -4,3 +4,4 @@ com.company.platform.core.auto_configuration.PlatformOpenApiAutoConfiguration
 com.company.platform.core.auto_configuration.PlatformTaskExecutionAutoConfiguration
 com.company.platform.core.auto_configuration.PlatformWebMvcAutoConfiguration
 com.company.platform.core.auto_configuration.PlatformAuditAutoConfiguration
+com.company.platform.core.crypto.internal.autoconfigure.JasyptPropertyCryptoAutoConfiguration

@@ -2,14 +2,14 @@ package com.company.platform.cache.internal.crypto;
 
 import com.company.platform.cache.api.crypto.PropertyCryptoService;
 
-/** @deprecated compatibility bridge; use the platform-logging API directly. */
+/** @deprecated compatibility bridge; use the platform-core API directly. */
 @Deprecated(forRemoval = true)
 @SuppressWarnings("removal")
 public final class LoggingPropertyCryptoServiceBridge implements PropertyCryptoService {
-    private final com.company.platform.logging.api.crypto.PropertyCryptoService delegate;
+    private final com.company.platform.core.crypto.api.PropertyCryptoService delegate;
 
     public LoggingPropertyCryptoServiceBridge(
-        com.company.platform.logging.api.crypto.PropertyCryptoService delegate
+        com.company.platform.core.crypto.api.PropertyCryptoService delegate
     ) {
         this.delegate = delegate;
     }

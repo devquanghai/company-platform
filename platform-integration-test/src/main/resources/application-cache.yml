@@ -17,12 +17,12 @@ spring:
     redis:
 
       database: 0
-      password: aloaluale
+      password: ENC(RxjZleme7oH/6dMMyOhRBUpd37Mud5oeUOnvwebzbl4ws2kjPlTQlmS0++hAFboN)
       sentinel:
         master: mymaster
         nodes:
             - ${REDIS_SENTINEL_HOST:localhost}:${REDIS_SENTINEL_PORT:26379}
-        password: aloaluale
+        password: ENC(RxjZleme7oH/6dMMyOhRBUpd37Mud5oeUOnvwebzbl4ws2kjPlTQlmS0++hAFboN)
 
       connect-timeout: 3s
       timeout: 3s

@@ -214,10 +214,11 @@ wraps that key. Temporary data-key bytes are cleared in `finally`.
 
 ## 25. Jasypt compatibility
 
-`platform-logging` owns the managed Jasypt starter for the whole platform. The
-starter resolves `ENC(...)` through Spring `Environment`; cache, queue,
-database and service-exchange must not ship a Jasypt dependency or decryptor.
-The crypto provider remains opt-in for explicit payload PBE operations.
+`platform-core` owns the managed Jasypt starter, the `PropertyCryptoService`
+operator API and Spring `Environment` support for `ENC(...)`. Cache, queue,
+database, service-exchange and logging must not ship their own Jasypt starter or
+decryptor. The logging crypto provider remains opt-in for explicit payload PBE
+operations and obtains Jasypt transitively from core.
 
 ```yaml
 jasypt:
@@ -237,7 +238,8 @@ An application-supplied custom `StringEncryptor` is an explicit security
 extension outside this property-based guarantee and must be independently
 reviewed for equivalent algorithm, KDF, random salt and random IV policy.
 
-`PropertyCryptoService` is the supported operator API for `ENC(...)` values.
+`com.company.platform.core.crypto.api.PropertyCryptoService` is the supported
+operator API for `ENC(...)` values.
 Neither plaintext, ciphertext nor the master password is written to logs.
 
 Platform operation categories are `PLATFORM_CACHE`, `PLATFORM_QUEUE`,

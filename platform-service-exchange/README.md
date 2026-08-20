@@ -364,11 +364,11 @@ tiếp để giữ streaming semantics.
 ## 28. Jasypt
 
 Service Exchange không decrypt secret và không chứa Jasypt dependency. Jasypt
-starter thuộc `platform-logging` và wrap `Environment` trước khi Boot bind SSL,
+starter thuộc `platform-core` và wrap `Environment` trước khi Boot bind SSL,
 proxy, OAuth hay application secret.
 
 Master password và operator API được cấu hình duy nhất theo tài liệu
-`platform-logging`.
+`platform-core`.
 
 ## 29. `ENC(...)`
 

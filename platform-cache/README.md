@@ -253,8 +253,8 @@ Tra cứu metadata của Spring Boot/Caffeine cho các tùy chọn này.
 ## 12. Jasypt ownership
 
 Jasypt starter, supported `PropertyCryptoService` và Environment decryption thuộc
-`platform-logging`. Cache không chứa Jasypt dependency hay decryptor; Redis secret
-được Boot bind sau khi logging-owned Environment integration resolve `ENC(...)`.
+`platform-core`. Cache không chứa Jasypt dependency hay decryptor; Redis secret
+được Boot bind sau khi core-owned Environment integration resolve `ENC(...)`.
 FQCN crypto cũ của cache chỉ còn deprecated compatibility stubs và không tạo bean.
 
 ## 13. ENC(...) usage

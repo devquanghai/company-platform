@@ -208,7 +208,7 @@ Keep `ddl-auto: validate` so invalid mappings or missing migration changes fail 
 
 ## 11. Jasypt ownership
 
-Prefer Kubernetes Secrets, Vault, a secret manager, environment variables, or config trees. When encrypted configuration is required, the Jasypt starter and `ENC(...)` Environment integration are supplied centrally by `platform-logging`; database must not add its own decryptor or Jasypt dependency:
+Prefer Kubernetes Secrets, Vault, a secret manager, environment variables, or config trees. When encrypted configuration is required, the Jasypt starter and `ENC(...)` Environment integration are supplied centrally by `platform-core`; database must not add its own decryptor or Jasypt dependency:
 
 ```yaml
 spring:
