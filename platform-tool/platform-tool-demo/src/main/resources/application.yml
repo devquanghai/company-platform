@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: platform-tool-demo
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 25MB
+  mustache:
+    prefix: classpath:/templates/
+    suffix: .mustache
+    charset: UTF-8
+    check-template-location: true
+    servlet:
+      expose-request-attributes: false
+      expose-session-attributes: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics

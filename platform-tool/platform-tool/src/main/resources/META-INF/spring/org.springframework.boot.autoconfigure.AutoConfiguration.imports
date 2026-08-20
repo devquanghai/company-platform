@@ -1,0 +1,4 @@
+com.company.platform.tool.autoconfigure.PlatformToolTemplateAutoConfiguration
+com.company.platform.tool.autoconfigure.PlatformToolExcelAutoConfiguration
+com.company.platform.tool.autoconfigure.PlatformToolPdfAutoConfiguration
+com.company.platform.tool.autoconfigure.PlatformToolFileAutoConfiguration

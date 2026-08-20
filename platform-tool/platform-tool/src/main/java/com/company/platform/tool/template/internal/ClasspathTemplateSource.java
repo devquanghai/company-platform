@@ -11,10 +11,13 @@ import org.springframework.core.io.ResourceLoader;
 
 public final class ClasspathTemplateSource implements TemplateSource {
     private final ResourceLoader resourceLoader;
-    public ClasspathTemplateSource(ResourceLoader resourceLoader) { this.resourceLoader = resourceLoader; }
+    private final String prefix;
+    private final String suffix;
+    private final java.nio.charset.Charset charset;
+    public ClasspathTemplateSource(ResourceLoader resourceLoader, String prefix, String suffix, java.nio.charset.Charset charset) { this.resourceLoader = resourceLoader; this.prefix = prefix; this.suffix = suffix; this.charset = charset; }
     @Override public Reader open(String templateId) throws IOException {
-        Resource resource = resourceLoader.getResource("classpath:/templates/" + templateId + ".mustache");
+        Resource resource = resourceLoader.getResource(prefix + templateId + suffix);
         if (!resource.exists()) throw new TemplateNotFoundException(templateId, null);
-        return new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8);
+        return new InputStreamReader(resource.getInputStream(), charset);
     }
 }

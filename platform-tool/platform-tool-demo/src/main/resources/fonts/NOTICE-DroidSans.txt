@@ -1,0 +1,7 @@
+Droid Sans Regular
+Copyright 2007 Google Corporation
+Licensed under the Apache License, Version 2.0.
+
+This font is included only in the demonstration application to provide
+redistributable Unicode/Vietnamese PDF rendering. It is not required by the
+platform-tool library; consumers may supply another trusted licensed font.

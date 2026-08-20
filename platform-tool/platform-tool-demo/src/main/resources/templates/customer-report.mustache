@@ -1,0 +1,34 @@
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>{{reportTitle}}</title>
+  <style>
+    body { font-family: "Droid Sans", sans-serif; color: #1f2937; font-size: 11px; }
+    .brand { background: #123b5d; color: white; padding: 14px; font-size: 20px; font-weight: bold; }
+    h1 { color: #123b5d; font-size: 18px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+    th { background: #d9eaf7; text-align: left; }
+    th, td { border: 1px solid #9ca3af; padding: 6px; }
+    .amount { text-align: right; }
+    .summary { margin-top: 14px; text-align: right; font-weight: bold; }
+    .footer { position: running(footer); color: #6b7280; font-size: 9px; }
+    @page { @bottom-center { content: element(footer); } @bottom-right { content: "Trang " counter(page) " / " counter(pages); } }
+  </style>
+</head>
+<body>
+  <div class="brand">COMPANY · PLATFORM TOOL</div>
+  <h1>{{reportTitle}}</h1>
+  <p>Khách hàng: <strong>{{customerName}}</strong></p>
+  <p>Thời điểm tạo: {{generatedAt}}</p>
+  <table>
+    <thead><tr><th>Mã</th><th>Tên khách hàng</th><th>Số tiền</th><th>Lãi suất</th><th>Trạng thái</th></tr></thead>
+    <tbody>
+      {{#transactions}}
+      <tr><td>{{customerCode}}</td><td>{{customerName}}</td><td class="amount">{{amount}}</td><td>{{interestRate}}</td><td>{{status}}</td></tr>
+      {{/transactions}}
+    </tbody>
+  </table>
+  <div class="summary">Tổng: {{totalAmount}}</div>
+  <div class="footer">Tài liệu được tạo bởi platform-tool-demo · Không chứa dữ liệu xác thực.</div>
+</body>
+</html>
