@@ -1,0 +1,39 @@
+services:
+  database:
+    image: 'postgres:17'
+    ports:
+      - 15432:5432
+    environment:
+      POSTGRES_USER: username
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: default_database
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: password
+    networks:
+      - platform
+    volumes:
+      - ${PWD}/db-data/:/var/lib/postgresql/data/
+      - ${PWD}/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  pgadmin:
+    image: dpage/pgadmin4
+    ports:
+      - 25433:80
+    environment:
+      POSTGRES_USER: username
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: default_database
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: password
+    depends_on:
+      - database
+    networks:
+      - platform
+    volumes:
+      # pgAdmin writes session data here. If startup fails with a permission
+      # error, set the host folder owner to 5050:5050 before starting.
+      - ${PWD}/pgadmin-data/:/var/lib/pgadmin/
+
+networks:
+  platform:
+    driver: bridge

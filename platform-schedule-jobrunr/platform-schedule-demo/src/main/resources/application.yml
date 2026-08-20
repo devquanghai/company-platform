@@ -1,0 +1,62 @@
+server:
+  port: ${SERVER_PORT:18080}
+  shutdown: graceful
+
+spring:
+  application:
+    name: platform-schedule-demo
+  lifecycle:
+    timeout-per-shutdown-phase: 60s
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:15432/platform_schedule}
+    username: ${DB_USERNAME:username}
+    password: ${DB_PASSWORD:password}
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:20}
+      minimum-idle: ${DB_POOL_MIN_IDLE:2}
+  sql:
+    init:
+      mode: ${SQL_INIT_MODE:always}
+
+jobrunr:
+  database:
+    skip-create: ${JOBRUNR_SKIP_CREATE:false}
+    table-prefix: ${JOBRUNR_TABLE_PREFIX:JOBRUNR_}
+    type: sql
+
+  job-scheduler:
+    enabled: true
+
+  background-job-server:
+    enabled: ${JOBRUNR_BACKGROUND_SERVER_ENABLED:true}
+    worker-count: ${JOBRUNR_WORKER_COUNT:10}
+    poll-interval-in-seconds: ${JOBRUNR_POLL_INTERVAL_SECONDS:15}
+    interrupt-jobs-await-duration-on-stop: 30s
+    metrics:
+      enabled: true
+
+  jobs:
+    default-number-of-retries: ${JOBRUNR_DEFAULT_RETRIES:5}
+    retry-back-off-time-seed: ${JOBRUNR_RETRY_BACKOFF_SEED:3}
+    delete-succeeded-jobs-after: 36h
+    permanently-delete-deleted-jobs-after: 72h
+    metrics:
+      enabled: true
+
+  dashboard:
+    enabled: ${JOBRUNR_DASHBOARD_ENABLED:true}
+    port: ${JOBRUNR_DASHBOARD_PORT:18000}
+    username: haipq1
+    password: haipq1
+
+  miscellaneous:
+    allow-anonymous-data-usage: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always

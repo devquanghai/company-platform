@@ -1,0 +1,38 @@
+spring:
+  sql:
+    init:
+      mode: never
+
+jobrunr:
+  database:
+    skip-create: true
+    table-prefix: ${JOBRUNR_TABLE_PREFIX:JOBRUNR_}
+    type: sql
+
+  job-scheduler:
+    enabled: true
+
+  background-job-server:
+    enabled: ${JOBRUNR_BACKGROUND_SERVER_ENABLED:true}
+    worker-count: ${JOBRUNR_WORKER_COUNT:10}
+    poll-interval-in-seconds: ${JOBRUNR_POLL_INTERVAL_SECONDS:15}
+    interrupt-jobs-await-duration-on-stop: 30s
+    metrics:
+      enabled: true
+
+  jobs:
+    default-number-of-retries: ${JOBRUNR_DEFAULT_RETRIES:5}
+    retry-back-off-time-seed: ${JOBRUNR_RETRY_BACKOFF_SEED:3}
+    delete-succeeded-jobs-after: 36h
+    permanently-delete-deleted-jobs-after: 72h
+    metrics:
+      enabled: true
+
+  dashboard:
+    enabled: ${JOBRUNR_DASHBOARD_ENABLED:false}
+    port: ${JOBRUNR_DASHBOARD_PORT:8000}
+    username: ${JOBRUNR_DASHBOARD_USERNAME:}
+    password: ${JOBRUNR_DASHBOARD_PASSWORD:}
+
+  miscellaneous:
+    allow-anonymous-data-usage: false

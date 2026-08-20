@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: platform-schedule-demo
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: platform-schedule-demo
+  template:
+    metadata:
+      labels:
+        app: platform-schedule-demo
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: app
+          image: company/platform-schedule-demo:1.0.0
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: prod
+            - name: DB_URL
+              valueFrom:
+                secretKeyRef:
+                  name: platform-schedule-db
+                  key: url
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: platform-schedule-db
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: platform-schedule-db
+                  key: password
+            - name: JOBRUNR_BACKGROUND_SERVER_ENABLED
+              value: "true"
+            - name: JOBRUNR_WORKER_COUNT
+              value: "10"
+            - name: JOBRUNR_DASHBOARD_ENABLED
+              value: "false"
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 15

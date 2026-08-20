@@ -1,0 +1,17 @@
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          keycloak:
+            provider: keycloak
+            client-id: ${OIDC_CLIENT_ID:platform-web}
+            client-secret: ${OIDC_CLIENT_SECRET}
+            authorization-grant-type: authorization_code
+            scope:
+              - openid
+              - profile
+              - email
+        provider:
+          keycloak:
+            issuer-uri: ${OIDC_ISSUER_URI:http://localhost:8081/realms/platform}

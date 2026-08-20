@@ -1,0 +1,6 @@
+com.company.platform.security.internal.autoconfigure.PlatformSecurityAutoConfiguration
+com.company.platform.security.internal.autoconfigure.JwtAuthorityAutoConfiguration
+com.company.platform.security.internal.autoconfigure.OAuth2IdentityAutoConfiguration
+com.company.platform.security.internal.autoconfigure.ApiKeySecurityAutoConfiguration
+com.company.platform.security.internal.autoconfigure.MultiTenantSecurityAutoConfiguration
+com.company.platform.security.internal.autoconfigure.SecurityEventAutoConfiguration

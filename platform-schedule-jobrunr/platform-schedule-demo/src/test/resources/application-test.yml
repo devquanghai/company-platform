@@ -1,0 +1,28 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:platform_schedule_test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+  sql:
+    init:
+      mode: always
+
+jobrunr:
+  database:
+    skip-create: false
+    type: sql
+  job-scheduler:
+    enabled: true
+  background-job-server:
+    enabled: false
+  jobs:
+    default-number-of-retries: 5
+    retry-back-off-time-seed: 3
+    delete-succeeded-jobs-after: 1h
+    permanently-delete-deleted-jobs-after: 2h
+    metrics:
+      enabled: true
+  dashboard:
+    enabled: false
+  miscellaneous:
+    allow-anonymous-data-usage: false

@@ -1,0 +1,7 @@
+spring:
+  security:
+    user:
+      name: ${BASIC_USERNAME:admin}
+      password: ${BASIC_PASSWORD}
+      roles:
+        - ADMIN

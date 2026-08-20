@@ -1,0 +1,32 @@
+server:
+  port: 9000
+
+spring:
+  security:
+    user:
+      name: ${AUTH_USER:admin}
+      password: ${AUTH_USER_PASSWORD}
+      roles:
+        - ADMIN
+    oauth2:
+      authorizationserver:
+        issuer: ${AUTH_ISSUER:http://localhost:9000}
+        client:
+          platform-client:
+            registration:
+              client-id: platform-client
+              client-secret: ${AUTH_CLIENT_SECRET}
+              client-authentication-methods:
+                - client_secret_basic
+              authorization-grant-types:
+                - authorization_code
+                - refresh_token
+                - client_credentials
+              redirect-uris:
+                - http://127.0.0.1:8080/login/oauth2/code/platform-client
+              scopes:
+                - openid
+                - profile
+                - platform.read
+                - platform.write
+            require-authorization-consent: true

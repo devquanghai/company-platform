@@ -1,0 +1,8 @@
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        opaquetoken:
+          introspection-uri: ${OAUTH2_INTROSPECTION_URI}
+          client-id: ${OAUTH2_INTROSPECTION_CLIENT_ID}
+          client-secret: ${OAUTH2_INTROSPECTION_CLIENT_SECRET}
