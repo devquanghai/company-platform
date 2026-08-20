@@ -1,6 +1,7 @@
 package com.company.platform.cache.autoconfigure;
 
 import com.company.platform.core.json.JsonMapperHelper;
+import com.company.platform.core.utils.TextUtils;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.cache.autoconfigure.CacheProperties;
 import org.springframework.boot.cache.autoconfigure.RedisCacheManagerBuilderCustomizer;
@@ -16,6 +17,8 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.serializer.GenericJacksonJsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import tools.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
+
+import java.time.Duration;
 
 @AutoConfiguration(beforeName =
     "org.springframework.boot.cache.autoconfigure.RedisCacheConfiguration")
@@ -46,11 +49,17 @@ public class RedisPlatformCacheAutoConfiguration {
             .serializeValuesWith(
                 RedisSerializationContext.SerializationPair.fromSerializer(serializer));
         CacheProperties.Redis redis = cacheProperties.getRedis();
-        if (redis.getTimeToLive() != null) {
-            configuration = configuration.entryTtl(redis.getTimeToLive());
+        Duration timeToLive = redis.getTimeToLive();
+        if (timeToLive != null) {
+            configuration = configuration.entryTtl(timeToLive);
         }
-        if (redis.getKeyPrefix() != null) {
-            configuration = configuration.prefixCacheNameWith(redis.getKeyPrefix());
+        if (redis.isUseKeyPrefix()) {
+            String prefix = TextUtils.normalizePrefix(redis.getKeyPrefix());
+            configuration = configuration.computePrefixWith(
+                cacheName -> prefix + cacheName + ":"
+            );
+        } else {
+            configuration = configuration.disableKeyPrefix();
         }
         if (!redis.isCacheNullValues()) {
             configuration = configuration.disableCachingNullValues();

@@ -8,7 +8,7 @@ spring:
     redis:
       time-to-live: 3600
       use-key-prefix: true
-      key-prefix: "${spring.application.name}:"
+      key-prefix: "haipq1:"
       customize:
         cache-test:
           ttl: 60

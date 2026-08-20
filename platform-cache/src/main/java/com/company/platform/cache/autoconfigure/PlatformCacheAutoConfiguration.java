@@ -1,15 +1,14 @@
 package com.company.platform.cache.autoconfigure;
 
+import com.company.platform.cache.api.observability.CacheOperationObservability;
 import com.company.platform.cache.api.operation.PlatformCacheOperations;
 import com.company.platform.cache.api.operation.TypedCacheFactory;
-import com.company.platform.cache.api.observability.CacheOperationObservability;
 import com.company.platform.cache.api.resilience.CacheResilienceExecutor;
 import com.company.platform.cache.autoconfigure.properties.PlatformCacheProperties;
 import com.company.platform.cache.internal.application.service.DefaultTypedCacheFactory;
 import com.company.platform.cache.internal.springcache.SpringCachePlatformCacheOperations;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
