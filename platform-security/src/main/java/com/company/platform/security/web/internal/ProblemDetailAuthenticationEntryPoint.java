@@ -1,22 +1,26 @@
 package com.company.platform.security.web.internal;
 
-import com.company.platform.security.web.api.SecurityProblemDetailFactory;
+import com.company.platform.core.exception.error.ErrorCategory;
+import com.company.platform.core.json.JsonMapperHelper;
+import com.company.platform.core.rest.factory.ApiResponseFactory;
+import com.company.platform.core.rest.response.ApiError;
+import com.company.platform.core.rest.response.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
-import tools.jackson.databind.ObjectMapper;
+
+import java.io.IOException;
 
 public final class ProblemDetailAuthenticationEntryPoint implements AuthenticationEntryPoint {
-    private final SecurityProblemDetailFactory factory;
-    private final ObjectMapper objectMapper;
+    private final JsonMapperHelper jsonMapperHelper;
+    private final ApiResponseFactory apiResponseFactory;
 
-    public ProblemDetailAuthenticationEntryPoint(SecurityProblemDetailFactory factory, ObjectMapper objectMapper) {
-        this.factory = factory;
-        this.objectMapper = objectMapper;
+    public ProblemDetailAuthenticationEntryPoint(JsonMapperHelper jsonMapperHelper, ApiResponseFactory apiResponseFactory) {
+        this.jsonMapperHelper = jsonMapperHelper;
+        this.apiResponseFactory = apiResponseFactory;
     }
 
     @Override
@@ -24,7 +28,12 @@ public final class ProblemDetailAuthenticationEntryPoint implements Authenticati
                          AuthenticationException authenticationException) throws IOException {
         response.setStatus(HttpStatus.UNAUTHORIZED.value());
         response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
-        objectMapper.writeValue(response.getOutputStream(), factory.create(
-            HttpStatus.UNAUTHORIZED.value(), "Authentication required", "Valid authentication is required"));
+        ApiError apiError = ApiError.of(
+            "Authentication required",
+            "The request requires authentication, but no valid credentials were provided.",
+            ErrorCategory.AUTHENTICATION
+        );
+        ApiResponse<?> apiResponse = apiResponseFactory.failure(apiError);
+        response.getWriter().write(jsonMapperHelper.toJson(apiResponse));
     }
 }

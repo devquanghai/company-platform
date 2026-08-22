@@ -181,7 +181,7 @@ Liquibase:
 ```yaml
 spring:
   liquibase:
-    change-log: classpath:/db/changelog/db.changelog-master.yaml
+    change-log: classpath:/db/changelog/db.changelog-master.xml
 ```
 
 Flyway for PostgreSQL:

@@ -1,10 +1,12 @@
 package com.company.platform.security.internal.autoconfigure;
 
+import com.company.platform.core.json.JsonMapperHelper;
+import com.company.platform.core.rest.factory.ApiResponseFactory;
 import com.company.platform.security.authorization.api.TenantAuthorization;
 import com.company.platform.security.authorization.internal.DefaultTenantAuthorization;
 import com.company.platform.security.context.api.CurrentSecurityContext;
-import com.company.platform.security.context.internal.DefaultCurrentSecurityContext;
 import com.company.platform.security.context.internal.CoreSecurityIdentityExtractor;
+import com.company.platform.security.context.internal.DefaultCurrentSecurityContext;
 import com.company.platform.security.context.internal.SecurityIdentityExtractor;
 import com.company.platform.security.multitenancy.api.TenantResolver;
 import com.company.platform.security.multitenancy.internal.AuthenticationTenantResolver;
@@ -21,7 +23,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.access.AccessDeniedHandler;
-import tools.jackson.databind.ObjectMapper;
+
 import java.util.List;
 
 @AutoConfiguration(afterName = "org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration")
@@ -61,17 +63,18 @@ public class PlatformSecurityAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnBean(ObjectMapper.class)
+    @ConditionalOnBean(JsonMapperHelper.class)
     @ConditionalOnMissingBean(AuthenticationEntryPoint.class)
-    AuthenticationEntryPoint securityAuthenticationEntryPoint(SecurityProblemDetailFactory factory,
-                                                                ObjectMapper objectMapper) {
-        return new ProblemDetailAuthenticationEntryPoint(factory, objectMapper);
+    AuthenticationEntryPoint securityAuthenticationEntryPoint(ApiResponseFactory apiResponseFactory,
+                                                              JsonMapperHelper jsonMapperHelper) {
+        return new ProblemDetailAuthenticationEntryPoint(jsonMapperHelper, apiResponseFactory);
     }
 
     @Bean
-    @ConditionalOnBean(ObjectMapper.class)
+    @ConditionalOnBean(JsonMapperHelper.class)
     @ConditionalOnMissingBean(AccessDeniedHandler.class)
-    AccessDeniedHandler securityAccessDeniedHandler(SecurityProblemDetailFactory factory, ObjectMapper objectMapper) {
-        return new ProblemDetailAccessDeniedHandler(factory, objectMapper);
+    AccessDeniedHandler securityAccessDeniedHandler(ApiResponseFactory apiResponseFactory,
+                                                    JsonMapperHelper jsonMapperHelper) {
+        return new ProblemDetailAccessDeniedHandler(apiResponseFactory, jsonMapperHelper);
     }
 }
